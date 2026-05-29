@@ -1,0 +1,15 @@
+.vscode/
+.vs/
+
+**/bin/
+**/obj/
+**/.artifacts/
+
+**/.next/
+**/node_modules/
+*.tsbuildinfo
+
+**/.env*.local
+!.env.example
+
+*.log
