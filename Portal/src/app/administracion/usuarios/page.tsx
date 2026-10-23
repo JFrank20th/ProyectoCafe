@@ -5,6 +5,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocale, useTranslations } from '@/hooks/useTranslations';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { apiFetch } from '@/lib/api/client';
+import {
+  activeRoleNames,
+  estadoColor,
+  formatDateTime,
+  type RolListItem,
+  type UsuarioListItem,
+} from '@/lib/admin/users';
 
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
@@ -31,46 +38,9 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 
-type UsuarioEstado = 0 | 1 | 2 | 3 | 4;
+type UserDto = UsuarioListItem;
 
-type UserDto = {
-  usuarioId: number;
-  email: string;
-  name: string;
-  estado: UsuarioEstado;
-  creadoEn: string;
-  ultimoLoginEn?: string | null;
-  roles: string[];
-};
-
-type RolEstado = 0 | 1 | 2;
-
-type RoleDto = {
-  rolId: number;
-  nombre: string;
-  estado: RolEstado;
-};
-
-function formatDateTime(locale: string, value?: string | null) {
-  if (!value) return '—';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' }).format(d);
-}
-
-function estadoColor(estado: UsuarioEstado): 'default' | 'info' | 'success' | 'warning' | 'error' {
-  switch (estado) {
-    case 0:
-    case 1:
-      return 'info';
-    case 2:
-      return 'success';
-    case 3:
-      return 'error';
-    default:
-      return 'default';
-  }
-}
+type RoleDto = RolListItem;
 
 export default function UsuariosPage() {
   const nav = useTranslations('navigation');
@@ -131,8 +101,7 @@ export default function UsuariosPage() {
     if (rolesCatalog.length > 0) return;
 
     const list = await apiFetch<RoleDto[]>('/api/v1/admin/roles');
-    const active = list.filter((r) => r.estado === 0).map((r) => r.nombre).sort((a, b) => a.localeCompare(b));
-    setRolesCatalog(active);
+    setRolesCatalog(activeRoleNames(list));
   }
 
   useEffect(() => {

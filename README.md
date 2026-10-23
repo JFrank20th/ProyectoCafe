@@ -20,3 +20,34 @@ sqlcmd -S localhost -E -i "c:\ProyectoCafe\tools\sqlserver-create-current.sql" -
 # Si la base ya existe, el script se detiene. Para recrearla de forma explícita:
 # 1. Respalda la base actual.
 # 2. Cambia @RecreateExisting a 1 dentro del script y vuelve a ejecutarlo.
+
+# Validación local
+
+El build del Portal ya **no** ignora errores de TypeScript ni de ESLint. Para validar
+todo antes de abrir un cambio:
+
+```powershell
+# Backend
+Set-Location -Path "c:\ProyectoCafe\server\api"
+dotnet build ProyectoCafe.sln --configuration Release -warnaserror
+dotnet test ProyectoCafe.sln --configuration Release
+
+# Frontend
+Set-Location -Path "c:\ProyectoCafe\Portal"
+npm ci
+npm run lint
+npm run type-check
+npm test
+npm run build
+```
+
+# Integración continua
+
+`.github/workflows/ci.yml` ejecuta las validaciones del backend y del frontend en cada
+`push` a `main`/`master` y en cada `pull_request`. Cualquier fallo de compilación,
+lint, TypeScript o pruebas marca el workflow como fallido (incluido el job agregador
+`CI required`).
+
+Para bloquear la fusión de cambios, configura en GitHub la protección de la rama
+principal y marca **`CI required`** como *required status check*.
+

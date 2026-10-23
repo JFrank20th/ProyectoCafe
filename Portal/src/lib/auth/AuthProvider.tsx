@@ -2,6 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { Role, Session, SessionUser } from '@/lib/auth/types';
+import { createPermissionSet, hasModuleAction, hasPermission } from '@/lib/auth/permissions';
 import { apiFetch } from '@/lib/api/client';
 
 type AuthContextValue = {
@@ -21,14 +22,6 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
-}
-
-function normalizePermission(value: string) {
-  return value.trim().toLowerCase();
-}
-
-function buildPermission(modulo: string, accion: string) {
-  return `perm:${modulo}:${accion}`;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -103,14 +96,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const user = session?.user ?? null;
     const roles = user?.roles ?? [];
     const permissions = user?.permissions ?? [];
-    const permissionSet = new Set(permissions.map(normalizePermission));
+    const permissionSet = createPermissionSet(permissions);
     return {
       session,
       user,
       roles,
       permissions,
-      can: (permission: string) => permissionSet.has(normalizePermission(permission)),
-      has: (modulo: string, accion: string) => permissionSet.has(normalizePermission(buildPermission(modulo, accion))),
+      can: (permission: string) => hasPermission(permissionSet, permission),
+      has: (modulo: string, accion: string) => hasModuleAction(permissionSet, modulo, accion),
       isLoading,
       isAuthenticated: Boolean(user),
       signInWithPassword,

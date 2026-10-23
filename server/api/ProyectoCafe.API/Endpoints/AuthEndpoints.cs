@@ -104,6 +104,7 @@ public static class AuthEndpoints
             [FromServices] IJwtTokenService jwtTokenService,
             [FromServices] ILoginRateLimiter rateLimiter,
             [FromServices] ILoggerFactory loggerFactory,
+            [FromServices] IHostEnvironment environment,
             CancellationToken ct) =>
         {
             var logger = loggerFactory.CreateLogger("ProyectoCafe.API.Auth.Login");
@@ -252,8 +253,7 @@ public static class AuthEndpoints
 
             var csrfToken = AuthCookies.CreateCsrfToken();
 
-            var isDev = string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
-            var cookieSecure = !isDev;
+            var cookieSecure = !environment.IsDevelopment();
 
             var accessCookie = new CookieOptions
             {

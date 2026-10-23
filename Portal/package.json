@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "test": "tsx --test src/**/*.test.ts"
+    "test": "node scripts/run-tests.mjs",
+    "ci": "npm run lint && npm run type-check && npm test && npm run build"
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",

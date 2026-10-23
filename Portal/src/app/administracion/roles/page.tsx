@@ -5,6 +5,18 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from '@/hooks/useTranslations';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { apiFetch } from '@/lib/api/client';
+import {
+  buildRolePayload,
+  normalizePermissionKey,
+  roleEstadoColor,
+  roleEstadoKind,
+  toPermissionMap,
+  toPermissionPayload,
+  toggleSelectedPermission,
+  type PermissionCatalogItem,
+  type PermissionDto,
+} from '@/lib/admin/roles';
+import type { RolEstado, RolListItem } from '@/lib/admin/users';
 
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
@@ -33,49 +45,16 @@ import TableRow from '@mui/material/TableRow';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 
-type RolEstado = 0 | 1 | 2;
-
-type RoleDto = {
-  rolId: number;
-  nombre: string;
-  descripcion?: string | null;
-  estado: RolEstado;
-  permisosCount: number;
-};
-
-type PermissionDto = {
-  modulo: string;
-  accion: string;
-};
-
-type PermissionCatalogItem = {
-  modulo: string;
-  acciones: string[];
-};
-
-function normalizePermissionKey(modulo: string, accion: string) {
-  return `${modulo}:${accion}`.toLowerCase();
-}
+type RoleDto = RolListItem & { permisosCount: number };
 
 function roleEstadoLabel(estado: RolEstado, ta: (key: string) => string) {
-  switch (estado) {
-    case 0:
+  switch (roleEstadoKind(estado)) {
+    case 'active':
       return ta('roleStateActive');
-    case 1:
+    case 'inactive':
       return ta('roleStateInactive');
     default:
       return ta('roleStateDeleted');
-  }
-}
-
-function roleEstadoColor(estado: RolEstado): 'default' | 'success' | 'warning' | 'error' {
-  switch (estado) {
-    case 0:
-      return 'success';
-    case 1:
-      return 'warning';
-    default:
-      return 'error';
   }
 }
 
@@ -172,11 +151,11 @@ export default function RolesPage() {
     setRoleDialogSaving(true);
     setRoleDialogError(null);
 
-    const payload = {
-      nombre: roleNombre.trim(),
-      descripcion: roleDescripcion.trim() ? roleDescripcion.trim() : null,
+    const payload = buildRolePayload({
+      nombre: roleNombre,
+      descripcion: roleDescripcion,
       estado: roleEstado,
-    };
+    });
 
     try {
       if (editingRole) {
@@ -251,14 +230,7 @@ export default function RolesPage() {
         // Se consulta en cada apertura para reflejar pantallas/funcionalidades nuevas o retiradas.
         await loadCatalog();
         const perms = await apiFetch<PermissionDto[]>(`/api/v1/admin/roles/${role.rolId}/permissions`);
-        const next: Record<string, PermissionDto> = {};
-        for (const p of perms) {
-          const modulo = (p.modulo ?? '').trim();
-          const accion = (p.accion ?? '').trim();
-          if (!modulo || !accion) continue;
-          next[normalizePermissionKey(modulo, accion)] = { modulo, accion };
-        }
-        setSelected(next);
+        setSelected(toPermissionMap(perms));
       } catch (e) {
         setPermsError(e instanceof Error ? e.message : tp('errorLoadingPermissions'));
       } finally {
@@ -276,15 +248,7 @@ export default function RolesPage() {
   }
 
   function togglePermission(modulo: string, accion: string) {
-    const key = normalizePermissionKey(modulo, accion);
-    setSelected((prev) => {
-      if (prev[key]) {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      }
-      return { ...prev, [key]: { modulo, accion } };
-    });
+    setSelected((prev) => toggleSelectedPermission(prev, modulo, accion));
   }
 
   async function savePermissions() {
@@ -294,7 +258,7 @@ export default function RolesPage() {
     setPermsSaving(true);
     setPermsError(null);
     try {
-      const payload = Object.values(selected);
+      const payload = toPermissionPayload(selected);
 
       await apiFetch<void>(`/api/v1/admin/roles/${permsTarget.rolId}/permissions`, {
         method: 'PUT',

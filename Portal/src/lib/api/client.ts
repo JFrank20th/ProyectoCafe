@@ -1,4 +1,5 @@
 import { getRuntimeConfig } from '@/lib/runtime-config';
+import { buildLoginRedirect, isPublicRoute } from '@/lib/routes';
 
 function joinUrl(base: string, path: string) {
   const trimmedBase = base.replace(/\/+$/, '');
@@ -122,9 +123,8 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
       if (typeof window !== 'undefined') {
         const pathname = window.location.pathname;
         const current = pathname + window.location.search;
-        const isPublicRoute = pathname === '/login' || pathname === '/register';
-        if (!isPublicRoute) {
-          window.location.replace(`/login?returnUrl=${encodeURIComponent(current)}`);
+        if (!isPublicRoute(pathname)) {
+          window.location.replace(buildLoginRedirect(current));
         }
       }
     }

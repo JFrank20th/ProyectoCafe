@@ -20,6 +20,7 @@ import { useTranslations } from '@/hooks/useTranslations';
 import { ApiError, apiFetch } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { getRuntimeConfig } from '@/lib/runtime-config';
+import { HOME_ROUTE, LOGIN_ROUTE } from '@/lib/routes';
 
 type RegisterResponse = {
   message: string;
@@ -92,7 +93,7 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    router.replace('/dashboard');
+    router.replace(HOME_ROUTE);
   }, [isAuthenticated, router]);
 
   async function onSubmit(e: React.FormEvent) {
@@ -200,7 +201,7 @@ export default function RegisterPage() {
                       <Stack direction="row" justifyContent="space-between" sx={{ pt: 0.5 }}>
                         <Typography
                           component={Link as unknown as ElementType}
-                          href="/login"
+                          href={LOGIN_ROUTE}
                           variant="body2"
                           sx={{ textDecoration: 'none', color: 'primary.main' }}
                         >

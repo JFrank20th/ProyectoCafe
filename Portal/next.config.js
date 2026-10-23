@@ -22,10 +22,6 @@ const nextConfig = {
   // de múltiples lockfiles cuando hay un package-lock.json en directorios padre.
   outputFileTracingRoot: require('path').join(__dirname),
 
-  // Acelerar builds en CI/Docker (el chequeo se hace en local/CI por separado)
-  eslint:     { ignoreDuringBuilds: true },
-  typescript: { ignoreBuildErrors:  true },
-
   // ID de build único para evitar colisiones de caché entre deploys
   generateBuildId: async () => `${Date.now()}-${Math.random().toString(36).substring(7)}`,
 }

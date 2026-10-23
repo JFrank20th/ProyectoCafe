@@ -8,6 +8,7 @@ import { SessionGuard } from '@/components/auth/SessionGuard';
 import { MainLayout } from '@/components/layout/main-layout';
 import { useTranslations } from '@/hooks/useTranslations';
 import { AuthProvider, useAuth } from '@/lib/auth/AuthProvider';
+import { isPublicRoute as isPublicPath, LOGIN_ROUTE } from '@/lib/routes';
 import { I18nProvider } from '@/providers/i18n-provider';
 import { UiConfigProvider } from '@/providers/ui-config-provider';
 import { BerryThemeProvider } from '@/theme/BerryThemeProvider';
@@ -34,13 +35,13 @@ function AppShell({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading, user, signOut } = useAuth();
   const t = useTranslations('common');
 
-  const isPublicRoute = pathname === '/login' || pathname === '/register';
+  const isPublicRoute = isPublicPath(pathname);
 
   useEffect(() => {
     if (isPublicRoute) return;
     if (isLoading) return;
     if (!isAuthenticated) {
-      router.replace('/login');
+      router.replace(LOGIN_ROUTE);
     }
   }, [isAuthenticated, isLoading, isPublicRoute, router]);
 

@@ -1,4 +1,6 @@
 import type { Permission, Role } from '@/lib/auth/types';
+import { normalizePermission } from '@/lib/auth/permissions';
+import { DASHBOARD_ROUTE } from '@/lib/routes';
 
 export type NavItem = {
   labelKey: string;
@@ -16,7 +18,7 @@ export type NavSection = {
 export const NAV: NavSection[] = [
   {
     labelKey: 'main',
-    items: [{ labelKey: 'dashboard', href: '/dashboard' }],
+    items: [{ labelKey: 'dashboard', href: DASHBOARD_ROUTE }],
   },
   {
     labelKey: 'administration',
@@ -31,10 +33,6 @@ export const NAV: NavSection[] = [
     ],
   },
 ];
-
-function normalizePermission(value: string) {
-  return value.trim().toLowerCase();
-}
 
 export function canSeeItem(userRoles: Role[], permissionSet: ReadonlySet<string>, item: NavItem) {
   if (item.roles && item.roles.length > 0) {

@@ -20,6 +20,7 @@ import { useTranslations } from '@/hooks/useTranslations';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { ApiError } from '@/lib/api/client';
 import { getRuntimeConfig } from '@/lib/runtime-config';
+import { HOME_ROUTE, REGISTER_ROUTE } from '@/lib/routes';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -83,7 +84,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    router.replace('/dashboard');
+    router.replace(HOME_ROUTE);
   }, [isAuthenticated, router]);
 
   async function onSubmit(e: React.FormEvent) {
@@ -92,7 +93,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await signInWithPassword(email, password);
-      router.replace('/dashboard');
+      router.replace(HOME_ROUTE);
     } catch (err) {
       setError(describeApiError(err, t('signInError')));
     } finally {
@@ -174,7 +175,7 @@ export default function LoginPage() {
                       <Stack direction="row" justifyContent="space-between" sx={{ pt: 0.5 }}>
                         <Typography
                           component={Link as unknown as ElementType}
-                          href="/register"
+                          href={REGISTER_ROUTE}
                           variant="body2"
                           sx={{ textDecoration: 'none', color: 'primary.main' }}
                         >

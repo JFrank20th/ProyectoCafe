@@ -72,24 +72,23 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IValidateOptions<AuthOptions>, AuthOptionsValidator>();
 
-        var auth = configuration.GetSection("Auth").Get<AuthOptions>() ?? new AuthOptions();
-        var issuer = auth.Jwt.Issuer;
-        var audience = auth.Jwt.Audience;
-        var signingKey = auth.Jwt.SigningKey;
-        var accessTokenCookieName = auth.Cookie.AccessTokenCookieName;
-
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
+            .AddJwtBearer();
+
+        services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+            .Configure<IOptions<AuthOptions>>((options, authOptions) =>
             {
+                var auth = authOptions.Value;
+
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
                     ValidateAudience = true,
                     ValidateIssuerSigningKey = true,
                     ValidateLifetime = true,
-                    ValidIssuer = issuer,
-                    ValidAudience = audience,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey))
+                    ValidIssuer = auth.Jwt.Issuer,
+                    ValidAudience = auth.Jwt.Audience,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(auth.Jwt.SigningKey))
                 };
 
                 options.Events = new JwtBearerEvents
@@ -97,7 +96,7 @@ public static class ServiceCollectionExtensions
                     OnMessageReceived = ctx =>
                     {
                         // Read JWT from HttpOnly cookie.
-                        if (ctx.Request.Cookies.TryGetValue(accessTokenCookieName, out var token) &&
+                        if (ctx.Request.Cookies.TryGetValue(auth.Cookie.AccessTokenCookieName, out var token) &&
                             !string.IsNullOrWhiteSpace(token))
                         {
                             ctx.Token = token;
