@@ -8,6 +8,16 @@ const nextConfig = {
   },
 
   // ============================================================================
+  // CORS
+  // ============================================================================
+  // No configurar cabeceras CORS en este archivo (ni en middleware/route handlers).
+  // CORS se centraliza en la API (.NET) mediante una allowlist explícita de
+  // orígenes. Emitir aquí cabeceras CORS duplicaría o contradiría la respuesta de
+  // la API; además, un origen comodín es incompatible con credenciales (cookies).
+  // El Portal solo consume la API con credentials: 'include'.
+  // ============================================================================
+
+  // ============================================================================
   // ⚠️ RUNTIME CONFIGURATION
   // ============================================================================
   // Las variables de entorno (URLs, auth, etc.) NO se hornean en build time.

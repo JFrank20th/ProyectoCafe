@@ -9,6 +9,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authorization;
 using ProyectoCafe.Application.Extensions;
 using ProyectoCafe.API.Auth;
+using ProyectoCafe.API.Configuration;
 using ProyectoCafe.Domain.Entities;
 using ProyectoCafe.Infrastructure.Data;
 using ProyectoCafe.Infrastructure.Extensions;
@@ -21,23 +22,24 @@ public static class ServiceCollectionExtensions
     {
         services.AddProblemDetails();
 
+        // La API es la única autoridad CORS. El Portal no debe emitir cabeceras
+        // Access-Control-*: si lo hiciera, se duplicarían o contradirían estas.
+        // La lista se resuelve al construir la política (después de que todos los
+        // proveedores de configuración estén cargados) y se valida al arrancar en
+        // Program.cs para fallar rápido ante una configuración inválida.
         services.AddCors(options =>
         {
-            options.AddPolicy("Portal", policy =>
+            options.AddPolicy(CorsPolicyNames.Portal, policy =>
             {
-                var origins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
-                if (origins.Length > 0)
-                {
-                    policy.WithOrigins(origins)
-                        .AllowCredentials()
-                        .AllowAnyHeader()
-                        .AllowAnyMethod();
-                }
-                else
-                {
-                    // Credentials are NOT compatible with AllowAnyOrigin. Force explicit configuration.
-                    throw new InvalidOperationException("Cors:AllowedOrigins debe configurarse cuando se usa auth por cookies.");
-                }
+                var allowedOrigins = CorsOrigins.Resolve(configuration);
+
+                // WithOrigins + AllowCredentials: Access-Control-Allow-Origin recibe
+                // el origen exacto autorizado, nunca "*".
+                policy.WithOrigins(allowedOrigins)
+                    .AllowCredentials()
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
             });
         });
 

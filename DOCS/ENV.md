@@ -3,6 +3,45 @@
 ## API
 
 - `Database:ConnectionString` — connection string a SQL Server (puede estar en `appsettings.Development.json` o env var).
+
+### CORS
+
+La API es la **única autoridad CORS** del sistema. El Portal (Next.js) no debe emitir
+cabeceras `Access-Control-*`; hacerlo duplicaría o contradiría la respuesta de la API y
+la autenticación por cookies dejaría de funcionar.
+
+- La política usa una allowlist de orígenes exactos (`esquema://host:puerto`). No se
+  admite `*`: `Access-Control-Allow-Origin: *` es incompatible con
+  `Access-Control-Allow-Credentials: true`.
+- La API falla al arrancar si no hay orígenes configurados, si alguno contiene `*`, o
+  si no es una URL absoluta `http`/`https` sin ruta, query ni fragmento.
+- La configuración se resuelve una sola vez al iniciar. Los orígenes se normalizan
+  (minúsculas y sin barra final) y se eliminan duplicados.
+
+Desarrollo local (`appsettings.Development.json`):
+
+```json
+"Cors": {
+  "AllowedOrigins": ["http://localhost:3010"]
+}
+```
+
+QA/PROD (variables de entorno, sin recompilar la imagen):
+
+```powershell
+# Formato estándar de .NET (recomendado para varios orígenes)
+$env:Cors__AllowedOrigins__0 = "https://portal.example.com"
+$env:Cors__AllowedOrigins__1 = "https://admin.example.com"
+
+# Alternativa: lista separada por comas o punto y coma
+$env:CORS_ALLOWED_ORIGINS = "https://portal.example.com,https://admin.example.com"
+```
+
+> Si el Portal y la API están en sitios distintos (no solo subdominios del mismo
+> dominio registrable), además de CORS hay que configurar la cookie de sesión con
+> `SameSite=None` y `Secure`; el valor por defecto `Lax` solo se envía en peticiones
+> del mismo sitio.
+
 - En desarrollo, la conexión por defecto apunta a `ProyectoCafe.Dev`.
 - La estructura vigente se crea con `tools/sqlserver-create-current.sql`; el script crea la base desde cero y se detiene si ya existe para evitar mezclar esquemas heredados.
 

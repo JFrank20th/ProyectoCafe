@@ -25,23 +25,29 @@ internal sealed class ProyectoCafeApiFactory : WebApplicationFactory<Program>
 
     private readonly string _databaseName = $"proyecto-cafe-tests-{Guid.NewGuid():N}";
     private readonly IReadOnlyDictionary<string, string?> _overrides;
+    private readonly string _environment;
+    private readonly bool _configureDefaultCorsOrigin;
 
-    public ProyectoCafeApiFactory(IReadOnlyDictionary<string, string?>? overrides = null)
+    public ProyectoCafeApiFactory(
+        IReadOnlyDictionary<string, string?>? overrides = null,
+        string environment = "Testing",
+        bool configureDefaultCorsOrigin = true)
     {
         _overrides = overrides ?? new Dictionary<string, string?>();
+        _environment = environment;
+        _configureDefaultCorsOrigin = configureDefaultCorsOrigin;
     }
 
     public CapturingLoggerProvider Logs { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseEnvironment("Testing");
+        builder.UseEnvironment(_environment);
 
         builder.ConfigureAppConfiguration((_, configBuilder) =>
         {
             var settings = new Dictionary<string, string?>
             {
-                ["Cors:AllowedOrigins:0"] = "http://localhost:3010",
                 ["Database:ConnectionString"] = "Server=(localdb)\\mssqllocaldb;Database=ProyectoCafeTests;Trusted_Connection=True;TrustServerCertificate=True",
                 ["Auth:Jwt:Issuer"] = "tests",
                 ["Auth:Jwt:Audience"] = "tests",
@@ -53,6 +59,11 @@ internal sealed class ProyectoCafeApiFactory : WebApplicationFactory<Program>
                 // Las pruebas de autenticación que necesitan el limitador lo habilitan explícitamente.
                 ["Auth:RateLimit:Enabled"] = "false",
             };
+
+            if (_configureDefaultCorsOrigin)
+            {
+                settings["Cors:AllowedOrigins:0"] = "http://localhost:3010";
+            }
 
             foreach (var (key, value) in _overrides)
             {
