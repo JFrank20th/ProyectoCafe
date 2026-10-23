@@ -13,5 +13,10 @@ ProyectoCafe migra la funcionalidad de berry-free-react-admin-template a una arq
 Set-Location -Path "c:\ProyectoCafe\Portal"; npm run dev
 Set-Location -Path "c:\ProyectoCafe\server\api\ProyectoCafe.API"; dotnet run
 
-# Limpieza de base de datos.
-sqlcmd -S localhost -d ProyectoCafe.Dev -E -i "c:\ProyectoCafe\tools\sqlserver-reset-operacion-real.sql" -b
+# Base de datos (SQL Server)
+# Crea la base ProyectoCafe.Dev con el esquema vigente (Administración/Dashboard).
+sqlcmd -S localhost -E -i "c:\ProyectoCafe\tools\sqlserver-create-current.sql" -b
+
+# Si la base ya existe, el script se detiene. Para recrearla de forma explícita:
+# 1. Respalda la base actual.
+# 2. Cambia @RecreateExisting a 1 dentro del script y vuelve a ejecutarlo.
