@@ -23,5 +23,20 @@ Al superarse un límite se responde `429` con un mensaje genérico y cabecera `R
 
 ## Portal
 
-- `NEXT_PUBLIC_PROYECTOCAFE_API_URL` — base URL del backend (ej: `http://localhost:5000`).
-- `NEXT_PUBLIC_APP_NAME` — nombre a mostrar.
+- `NEXT_PUBLIC_PROYECTOCAFE_API_URL` - base URL del backend (ej: `http://localhost:5000`). Se usa en el cliente y como valor por defecto del servidor.
+- `PROYECTOCAFE_API_URL` - base URL del backend usada en runtime por el servidor (middleware, Server Components y Route Handlers). Tiene prioridad sobre la variable pública. Úsala en Docker/QA/PROD para no recompilar la imagen al cambiar el destino.
+- `PROYECTOCAFE_AUTH_COOKIE_NAME` - nombre de la cookie HttpOnly de sesión emitida por la API (`pc_at` por defecto).
+- `NEXT_PUBLIC_APP_NAME` - nombre a mostrar.
+
+### Protección de rutas en el servidor
+
+El Portal incluye `src/middleware.ts` (runtime Node.js de Next.js 15) que valida la cookie de sesión contra `GET /api/v1/auth/me` antes de renderizar cualquier página protegida:
+
+- `login` y `register` son públicos; el resto requiere sesión válida (deny-by-default).
+- `/administracion/usuarios` y `/administracion/roles` requieren además `Administracion.Usuarios:Ver` y `Administracion.Roles:Ver` respectivamente.
+- Sin sesión en una página: redirección a `/login?returnUrl=<ruta original>`.
+- Con sesión pero sin permiso: redirección a `/acceso-denegado`.
+- Las peticiones a `/api/*` del Portal responden `401`/`403` en JSON (nunca redirigen al login).
+- Si la API no responde o devuelve un error, la sesión se considera inválida (fail closed) y se limpia la cookie.
+
+El guard del cliente (`AppShell`/`SessionGuard`) se mantiene como capa adicional. La API sigue siendo la autoridad final: revalida sesión, permisos, CSRF y estado del usuario en cada operación.

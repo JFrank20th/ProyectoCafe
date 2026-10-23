@@ -62,6 +62,7 @@
     "logout": "Cerrar sesión"
   },
   "pages": {
+    "accessDenied": "Acceso denegado",
     "noPermission": "No tienes permisos para ver esta sección.",
     "errorLoadingUsers": "Error cargando usuarios.",
     "errorUpdatingUser": "Error actualizando usuario.",

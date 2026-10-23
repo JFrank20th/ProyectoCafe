@@ -20,7 +20,14 @@ import { useTranslations } from '@/hooks/useTranslations';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { ApiError } from '@/lib/api/client';
 import { getRuntimeConfig } from '@/lib/runtime-config';
-import { HOME_ROUTE, REGISTER_ROUTE } from '@/lib/routes';
+import { HOME_ROUTE, REGISTER_ROUTE, RETURN_URL_PARAM, sanitizeReturnUrl } from '@/lib/routes';
+
+function resolveReturnUrl() {
+  if (typeof window === 'undefined') return HOME_ROUTE;
+
+  const params = new URLSearchParams(window.location.search);
+  return sanitizeReturnUrl(params.get(RETURN_URL_PARAM), HOME_ROUTE);
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -84,7 +91,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    router.replace(HOME_ROUTE);
+    router.replace(resolveReturnUrl());
   }, [isAuthenticated, router]);
 
   async function onSubmit(e: React.FormEvent) {
@@ -93,7 +100,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await signInWithPassword(email, password);
-      router.replace(HOME_ROUTE);
+      router.replace(resolveReturnUrl());
     } catch (err) {
       setError(describeApiError(err, t('signInError')));
     } finally {

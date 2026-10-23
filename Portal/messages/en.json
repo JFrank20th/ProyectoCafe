@@ -62,6 +62,7 @@
     "logout": "Sign out"
   },
   "pages": {
+    "accessDenied": "Access denied",
     "noPermission": "You do not have permission to view this section.",
     "errorLoadingUsers": "Error loading users.",
     "errorUpdatingUser": "Error updating user.",

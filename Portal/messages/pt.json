@@ -62,6 +62,7 @@
     "logout": "Sair"
   },
   "pages": {
+    "accessDenied": "Acesso negado",
     "noPermission": "Você não tem permissão para ver esta seção.",
     "errorLoadingUsers": "Erro ao carregar usuários.",
     "errorUpdatingUser": "Erro ao atualizar usuário.",
