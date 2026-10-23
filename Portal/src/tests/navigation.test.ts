@@ -57,6 +57,37 @@ test('navigation filters by role when an item declares one', () => {
   assert.equal(canSeeItem(['User'], permissionSet, item), false);
 });
 
+test('navigation role filters accept custom roles and ignore casing', () => {
+  const item: NavItem = {
+    labelKey: 'support',
+    href: '/soporte',
+    roles: ['Soporte administrativo'],
+  };
+  const permissionSet = new Set<string>();
+
+  assert.equal(canSeeItem([' soporte ADMINISTRATIVO '], permissionSet, item), true);
+  assert.equal(canSeeItem(['Consulta'], permissionSet, item), false);
+});
+
+test('role matches never bypass backend permission requirements', () => {
+  const item: NavItem = {
+    labelKey: 'roles',
+    href: '/administracion/roles',
+    roles: ['Soporte administrativo'],
+    permissions: ['perm:Administracion.Roles:Ver'],
+  };
+
+  assert.equal(canSeeItem(['Soporte administrativo'], new Set<string>(), item), false);
+  assert.equal(
+    canSeeItem(
+      ['Soporte administrativo'],
+      new Set(['perm:administracion.roles:ver']),
+      item,
+    ),
+    true,
+  );
+});
+
 test('home route points to the dashboard', () => {
   assert.equal(HOME_ROUTE, '/dashboard');
   assert.equal(DASHBOARD_ROUTE, HOME_ROUTE);

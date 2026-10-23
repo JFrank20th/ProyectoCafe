@@ -3,6 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { Role, Session, SessionUser } from '@/lib/auth/types';
 import { createPermissionSet, hasModuleAction, hasPermission } from '@/lib/auth/permissions';
+import { normalizeRoleNames } from '@/lib/auth/roles';
 import { apiFetch } from '@/lib/api/client';
 
 type AuthContextValue = {
@@ -43,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           user: {
             email: me.email,
             name: me.name,
-            roles: (me.roles as Role[]) ?? [],
+            roles: normalizeRoleNames(me.roles),
             permissions: me.permissions ?? [],
           },
         };
@@ -78,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: {
         email: result.user.email,
         name: result.user.name,
-        roles: (result.user.roles as Role[]) ?? [],
+        roles: normalizeRoleNames(result.user.roles),
         permissions: result.user.permissions ?? [],
       },
     };

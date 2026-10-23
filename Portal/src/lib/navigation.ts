@@ -1,5 +1,6 @@
 import type { Permission, Role } from '@/lib/auth/types';
 import { normalizePermission } from '@/lib/auth/permissions';
+import { hasAnyRole } from '@/lib/auth/roles';
 import { DASHBOARD_ROUTE } from '@/lib/routes';
 
 export type NavItem = {
@@ -34,10 +35,14 @@ export const NAV: NavSection[] = [
   },
 ];
 
-export function canSeeItem(userRoles: Role[], permissionSet: ReadonlySet<string>, item: NavItem) {
+export function canSeeItem(
+  userRoles: readonly Role[],
+  permissionSet: ReadonlySet<string>,
+  item: NavItem,
+) {
   if (item.roles && item.roles.length > 0) {
-    const ok = item.roles.some((role) => userRoles.includes(role));
-    if (!ok) return false;
+    // Role names are dynamic and compared case-insensitively, matching the backend.
+    if (!hasAnyRole(userRoles, item.roles)) return false;
   }
 
   if (item.permissions && item.permissions.length > 0) {
@@ -48,7 +53,11 @@ export function canSeeItem(userRoles: Role[], permissionSet: ReadonlySet<string>
   return true;
 }
 
-export function filterVisibleNavItems(userRoles: Role[], userPermissions: Permission[], items: NavItem[]): NavItem[] {
+export function filterVisibleNavItems(
+  userRoles: readonly Role[],
+  userPermissions: readonly Permission[],
+  items: NavItem[],
+): NavItem[] {
   const permissionSet = new Set((userPermissions ?? []).map(normalizePermission));
 
   const walk = (list: NavItem[]): NavItem[] => {

@@ -58,6 +58,21 @@ test('fetchSessionFromCookie validates the session against /auth/me', async () =
   assert.equal(headers.get('accept'), 'application/json');
 });
 
+test('fetchSessionFromCookie keeps dynamic backend role names', async () => {
+  const { fetchImpl } = fakeFetch(
+    jsonResponse({
+      email: 'soporte@local',
+      name: 'Soporte',
+      roles: ['  Soporte administrativo  ', 'Auditoría', 'soporte ADMINISTRATIVO'],
+      permissions: ['perm:Administracion.Usuarios:Ver'],
+    }),
+  );
+
+  const session = await fetchSessionFromCookie('token', { fetchImpl });
+
+  assert.deepEqual(session?.user.roles, ['Soporte administrativo', 'Auditoría']);
+});
+
 test('fetchSessionFromCookie falls back to email when name is missing', async () => {
   const { fetchImpl } = fakeFetch(jsonResponse({ email: 'user@local', roles: [], permissions: [] }));
 

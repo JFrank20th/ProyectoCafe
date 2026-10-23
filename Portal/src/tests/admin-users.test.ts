@@ -48,3 +48,15 @@ test('activeRoleNames keeps only active roles, sorted alphabetically', () => {
 
   assert.deepEqual(activeRoleNames(roles), ['Alfa', 'Zeta']);
 });
+
+test('activeRoleNames supports custom role names and removes duplicates', () => {
+  const roles: RolListItem[] = [
+    { rolId: 1, nombre: 'Soporte administrativo', estado: 0 },
+    { rolId: 2, nombre: '  soporte ADMINISTRATIVO  ', estado: 0 },
+    { rolId: 3, nombre: 'Auditoría', estado: 0 },
+    { rolId: 4, nombre: 'Consulta', estado: 1 },
+    { rolId: 5, nombre: '   ', estado: 0 },
+  ];
+
+  assert.deepEqual(activeRoleNames(roles), ['Auditoría', 'Soporte administrativo']);
+});

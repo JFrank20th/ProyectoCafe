@@ -7,14 +7,19 @@ import { useAuth } from '@/lib/auth/AuthProvider';
 import { apiFetch } from '@/lib/api/client';
 import {
   buildRolePayload,
+  hasRoleValidationErrors,
   normalizePermissionKey,
+  ROLE_DESCRIPTION_MAX_LENGTH,
+  ROLE_NAME_MAX_LENGTH,
   roleEstadoColor,
   roleEstadoKind,
   toPermissionMap,
   toPermissionPayload,
   toggleSelectedPermission,
+  validateRoleInput,
   type PermissionCatalogItem,
   type PermissionDto,
+  type RoleValidationErrors,
 } from '@/lib/admin/roles';
 import type { RolEstado, RolListItem } from '@/lib/admin/users';
 
@@ -86,6 +91,7 @@ export default function RolesPage() {
   const [roleNombre, setRoleNombre] = useState('');
   const [roleDescripcion, setRoleDescripcion] = useState('');
   const [roleEstado, setRoleEstado] = useState<RolEstado>(0);
+  const [roleFieldErrors, setRoleFieldErrors] = useState<RoleValidationErrors>({});
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -126,6 +132,7 @@ export default function RolesPage() {
     setRoleNombre('');
     setRoleDescripcion('');
     setRoleEstado(0);
+    setRoleFieldErrors({});
     setRoleDialogError(null);
     setRoleDialogOpen(true);
   }
@@ -136,6 +143,7 @@ export default function RolesPage() {
     setRoleNombre(role.nombre ?? '');
     setRoleDescripcion(role.descripcion ?? '');
     setRoleEstado(role.estado ?? 0);
+    setRoleFieldErrors({});
     setRoleDialogError(null);
     setRoleDialogOpen(true);
   }
@@ -144,10 +152,23 @@ export default function RolesPage() {
     if (roleDialogSaving) return;
     setRoleDialogOpen(false);
     setEditingRole(null);
+    setRoleFieldErrors({});
     setRoleDialogError(null);
   }
 
   async function saveRole() {
+    const validationErrors = validateRoleInput({
+      nombre: roleNombre,
+      descripcion: roleDescripcion,
+    });
+
+    if (hasRoleValidationErrors(validationErrors)) {
+      setRoleFieldErrors(validationErrors);
+      setRoleDialogError(null);
+      return;
+    }
+
+    setRoleFieldErrors({});
     setRoleDialogSaving(true);
     setRoleDialogError(null);
 
@@ -383,7 +404,20 @@ export default function RolesPage() {
             <TextField
               label={ta('roleNameLabel')}
               value={roleNombre}
-              onChange={(e) => setRoleNombre(e.target.value)}
+              onChange={(e) => {
+                setRoleNombre(e.target.value);
+                if (roleFieldErrors.nombre) {
+                  setRoleFieldErrors((prev) => ({ ...prev, nombre: undefined }));
+                }
+              }}
+              error={Boolean(roleFieldErrors.nombre)}
+              helperText={
+                roleFieldErrors.nombre === 'required'
+                  ? ta('roleNameRequired')
+                  : roleFieldErrors.nombre === 'maxLength'
+                    ? ta('roleNameTooLong', { max: ROLE_NAME_MAX_LENGTH })
+                    : undefined
+              }
               fullWidth
               autoFocus
             />
@@ -391,7 +425,18 @@ export default function RolesPage() {
             <TextField
               label={ta('roleDescriptionLabel')}
               value={roleDescripcion}
-              onChange={(e) => setRoleDescripcion(e.target.value)}
+              onChange={(e) => {
+                setRoleDescripcion(e.target.value);
+                if (roleFieldErrors.descripcion) {
+                  setRoleFieldErrors((prev) => ({ ...prev, descripcion: undefined }));
+                }
+              }}
+              error={Boolean(roleFieldErrors.descripcion)}
+              helperText={
+                roleFieldErrors.descripcion === 'maxLength'
+                  ? ta('roleDescriptionTooLong', { max: ROLE_DESCRIPTION_MAX_LENGTH })
+                  : undefined
+              }
               fullWidth
               multiline
               minRows={2}

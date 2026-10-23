@@ -1,5 +1,6 @@
 import type { SessionUser } from '@/lib/auth/types';
 import { normalizePermission } from '@/lib/auth/permissions';
+import { normalizeRoleNames } from '@/lib/auth/roles';
 
 export const AUTH_COOKIE_NAME = process.env['PROYECTOCAFE_AUTH_COOKIE_NAME'] || 'pc_at';
 
@@ -40,7 +41,7 @@ function toSession(body: unknown): ServerSession | null {
 
   if (typeof email !== 'string' || email.trim().length === 0) return null;
 
-  const roles = toStringArray(data['roles']) as SessionUser['roles'];
+  const roles = normalizeRoleNames(toStringArray(data['roles']));
   const permissions = toStringArray(data['permissions']).map(normalizePermission);
 
   return {

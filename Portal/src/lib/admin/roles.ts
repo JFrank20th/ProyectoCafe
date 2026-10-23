@@ -10,6 +10,46 @@ export type PermissionCatalogItem = {
   acciones: string[];
 };
 
+/**
+ * Backend limits for role fields. Keep the UI validations aligned with
+ * `AdminEndpoints` so custom role names fail locally with a clear message
+ * instead of reaching the API and returning a generic validation error.
+ */
+export const ROLE_NAME_MAX_LENGTH = 50;
+export const ROLE_DESCRIPTION_MAX_LENGTH = 250;
+
+export type RoleValidationError = 'required' | 'maxLength';
+
+export type RoleValidationErrors = {
+  nombre?: RoleValidationError;
+  descripcion?: RoleValidationError;
+};
+
+export function validateRoleInput(input: {
+  nombre: string;
+  descripcion: string;
+}): RoleValidationErrors {
+  const errors: RoleValidationErrors = {};
+
+  const nombre = (input.nombre ?? '').trim();
+  if (!nombre) {
+    errors.nombre = 'required';
+  } else if (nombre.length > ROLE_NAME_MAX_LENGTH) {
+    errors.nombre = 'maxLength';
+  }
+
+  const descripcion = (input.descripcion ?? '').trim();
+  if (descripcion.length > ROLE_DESCRIPTION_MAX_LENGTH) {
+    errors.descripcion = 'maxLength';
+  }
+
+  return errors;
+}
+
+export function hasRoleValidationErrors(errors: RoleValidationErrors): boolean {
+  return Boolean(errors.nombre || errors.descripcion);
+}
+
 export function normalizePermissionKey(modulo: string, accion: string): string {
   return `${modulo.trim()}:${accion.trim()}`.toLowerCase();
 }

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { useLocale, useTranslations } from '@/hooks/useTranslations';
 import { useAuth } from '@/lib/auth/AuthProvider';
+import { normalizeRoleNames } from '@/lib/auth/roles';
 import { apiFetch } from '@/lib/api/client';
 import {
   activeRoleNames,
@@ -97,9 +98,9 @@ export default function UsuariosPage() {
     }
   }
 
-  async function ensureRolesCatalog() {
-    if (rolesCatalog.length > 0) return;
-
+  async function loadRolesCatalog() {
+    // Roles are dynamic: reload the catalog each time the dialog opens so newly
+    // created or deactivated roles are reflected without reloading the page.
     const list = await apiFetch<RoleDto[]>('/api/v1/admin/roles');
     setRolesCatalog(activeRoleNames(list));
   }
@@ -140,10 +141,10 @@ export default function UsuariosPage() {
   function openRolesDialog(user: UserDto) {
     if (!canEditUsers) return;
     setSelectedUser(user);
-    setSelectedRoles(user.roles ?? []);
+    setSelectedRoles(normalizeRoleNames(user.roles));
     setRolesError(null);
     setRolesOpen(true);
-    void ensureRolesCatalog().catch((e) => {
+    void loadRolesCatalog().catch((e) => {
       setRolesError(e instanceof Error ? e.message : tp('errorLoadingRoles'));
     });
   }
@@ -165,7 +166,7 @@ export default function UsuariosPage() {
     try {
       await apiFetch<void>(`/api/v1/admin/users/${selectedUser.usuarioId}/roles`, {
         method: 'PUT',
-        body: JSON.stringify({ roles: selectedRoles }),
+        body: JSON.stringify({ roles: normalizeRoleNames(selectedRoles) }),
       });
       setRolesOpen(false);
       setSelectedUser(null);

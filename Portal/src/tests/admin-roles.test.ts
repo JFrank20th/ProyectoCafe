@@ -3,13 +3,17 @@ import test from 'node:test';
 
 import {
   buildRolePayload,
+  hasRoleValidationErrors,
   isRoleVisible,
   normalizePermissionKey,
+  ROLE_DESCRIPTION_MAX_LENGTH,
+  ROLE_NAME_MAX_LENGTH,
   roleEstadoColor,
   roleEstadoKind,
   toPermissionMap,
   toPermissionPayload,
   toggleSelectedPermission,
+  validateRoleInput,
 } from '@/lib/admin/roles';
 
 test('normalizePermissionKey trims and lowercases both segments', () => {
@@ -77,4 +81,47 @@ test('buildRolePayload trims values and converts empty descriptions to null', ()
     buildRolePayload({ nombre: 'Operador', descripcion: '   ', estado: 1 }),
     { nombre: 'Operador', descripcion: null, estado: 1 },
   );
+});
+
+test('buildRolePayload keeps custom role names intact', () => {
+  assert.deepEqual(
+    buildRolePayload({
+      nombre: '  Soporte administrativo  ',
+      descripcion: '  Consulta y reportería  ',
+      estado: 0,
+    }),
+    {
+      nombre: 'Soporte administrativo',
+      descripcion: 'Consulta y reportería',
+      estado: 0,
+    },
+  );
+});
+
+test('validateRoleInput accepts arbitrary custom role names', () => {
+  assert.deepEqual(
+    validateRoleInput({ nombre: 'Soporte administrativo', descripcion: 'Consulta y reportería' }),
+    {},
+  );
+  assert.deepEqual(validateRoleInput({ nombre: '  Auditoría  ', descripcion: '' }), {});
+});
+
+test('validateRoleInput mirrors backend required and length rules', () => {
+  const required = validateRoleInput({ nombre: '   ', descripcion: '' });
+  assert.deepEqual(required, { nombre: 'required' });
+  assert.equal(hasRoleValidationErrors(required), true);
+
+  const tooLongName = validateRoleInput({
+    nombre: 'A'.repeat(ROLE_NAME_MAX_LENGTH + 1),
+    descripcion: '',
+  });
+  assert.deepEqual(tooLongName, { nombre: 'maxLength' });
+
+  const tooLongDescription = validateRoleInput({
+    nombre: 'Operador',
+    descripcion: 'B'.repeat(ROLE_DESCRIPTION_MAX_LENGTH + 1),
+  });
+  assert.deepEqual(tooLongDescription, { descripcion: 'maxLength' });
+
+  assert.equal(hasRoleValidationErrors({}), false);
 });

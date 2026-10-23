@@ -1,3 +1,5 @@
+import { normalizeRoleName } from '@/lib/auth/roles';
+
 export type UsuarioEstado = 0 | 1 | 2 | 3 | 4;
 
 export type UsuarioListItem = {
@@ -43,9 +45,27 @@ export function formatDateTime(locale: string, value?: string | null): string {
   return new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' }).format(date);
 }
 
+/**
+ * Returns the names of the roles that can currently be assigned. The backend
+ * supports arbitrary role names, so this list is always built from its response
+ * instead of a hardcoded catalog.
+ */
 export function activeRoleNames(roles: readonly RolListItem[]): string[] {
-  return roles
-    .filter((role) => role.estado === 0)
-    .map((role) => role.nombre)
-    .sort((a, b) => a.localeCompare(b));
+  const seen = new Set<string>();
+  const names: string[] = [];
+
+  for (const role of roles) {
+    if (role.estado !== 0) continue;
+
+    const name = (role.nombre ?? '').trim();
+    if (!name) continue;
+
+    const key = normalizeRoleName(name);
+    if (seen.has(key)) continue;
+
+    seen.add(key);
+    names.push(name);
+  }
+
+  return names.sort((a, b) => a.localeCompare(b));
 }
