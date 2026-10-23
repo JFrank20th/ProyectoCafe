@@ -9,6 +9,7 @@ export function AuthCardWrapper({ children }: { children: ReactNode }) {
   return (
     <Card
       sx={{
+        width: '100%',
         maxWidth: { xs: 400, lg: 475 },
         margin: { xs: 2.5, md: 3 },
         border: 0,

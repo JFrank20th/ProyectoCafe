@@ -19,6 +19,13 @@ La pantalla **Dashboard** se mantiene como pantalla de entrada vacía, sin compo
 - **Alerts**: `standard` y `outlined` comunican contexto sin competir con la navegación; `filled` queda reservado para confirmaciones o alertas de mayor prioridad.
 - **Tablas**: fondo paper, encabezado neutro cálido, hover y selección con tinte primario. Los chips dentro de celdas deben verse como etiquetas, no como bloques pesados.
 
+## Autenticación (Login y Register)
+
+- Ambas pantallas comparten `AuthWrapper1` y `AuthCardWrapper` para conservar el fondo, la tarjeta, el sombreado y el espaciado.
+- La tarjeta ocupa el 100% del ancho disponible con un máximo de 400 px en móvil/tablet y 475 px en `lg`. Así, la cantidad de campos de cada formulario no altera el ancho de la tarjeta.
+- El contenedor de la tarjeta se estira al ancho disponible y centra su contenido con flex, evitando desbordes horizontales en pantallas pequeñas.
+- Los campos, botones y enlaces usan `fullWidth` y el mismo `gap` en ambas pantallas para mantener la alineación vertical.
+
 ## Estados de acceso
 
 - **Acceso completo** (`success`): usuario activo con al menos un rol vigente.
