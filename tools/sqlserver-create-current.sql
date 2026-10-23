@@ -16,9 +16,10 @@
     1. Cambiar @RecreateExisting a 1.
     2. Respaldar la base antes de ejecutar.
 
-  Nota: los usuarios y roles iniciales (admin@local, user@local, Admin, User)
-  los siembra la API al iniciar en Development mediante
-  SecurityBootstrapHostedService. El script solo crea la estructura.
+  Nota: los roles iniciales (Admin, User) los siembra la API al iniciar.
+  Los usuarios de prueba (admin@local, user@local) solo se crean en Development
+  a partir de hashes PBKDF2 configurados en appsettings.Development.json;
+  nunca se almacenan contraseñas en texto plano. El script solo crea la estructura.
 */
 
 SET NOCOUNT ON;

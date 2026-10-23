@@ -7,6 +7,8 @@
     <LangVersion>preview</LangVersion>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- Permite guardar Auth:Jwt:SigningKey fuera del repositorio en Development. -->
+    <UserSecretsId>c853932b-aecf-4394-b660-490e286f2ea0</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

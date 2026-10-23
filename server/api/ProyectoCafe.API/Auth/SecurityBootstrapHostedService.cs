@@ -20,6 +20,16 @@ public sealed class SecurityBootstrapHostedService(
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
+        // Defensa en profundidad: el validador de opciones ya rechaza usuarios
+        // iniciales fuera de Development. Si por cualquier motivo se omitiera,
+        // el arranque falla en lugar de sembrar cuentas de prueba en producción.
+        if (!_environment.IsDevelopment() && _authOptions.Users.Count > 0)
+        {
+            throw new InvalidOperationException(
+                "Auth:Users solo está permitido en Development. " +
+                "Elimina los usuarios de prueba de la configuración antes de iniciar en este entorno.");
+        }
+
         try
         {
             using var scope = _serviceProvider.CreateScope();
@@ -29,10 +39,30 @@ public sealed class SecurityBootstrapHostedService(
             {
                 await db.Database.MigrateAsync(cancellationToken);
             }
+            else
+            {
+                // En producción no se siembran cuentas de prueba, pero una base
+                // de datos existente podría conservar admin@local/admin o
+                // user@local/user. Detectarlo aborta el arranque.
+                await EnsureNoDefaultCredentialsAsync(db, cancellationToken);
+            }
 
             await EnsureBootstrapRolesAsync(db, cancellationToken);
-            await EnsureBootstrapUsersAsync(db, cancellationToken);
+
+            // Los usuarios de prueba (admin@local/user@local) solo se siembran
+            // en Development. Nunca se crean credenciales conocidas en otros
+            // entornos.
+            if (_environment.IsDevelopment())
+            {
+                await EnsureBootstrapUsersAsync(db, cancellationToken);
+            }
+
             await EnsureAdminPermissionsAsync(db, cancellationToken);
+        }
+        catch (InsecureConfigurationException ex)
+        {
+            _logger.LogCritical(ex, "Security bootstrap detectó credenciales inseguras. Se aborta el arranque.");
+            throw;
         }
         catch (Exception ex)
         {
@@ -41,6 +71,28 @@ public sealed class SecurityBootstrapHostedService(
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    private static async Task EnsureNoDefaultCredentialsAsync(ProyectoCafeDbContext db, CancellationToken ct)
+    {
+        var candidates = await db.Usuarios
+            .AsNoTracking()
+            .Where(u => u.Estado != UsuarioEstado.Eliminado &&
+                        (u.EmailNormalizado == "admin@local" || u.EmailNormalizado == "user@local"))
+            .Select(u => new { u.EmailNormalizado, u.PasswordHash })
+            .ToListAsync(ct);
+
+        foreach (var candidate in candidates)
+        {
+            if (!SecurityDefaults.IsKnownDefaultCredential(candidate.EmailNormalizado, candidate.PasswordHash))
+            {
+                continue;
+            }
+
+            throw new InsecureConfigurationException(
+                $"Se detectó la cuenta de prueba '{candidate.EmailNormalizado}' con una contraseña predeterminada. " +
+                "Cambia su contraseña o elimina la cuenta antes de iniciar en producción.");
+        }
+    }
 
     private async Task EnsureBootstrapRolesAsync(ProyectoCafeDbContext db, CancellationToken ct)
     {
@@ -85,26 +137,38 @@ public sealed class SecurityBootstrapHostedService(
             var email = (seed.Email ?? string.Empty).Trim().ToLowerInvariant();
             if (string.IsNullOrWhiteSpace(email)) continue;
 
+            // El validador garantiza el formato; este chequeo evita que un
+            // valor inválido llegue a la base de datos si se omite la validación.
+            if (!PasswordHasher.TryParse(seed.PasswordHash, out _, out _, out _))
+            {
+                throw new InvalidOperationException(
+                    $"Auth:Users[{email}]: PasswordHash no es válido. No se permiten contraseñas en texto plano.");
+            }
+
             var existing = await db.Usuarios
                 .FirstOrDefaultAsync(u => u.EmailNormalizado == email && u.Estado != UsuarioEstado.Eliminado, ct);
 
             if (existing is null)
             {
-                var passwordHash = !string.IsNullOrWhiteSpace(seed.PasswordHash)
-                    ? seed.PasswordHash!
-                    : PasswordHasher.HashPassword(seed.Password ?? string.Empty);
-
                 existing = new Usuario
                 {
                     Email = email,
                     EmailNormalizado = email,
                     Nombre = (seed.Name ?? email).Trim(),
-                    PasswordHash = passwordHash,
+                    PasswordHash = seed.PasswordHash.Trim(),
                     Estado = UsuarioEstado.Activo,
                     CreadoEn = DateTime.UtcNow,
                 };
 
                 db.Usuarios.Add(existing);
+                await db.SaveChangesAsync(ct);
+            }
+            else if (!string.Equals(existing.PasswordHash, seed.PasswordHash.Trim(), StringComparison.Ordinal))
+            {
+                // Mantiene sincronizadas las credenciales de desarrollo cuando
+                // se rota el hash en appsettings.Development.json.
+                existing.PasswordHash = seed.PasswordHash.Trim();
+                existing.ActualizadoEn = DateTime.UtcNow;
                 await db.SaveChangesAsync(ct);
             }
 

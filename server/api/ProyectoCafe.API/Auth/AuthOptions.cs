@@ -10,7 +10,11 @@ public sealed class AuthOptions
 
     public LoginRateLimitOptions RateLimit { get; init; } = new();
 
-    public List<DemoUserOptions> Users { get; init; } = [];
+    /// <summary>
+    /// Usuarios iniciales. Solo se permiten en Development: en el resto de
+    /// entornos la aplicación falla al arrancar si esta lista no está vacía.
+    /// </summary>
+    public List<BootstrapUserOptions> Users { get; init; } = [];
 }
 
 public sealed class JwtOptions
@@ -21,6 +25,11 @@ public sealed class JwtOptions
     [Required]
     public string Audience { get; init; } = "ProyectoCafe.Portal";
 
+    /// <summary>
+    /// Clave de firma HS256. No tiene valor por defecto: debe configurarse
+    /// mediante variable de entorno (Auth__Jwt__SigningKey), user-secrets en
+    /// Development o un gestor de secretos. Debe tener al menos 32 bytes.
+    /// </summary>
     [Required]
     public string SigningKey { get; init; } = string.Empty;
 
@@ -28,7 +37,7 @@ public sealed class JwtOptions
     public int AccessTokenLifetimeMinutes { get; init; } = 8 * 60;
 }
 
-public sealed class DemoUserOptions
+public sealed class BootstrapUserOptions
 {
     [Required]
     public string Email { get; init; } = string.Empty;
@@ -36,11 +45,12 @@ public sealed class DemoUserOptions
     [Required]
     public string Name { get; init; } = string.Empty;
 
-    // Dev/demo compatibility: allow either plaintext Password or PasswordHash.
-    // Validation is performed in AuthOptionsValidator.
-    public string? Password { get; init; }
-
-    public string? PasswordHash { get; init; }
+    /// <summary>
+    /// Hash PBKDF2 de la contraseña. Nunca se acepta una contraseña en texto
+    /// plano en la configuración.
+    /// </summary>
+    [Required]
+    public string PasswordHash { get; init; } = string.Empty;
 
     public List<string> Roles { get; init; } = [];
 }

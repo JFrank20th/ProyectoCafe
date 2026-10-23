@@ -9,6 +9,10 @@ ProyectoCafe migra la funcionalidad de berry-free-react-admin-template a una arq
 >
 > Alcance funcional actual: **Administración** (usuarios, roles y permisos). El resto de módulos operativos fue retirado. La pantalla **Dashboard** se mantiene vacía, sin funcionalidad.
 
+# Configurar la clave de firma JWT (solo la primera vez; se guarda fuera del repo)
+Set-Location -Path "c:\ProyectoCafe\server\api\ProyectoCafe.API"
+dotnet user-secrets set "Auth:Jwt:SigningKey" "$([Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(48)))"
+
 # Iniciar Back y front
 Set-Location -Path "c:\ProyectoCafe\Portal"; npm run dev
 Set-Location -Path "c:\ProyectoCafe\server\api\ProyectoCafe.API"; dotnet run

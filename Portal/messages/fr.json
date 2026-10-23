@@ -24,7 +24,7 @@
   },
   "auth": {
     "title": "ProyectoCafe",
-    "subtitle": "Identifiants de démo : admin@local/admin ou user@local/user",
+    "subtitle": "Connectez-vous à votre compte",
     "email": "Email",
     "password": "Mot de passe",
     "signIn": "Se connecter",

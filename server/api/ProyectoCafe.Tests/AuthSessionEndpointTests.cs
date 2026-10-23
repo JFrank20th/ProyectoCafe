@@ -1,7 +1,11 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Json;
+using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 using ProyectoCafe.API.Auth;
 using ProyectoCafe.Domain.Entities;
 using ProyectoCafe.Tests.Infrastructure;
@@ -365,5 +369,71 @@ public sealed class AuthSessionEndpointTests
         var response = await client.GetAsync("/api/v1/admin/users");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Login_IssuedJwt_IsSignedWithConfiguredKeyAndRejectsOtherKeys()
+    {
+        await using var factory = new ProyectoCafeApiFactory();
+        await factory.SeedUserAsync("jwt@test.local", roles: ["User"]);
+        using var client = factory.CreateClient();
+
+        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new
+        {
+            email = "jwt@test.local",
+            password = Password,
+        });
+        login.EnsureSuccessStatusCode();
+
+        var token = ProyectoCafeApiFactory.ReadCookie(login, "pc_at");
+        Assert.False(string.IsNullOrWhiteSpace(token));
+
+        var handler = new JwtSecurityTokenHandler();
+        var validationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = "tests",
+            ValidateAudience = true,
+            ValidAudience = "tests",
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(ProyectoCafeApiFactory.DefaultSigningKey)),
+            ClockSkew = TimeSpan.FromSeconds(30),
+        };
+
+        var principal = handler.ValidateToken(token, validationParameters, out var validatedToken);
+
+        Assert.True(principal.Identity?.IsAuthenticated);
+        Assert.Contains("User", principal.FindAll(ClaimTypes.Role).Select(claim => claim.Value));
+        var email = principal.FindFirst(ClaimTypes.Email)?.Value
+            ?? principal.FindFirst(JwtRegisteredClaimNames.Email)?.Value;
+        Assert.Equal("jwt@test.local", email);
+        Assert.Equal("tests", Assert.IsType<JwtSecurityToken>(validatedToken).Issuer);
+
+        var wrongKeyParameters = validationParameters.Clone();
+        wrongKeyParameters.IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes("a-different-signing-key-with-32-bytes-min!!"));
+
+        Assert.ThrowsAny<SecurityTokenException>(() =>
+            handler.ValidateToken(token, wrongKeyParameters, out _));
+    }
+
+    [Fact]
+    public async Task Login_WithLegacyHash_RehashesPasswordToRecommendedIterations()
+    {
+        await using var factory = new ProyectoCafeApiFactory();
+        var userId = await factory.SeedUserAsync("legacy@test.local", password: Password);
+
+        var before = await factory.GetUserAsync(userId);
+        Assert.True(PasswordHasher.TryParse(before.PasswordHash, out var beforeIterations, out _, out _));
+        Assert.Equal(10_000, beforeIterations);
+
+        using var client = await factory.CreateAuthenticatedClientAsync("legacy@test.local");
+
+        var after = await factory.GetUserAsync(userId);
+        Assert.True(PasswordHasher.TryParse(after.PasswordHash, out var afterIterations, out _, out _));
+        Assert.True(afterIterations >= PasswordHasher.DefaultIterations);
+        Assert.True(PasswordHasher.Verify(Password, after.PasswordHash));
     }
 }

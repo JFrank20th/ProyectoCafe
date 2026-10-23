@@ -21,7 +21,7 @@ namespace ProyectoCafe.Tests.Infrastructure;
 internal sealed class ProyectoCafeApiFactory : WebApplicationFactory<Program>
 {
     public const string DefaultPassword = "SuperSecret123!";
-    private const string DefaultSigningKey = "tests-signing-key-with-32-bytes-minimum!!";
+    public const string DefaultSigningKey = "tests-signing-key-with-32-bytes-minimum!!";
 
     private readonly string _databaseName = $"proyecto-cafe-tests-{Guid.NewGuid():N}";
     private readonly IReadOnlyDictionary<string, string?> _overrides;

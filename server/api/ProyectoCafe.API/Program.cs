@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using NLog.Web;
 using ProyectoCafe.API.Extensions;
 using ProyectoCafe.API.Auth;
@@ -11,6 +12,11 @@ builder.Host.UseNLog();
 builder.Services.AddProyectoCafeApi(builder.Configuration);
 
 var app = builder.Build();
+
+// Falla antes de aceptar tráfico si la configuración de autenticación es
+// insegura (SigningKey ausente/provisional o usuarios de prueba fuera de
+// Development). No se registra el valor de la clave.
+_ = app.Services.GetRequiredService<IOptions<AuthOptions>>().Value;
 
 // Valida CORS al arrancar (ya con todos los proveedores de configuración cargados).
 // Falla si no hay orígenes, si hay comodines o si algún origen no es válido.

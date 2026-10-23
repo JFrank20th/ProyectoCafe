@@ -24,7 +24,7 @@
   },
   "auth": {
     "title": "ProyectoCafe",
-    "subtitle": "Credenciais demo: admin@local/admin ou user@local/user",
+    "subtitle": "Entre com sua conta",
     "email": "Email",
     "password": "Senha",
     "signIn": "Entrar",

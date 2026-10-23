@@ -4,6 +4,51 @@
 
 - `Database:ConnectionString` — connection string a SQL Server (puede estar en `appsettings.Development.json` o env var).
 
+### Secretos y credenciales
+
+La API **no** incluye una `SigningKey` ni usuarios con contraseña por defecto. Si falta
+la clave de firma, la clave es provisional o hay usuarios configurados fuera de
+Development, la aplicación **falla al arrancar** antes de aceptar tráfico.
+
+- `Auth:Jwt:SigningKey` — obligatoria, mínimo 32 bytes (256 bits) para HS256. No debe
+  commitearse. Configúrala con la variable de entorno `Auth__Jwt__SigningKey` o con un
+  gestor de secretos (Azure Key Vault, AWS Secrets Manager, Docker secrets, etc.).
+
+Generar una clave aleatoria (PowerShell):
+
+```powershell
+$key = [Convert]::ToBase64String(
+    [System.Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
+$env:Auth__Jwt__SigningKey = $key
+```
+
+En local (Development) se recomienda `dotnet user-secrets`, que guarda el valor fuera
+del repositorio:
+
+```powershell
+Set-Location -Path "c:\ProyectoCafe\server\api\ProyectoCafe.API"
+dotnet user-secrets set "Auth:Jwt:SigningKey" "$([Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(48)))"
+```
+
+La sección `Auth:Users` solo se admite en Development y almacena exclusivamente
+`PasswordHash` (PBKDF2-HMAC-SHA256). Nunca uses la propiedad `Password`: el arranque
+falla si detecta contraseñas en texto plano. Las contraseñas se hashean con
+`PasswordHasher` y los hashes antiguos se rehashean automáticamente al iniciar sesión.
+
+Usuarios de prueba incluidos en `appsettings.Development.json` (solo Development, con
+contraseñas fuertes y hasheadas):
+
+| Email | Contraseña de desarrollo | Rol |
+| --- | --- | --- |
+| `admin@local` | `Admin.Dev#2026!Cafe` | Admin |
+| `user@local` | `User.Dev#2026!Cafe` | User |
+
+En QA/PROD no se siembra ningún usuario. Crea el primer administrador por un canal
+seguro (por ejemplo, registrando la cuenta y activándola directamente en la base de
+datos) y no reutilices las credenciales de Development. Al arrancar fuera de Development
+también se revisa la base de datos y se aborta el inicio si `admin@local` o `user@local`
+conservan las contraseñas históricas `admin`/`user`.
+
 ### CORS
 
 La API es la **única autoridad CORS** del sistema. El Portal (Next.js) no debe emitir

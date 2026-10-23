@@ -216,6 +216,13 @@ public static class AuthEndpoints
                 return InvalidCredentials();
             }
 
+            // Migra hashes antiguos (menos iteraciones o salt pequeño) al
+            // esquema recomendado sin cambiar la contraseña del usuario.
+            if (PasswordHasher.NeedsRehash(user.PasswordHash))
+            {
+                user.PasswordHash = PasswordHasher.HashPassword(password);
+            }
+
             user.IntentosFallidosLogin = 0;
             user.LockoutFin = null;
             user.UltimoLoginEn = now;

@@ -24,7 +24,7 @@
   },
   "auth": {
     "title": "ProyectoCafe",
-    "subtitle": "Demo credentials: admin@local/admin or user@local/user",
+    "subtitle": "Sign in with your account",
     "email": "Email",
     "password": "Password",
     "signIn": "Sign in",
