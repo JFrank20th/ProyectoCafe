@@ -141,9 +141,10 @@ public static class AdminEndpoints
 
         group.MapGet("/roles", async (
             [FromServices] ProyectoCafeDbContext db,
+            [FromServices] PermissionCatalogService permissionCatalog,
             CancellationToken ct) =>
         {
-            var activeModules = Permissions.Modulos.All;
+            var validKeys = permissionCatalog.GetPermissionKeys();
 
             var roles = await db.Roles
                 .Where(r => r.Estado != RolEstado.Eliminado)
@@ -158,13 +159,16 @@ public static class AdminEndpoints
                 .ToListAsync(ct);
 
             var roleIds = roles.Select(r => r.RolId).ToArray();
-            var permisoCounts = await db.RolesPermisos
-                .Where(rp => roleIds.Contains(rp.RolId) && activeModules.Contains(rp.Modulo))
-                .GroupBy(rp => rp.RolId)
-                .Select(g => new { RolId = g.Key, Count = g.Count() })
+            var permisos = await db.RolesPermisos
+                .Where(rp => roleIds.Contains(rp.RolId))
+                .Select(rp => new { rp.RolId, rp.Modulo, rp.Accion })
                 .ToListAsync(ct);
 
-            var countsByRole = permisoCounts.ToDictionary(x => x.RolId, x => x.Count);
+            var countsByRole = permisos
+                .Where(p => validKeys.Count == 0 || validKeys.Contains(PermissionCatalogService.BuildKey(p.Modulo, p.Accion)))
+                .GroupBy(p => p.RolId)
+                .ToDictionary(g => g.Key, g => g.Count());
+
             foreach (var r in roles)
             {
                 r.PermisosCount = countsByRole.TryGetValue(r.RolId, out var c) ? c : 0;
@@ -272,21 +276,26 @@ public static class AdminEndpoints
         group.MapGet("/roles/{id:int}/permissions", async (
             int id,
             [FromServices] ProyectoCafeDbContext db,
+            [FromServices] PermissionCatalogService permissionCatalog,
             CancellationToken ct) =>
         {
-            var activeModules = Permissions.Modulos.All;
+            var validKeys = permissionCatalog.GetPermissionKeys();
 
             var roleExists = await db.Roles.AnyAsync(r => r.RolId == id && r.Estado != RolEstado.Eliminado, ct);
             if (!roleExists) return Results.NotFound();
 
             var perms = await db.RolesPermisos
-                .Where(rp => rp.RolId == id && activeModules.Contains(rp.Modulo))
-                .OrderBy(rp => rp.Modulo)
-                .ThenBy(rp => rp.Accion)
+                .Where(rp => rp.RolId == id)
                 .Select(rp => new PermissionDto { Modulo = rp.Modulo, Accion = rp.Accion })
                 .ToListAsync(ct);
 
-            return Results.Ok(perms);
+            var available = perms
+                .Where(p => validKeys.Count == 0 || validKeys.Contains(PermissionCatalogService.BuildKey(p.Modulo, p.Accion)))
+                .OrderBy(p => p.Modulo)
+                .ThenBy(p => p.Accion)
+                .ToArray();
+
+            return Results.Ok(available);
         })
         .RequireAuthorization(Permissions.Policy(Permissions.Modulos.AdministracionPermisos, Permissions.Actions.Ver));
 
@@ -294,6 +303,7 @@ public static class AdminEndpoints
             int id,
             [FromBody] UpdateRolePermissionsRequest request,
             [FromServices] ProyectoCafeDbContext db,
+            [FromServices] PermissionCatalogService permissionCatalog,
             CancellationToken ct) =>
         {
             var role = await db.Roles.FirstOrDefaultAsync(r => r.RolId == id && r.Estado != RolEstado.Eliminado, ct);
@@ -326,6 +336,15 @@ public static class AdminEndpoints
                 }
             }
 
+            // Solo se persisten permisos que correspondan a pantallas/funcionalidades existentes.
+            var validKeys = permissionCatalog.GetPermissionKeys();
+            if (validKeys.Count > 0)
+            {
+                normalized = normalized
+                    .Where(p => validKeys.Contains(PermissionCatalogService.BuildKey(p.Modulo, p.Accion)))
+                    .ToArray();
+            }
+
             var existing = await db.RolesPermisos
                 .Where(rp => rp.RolId == id)
                 .ToListAsync(ct);
@@ -346,14 +365,14 @@ public static class AdminEndpoints
         })
         .RequireAuthorization(Permissions.Policy(Permissions.Modulos.AdministracionPermisos, Permissions.Actions.Editar));
 
-        group.MapGet("/permissions/catalog", () =>
+        group.MapGet("/permissions/catalog", (
+            [FromServices] PermissionCatalogService permissionCatalog) =>
         {
-            var data = Permissions.Modulos.All
-                .OrderBy(m => m)
+            var data = permissionCatalog.GetCatalog()
                 .Select(m => new
                 {
-                    modulo = m,
-                    acciones = Permissions.Actions.Crud
+                    modulo = m.Modulo,
+                    acciones = m.Acciones
                 })
                 .ToArray();
 

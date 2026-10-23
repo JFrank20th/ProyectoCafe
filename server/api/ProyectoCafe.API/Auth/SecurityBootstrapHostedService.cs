@@ -9,11 +9,13 @@ public sealed class SecurityBootstrapHostedService(
     IServiceProvider serviceProvider,
     IOptions<AuthOptions> authOptions,
     IHostEnvironment environment,
+    PermissionCatalogService permissionCatalog,
     ILogger<SecurityBootstrapHostedService> logger) : IHostedService
 {
     private readonly IServiceProvider _serviceProvider = serviceProvider;
     private readonly AuthOptions _authOptions = authOptions.Value;
     private readonly IHostEnvironment _environment = environment;
+    private readonly PermissionCatalogService _permissionCatalog = permissionCatalog;
     private readonly ILogger<SecurityBootstrapHostedService> _logger = logger;
 
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -183,7 +185,7 @@ public sealed class SecurityBootstrapHostedService(
         }
     }
 
-    private static async Task EnsureAdminPermissionsAsync(ProyectoCafeDbContext db, CancellationToken ct)
+    private async Task EnsureAdminPermissionsAsync(ProyectoCafeDbContext db, CancellationToken ct)
     {
         var roles = await db.Roles
             .Where(r => r.Estado == RolEstado.Activo)
@@ -197,7 +199,17 @@ public sealed class SecurityBootstrapHostedService(
             .Select(rp => new { rp.Modulo, rp.Accion })
             .ToListAsync(ct);
 
-        foreach (var (modulo, accion) in Permissions.AllCrudPermissions())
+        // El rol Admin recibe todos los permisos que la API expone en este momento.
+        // Si el catálogo aún no está disponible, se usa el catálogo CRUD base como respaldo.
+        var catalogPermissions = _permissionCatalog.GetCatalog()
+            .SelectMany(item => item.Acciones.Select(accion => (Modulo: item.Modulo, Accion: accion)))
+            .ToArray();
+
+        var permissions = catalogPermissions.Length > 0
+            ? catalogPermissions
+            : Permissions.AllCrudPermissions().ToArray();
+
+        foreach (var (modulo, accion) in permissions)
         {
             var already = existing.Any(x =>
                 string.Equals(x.Modulo, modulo, StringComparison.OrdinalIgnoreCase) &&

@@ -137,6 +137,7 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
         services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+        services.AddSingleton<PermissionCatalogService>();
 
         services.AddScoped<IJwtTokenService, JwtTokenService>();
 

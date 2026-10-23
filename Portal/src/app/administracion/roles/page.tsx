@@ -232,10 +232,10 @@ export default function RolesPage() {
     }
   }
 
-  async function ensureCatalog() {
-    if (catalog.length > 0) return;
+  async function loadCatalog() {
     const data = await apiFetch<PermissionCatalogItem[]>('/api/v1/admin/permissions/catalog');
     setCatalog(data);
+    return data;
   }
 
   function openPermissions(role: RoleDto) {
@@ -248,7 +248,8 @@ export default function RolesPage() {
     void (async () => {
       setPermsLoading(true);
       try {
-        await ensureCatalog();
+        // Se consulta en cada apertura para reflejar pantallas/funcionalidades nuevas o retiradas.
+        await loadCatalog();
         const perms = await apiFetch<PermissionDto[]>(`/api/v1/admin/roles/${role.rolId}/permissions`);
         const next: Record<string, PermissionDto> = {};
         for (const p of perms) {
