@@ -1,17 +1,15 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authorization;
+using ProyectoCafe.Application.Abstractions.Persistence;
+using ProyectoCafe.Application.Abstractions.Security;
 using ProyectoCafe.Application.Extensions;
 using ProyectoCafe.API.Auth;
 using ProyectoCafe.API.Configuration;
-using ProyectoCafe.Domain.Entities;
-using ProyectoCafe.Infrastructure.Data;
 using ProyectoCafe.Infrastructure.Extensions;
 
 namespace ProyectoCafe.API.Extensions;
@@ -118,9 +116,8 @@ public static class ServiceCollectionExtensions
                             return;
                         }
 
-                        var db = ctx.HttpContext.RequestServices.GetRequiredService<ProyectoCafeDbContext>();
-                        var isActive = await db.Usuarios
-                            .AnyAsync(u => u.UsuarioId == userId && u.Estado == UsuarioEstado.Activo, ctx.HttpContext.RequestAborted);
+                        var usuarios = ctx.HttpContext.RequestServices.GetRequiredService<IUsuarioRepository>();
+                        var isActive = await usuarios.IsActiveAsync(userId, ctx.HttpContext.RequestAborted);
 
                         if (!isActive)
                         {
@@ -142,10 +139,10 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
         services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
         services.AddSingleton<PermissionCatalogService>();
+        services.AddSingleton<IPermissionCatalog>(sp => sp.GetRequiredService<PermissionCatalogService>());
 
         services.AddScoped<IJwtTokenService, JwtTokenService>();
 
-        services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<ILoginRateLimiter, LoginRateLimiter>();
 
         services.AddHostedService<SecurityBootstrapHostedService>();

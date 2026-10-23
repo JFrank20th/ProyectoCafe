@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using ProyectoCafe.API.Auth;
-using ProyectoCafe.Domain.Entities;
-using ProyectoCafe.Infrastructure.Data;
+using ProyectoCafe.Application.Common;
+using ProyectoCafe.Application.DTOs.Administration;
+using ProyectoCafe.Application.Services;
 
 namespace ProyectoCafe.API.Endpoints;
 
@@ -15,360 +15,127 @@ public static class AdminEndpoints
             .WithTags("Admin");
 
         group.MapGet("/users", async (
-            [FromServices] ProyectoCafeDbContext db,
+            [FromServices] AdministrationService administration,
             CancellationToken ct) =>
         {
-            var users = await db.Usuarios
-                .Where(u => u.Estado != UsuarioEstado.Eliminado)
-                .OrderByDescending(u => u.CreadoEn)
-                .Select(u => new UserDto
-                {
-                    UsuarioId = u.UsuarioId,
-                    Email = u.Email,
-                    Name = u.Nombre,
-                    Estado = u.Estado,
-                    CreadoEn = u.CreadoEn,
-                    UltimoLoginEn = u.UltimoLoginEn,
-                })
-                .ToListAsync(ct);
-
-            var userIds = users.Select(u => u.UsuarioId).ToArray();
-            var roles = await db.UsuariosRoles
-                .Where(ur => userIds.Contains(ur.UsuarioId))
-                .Join(db.Roles, ur => ur.RolId, r => r.RolId, (ur, r) => new { ur.UsuarioId, r.Nombre, r.Estado })
-                .Where(x => x.Estado == RolEstado.Activo)
-                .ToListAsync(ct);
-
-            var rolesByUser = roles
-                .GroupBy(x => x.UsuarioId)
-                .ToDictionary(
-                    g => g.Key,
-                    g => g.Select(x => x.Nombre).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToArray());
-
-            foreach (var u in users)
-            {
-                u.Roles = rolesByUser.TryGetValue(u.UsuarioId, out var r) ? r : Array.Empty<string>();
-            }
-
+            var users = await administration.GetUsersAsync(ct);
             return Results.Ok(users);
         })
         .RequireAuthorization(Permissions.Policy(Permissions.Modulos.AdministracionUsuarios, Permissions.Actions.Ver));
 
         group.MapPost("/users/{id:int}/activate", async (
             int id,
-            [FromServices] ProyectoCafeDbContext db,
+            [FromServices] AdministrationService administration,
             CancellationToken ct) =>
         {
-            var user = await db.Usuarios.FirstOrDefaultAsync(u => u.UsuarioId == id && u.Estado != UsuarioEstado.Eliminado, ct);
-            if (user is null) return Results.NotFound();
-
-            user.Estado = UsuarioEstado.Activo;
-            user.ActualizadoEn = DateTime.UtcNow;
-            await db.SaveChangesAsync(ct);
-            return Results.NoContent();
+            var updated = await administration.ActivateUserAsync(id, ct);
+            return updated ? Results.NoContent() : Results.NotFound();
         })
         .RequireAuthorization(Permissions.Policy(Permissions.Modulos.AdministracionUsuarios, Permissions.Actions.Editar));
 
         group.MapPost("/users/{id:int}/deactivate", async (
             int id,
-            [FromServices] ProyectoCafeDbContext db,
+            [FromServices] AdministrationService administration,
             CancellationToken ct) =>
         {
-            var user = await db.Usuarios.FirstOrDefaultAsync(u => u.UsuarioId == id && u.Estado != UsuarioEstado.Eliminado, ct);
-            if (user is null) return Results.NotFound();
-
-            user.Estado = UsuarioEstado.Inactivo;
-            user.ActualizadoEn = DateTime.UtcNow;
-            await db.SaveChangesAsync(ct);
-            return Results.NoContent();
+            var updated = await administration.DeactivateUserAsync(id, ct);
+            return updated ? Results.NoContent() : Results.NotFound();
         })
         .RequireAuthorization(Permissions.Policy(Permissions.Modulos.AdministracionUsuarios, Permissions.Actions.Editar));
 
         group.MapDelete("/users/{id:int}", async (
             int id,
-            [FromServices] ProyectoCafeDbContext db,
+            [FromServices] AdministrationService administration,
             CancellationToken ct) =>
         {
-            var user = await db.Usuarios.FirstOrDefaultAsync(u => u.UsuarioId == id && u.Estado != UsuarioEstado.Eliminado, ct);
-            if (user is null) return Results.NotFound();
-
-            user.Estado = UsuarioEstado.Eliminado;
-            user.ActualizadoEn = DateTime.UtcNow;
-            await db.SaveChangesAsync(ct);
-            return Results.NoContent();
+            var deleted = await administration.DeleteUserAsync(id, ct);
+            return deleted ? Results.NoContent() : Results.NotFound();
         })
         .RequireAuthorization(Permissions.Policy(Permissions.Modulos.AdministracionUsuarios, Permissions.Actions.Eliminar));
 
         group.MapPut("/users/{id:int}/roles", async (
             int id,
             [FromBody] UpdateUserRolesRequest request,
-            [FromServices] ProyectoCafeDbContext db,
+            [FromServices] AdministrationService administration,
             CancellationToken ct) =>
         {
-            var user = await db.Usuarios.FirstOrDefaultAsync(u => u.UsuarioId == id && u.Estado != UsuarioEstado.Eliminado, ct);
-            if (user is null) return Results.NotFound();
-
-            var roleNames = (request.Roles ?? Array.Empty<string>())
-                .Where(r => !string.IsNullOrWhiteSpace(r))
-                .Select(r => r.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
-
-            var roles = await db.Roles
-                .Where(r => r.Estado == RolEstado.Activo)
-                .ToListAsync(ct);
-
-            var selected = roles
-                .Where(r => roleNames.Any(x => string.Equals(x, r.Nombre, StringComparison.OrdinalIgnoreCase)))
-                .Select(r => r.RolId)
-                .ToArray();
-
-            var existing = await db.UsuariosRoles
-                .Where(ur => ur.UsuarioId == user.UsuarioId)
-                .ToListAsync(ct);
-
-            db.UsuariosRoles.RemoveRange(existing);
-            foreach (var roleId in selected)
-            {
-                db.UsuariosRoles.Add(new UsuarioRol { UsuarioId = user.UsuarioId, RolId = roleId });
-            }
-
-            user.ActualizadoEn = DateTime.UtcNow;
-            await db.SaveChangesAsync(ct);
-            return Results.NoContent();
+            var result = await administration.UpdateUserRolesAsync(id, request, ct);
+            return result.IsSuccess ? Results.NoContent() : Failure(result);
         })
         .RequireAuthorization(Permissions.Policy(Permissions.Modulos.AdministracionUsuarios, Permissions.Actions.Editar));
 
         group.MapGet("/roles", async (
-            [FromServices] ProyectoCafeDbContext db,
-            [FromServices] PermissionCatalogService permissionCatalog,
+            [FromServices] AdministrationService administration,
             CancellationToken ct) =>
         {
-            var validKeys = permissionCatalog.GetPermissionKeys();
-
-            var roles = await db.Roles
-                .Where(r => r.Estado != RolEstado.Eliminado)
-                .OrderBy(r => r.Nombre)
-                .Select(r => new RoleDto
-                {
-                    RolId = r.RolId,
-                    Nombre = r.Nombre,
-                    Descripcion = r.Descripcion,
-                    Estado = r.Estado,
-                })
-                .ToListAsync(ct);
-
-            var roleIds = roles.Select(r => r.RolId).ToArray();
-            var permisos = await db.RolesPermisos
-                .Where(rp => roleIds.Contains(rp.RolId))
-                .Select(rp => new { rp.RolId, rp.Modulo, rp.Accion })
-                .ToListAsync(ct);
-
-            var countsByRole = permisos
-                .Where(p => validKeys.Count == 0 || validKeys.Contains(PermissionCatalogService.BuildKey(p.Modulo, p.Accion)))
-                .GroupBy(p => p.RolId)
-                .ToDictionary(g => g.Key, g => g.Count());
-
-            foreach (var r in roles)
-            {
-                r.PermisosCount = countsByRole.TryGetValue(r.RolId, out var c) ? c : 0;
-            }
-
+            var roles = await administration.GetRolesAsync(ct);
             return Results.Ok(roles);
         })
         .RequireAuthorization(Permissions.Policy(Permissions.Modulos.AdministracionRoles, Permissions.Actions.Ver));
 
         group.MapPost("/roles", async (
             [FromBody] UpsertRoleRequest request,
-            [FromServices] ProyectoCafeDbContext db,
+            [FromServices] AdministrationService administration,
             HttpContext http,
             CancellationToken ct) =>
         {
-            var nombre = (request.Nombre ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(nombre))
+            var result = await administration.CreateRoleAsync(request, ct);
+            if (!result.IsSuccess)
             {
-                return Results.ValidationProblem(new Dictionary<string, string[]> { [nameof(request.Nombre)] = ["Nombre es requerido."] });
+                return Failure(result);
             }
-            if (nombre.Length > 50)
-            {
-                return Results.ValidationProblem(new Dictionary<string, string[]> { [nameof(request.Nombre)] = ["Nombre no puede exceder 50 caracteres."] });
-            }
-
-            var descripcion = (request.Descripcion ?? string.Empty).Trim();
-            var descripcionValue = string.IsNullOrWhiteSpace(descripcion) ? null : descripcion;
-            if (descripcionValue is not null && descripcionValue.Length > 250)
-            {
-                return Results.ValidationProblem(new Dictionary<string, string[]> { [nameof(request.Descripcion)] = ["Descripcion no puede exceder 250 caracteres."] });
-            }
-
-            var exists = await db.Roles
-                .AnyAsync(r => r.Estado != RolEstado.Eliminado && r.Nombre == nombre, ct);
-            if (exists)
-            {
-                return Results.ValidationProblem(new Dictionary<string, string[]> { [nameof(request.Nombre)] = ["Ya existe un rol con ese nombre."] });
-            }
-
-            var role = new Rol { Nombre = nombre, Descripcion = descripcionValue, Estado = RolEstado.Activo };
-            db.Roles.Add(role);
-            await db.SaveChangesAsync(ct);
 
             var basePath = http.Request.Path.Value?.TrimEnd('/') ?? string.Empty;
-            return Results.Created($"{basePath}/{role.RolId}", new { role.RolId });
+            return Results.Created($"{basePath}/{result.Value}", new { rolId = result.Value });
         })
         .RequireAuthorization(Permissions.Policy(Permissions.Modulos.AdministracionRoles, Permissions.Actions.Crear));
 
         group.MapPut("/roles/{id:int}", async (
             int id,
             [FromBody] UpsertRoleRequest request,
-            [FromServices] ProyectoCafeDbContext db,
+            [FromServices] AdministrationService administration,
             CancellationToken ct) =>
         {
-            var role = await db.Roles.FirstOrDefaultAsync(r => r.RolId == id && r.Estado != RolEstado.Eliminado, ct);
-            if (role is null) return Results.NotFound();
-
-            var nombre = (request.Nombre ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(nombre))
-            {
-                return Results.ValidationProblem(new Dictionary<string, string[]> { [nameof(request.Nombre)] = ["Nombre es requerido."] });
-            }
-            if (nombre.Length > 50)
-            {
-                return Results.ValidationProblem(new Dictionary<string, string[]> { [nameof(request.Nombre)] = ["Nombre no puede exceder 50 caracteres."] });
-            }
-
-            var descripcion = (request.Descripcion ?? string.Empty).Trim();
-            var descripcionValue = string.IsNullOrWhiteSpace(descripcion) ? null : descripcion;
-            if (descripcionValue is not null && descripcionValue.Length > 250)
-            {
-                return Results.ValidationProblem(new Dictionary<string, string[]> { [nameof(request.Descripcion)] = ["Descripcion no puede exceder 250 caracteres."] });
-            }
-
-            var nameExists = await db.Roles
-                .AnyAsync(r => r.RolId != id && r.Estado != RolEstado.Eliminado && r.Nombre == nombre, ct);
-            if (nameExists)
-            {
-                return Results.ValidationProblem(new Dictionary<string, string[]> { [nameof(request.Nombre)] = ["Ya existe un rol con ese nombre."] });
-            }
-
-            role.Nombre = nombre;
-            role.Descripcion = descripcionValue;
-            role.Estado = request.Estado ?? role.Estado;
-
-            await db.SaveChangesAsync(ct);
-            return Results.NoContent();
+            var result = await administration.UpdateRoleAsync(id, request, ct);
+            return result.IsSuccess ? Results.NoContent() : Failure(result);
         })
         .RequireAuthorization(Permissions.Policy(Permissions.Modulos.AdministracionRoles, Permissions.Actions.Editar));
 
         group.MapDelete("/roles/{id:int}", async (
             int id,
-            [FromServices] ProyectoCafeDbContext db,
+            [FromServices] AdministrationService administration,
             CancellationToken ct) =>
         {
-            var role = await db.Roles.FirstOrDefaultAsync(r => r.RolId == id && r.Estado != RolEstado.Eliminado, ct);
-            if (role is null) return Results.NotFound();
-
-            role.Estado = RolEstado.Eliminado;
-            await db.SaveChangesAsync(ct);
-            return Results.NoContent();
+            var deleted = await administration.DeleteRoleAsync(id, ct);
+            return deleted ? Results.NoContent() : Results.NotFound();
         })
         .RequireAuthorization(Permissions.Policy(Permissions.Modulos.AdministracionRoles, Permissions.Actions.Eliminar));
 
         group.MapGet("/roles/{id:int}/permissions", async (
             int id,
-            [FromServices] ProyectoCafeDbContext db,
-            [FromServices] PermissionCatalogService permissionCatalog,
+            [FromServices] AdministrationService administration,
             CancellationToken ct) =>
         {
-            var validKeys = permissionCatalog.GetPermissionKeys();
-
-            var roleExists = await db.Roles.AnyAsync(r => r.RolId == id && r.Estado != RolEstado.Eliminado, ct);
-            if (!roleExists) return Results.NotFound();
-
-            var perms = await db.RolesPermisos
-                .Where(rp => rp.RolId == id)
-                .Select(rp => new PermissionDto { Modulo = rp.Modulo, Accion = rp.Accion })
-                .ToListAsync(ct);
-
-            var available = perms
-                .Where(p => validKeys.Count == 0 || validKeys.Contains(PermissionCatalogService.BuildKey(p.Modulo, p.Accion)))
-                .OrderBy(p => p.Modulo)
-                .ThenBy(p => p.Accion)
-                .ToArray();
-
-            return Results.Ok(available);
+            var result = await administration.GetRolePermissionsAsync(id, ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : Failure(result);
         })
         .RequireAuthorization(Permissions.Policy(Permissions.Modulos.AdministracionPermisos, Permissions.Actions.Ver));
 
         group.MapPut("/roles/{id:int}/permissions", async (
             int id,
             [FromBody] UpdateRolePermissionsRequest request,
-            [FromServices] ProyectoCafeDbContext db,
-            [FromServices] PermissionCatalogService permissionCatalog,
+            [FromServices] AdministrationService administration,
             CancellationToken ct) =>
         {
-            var role = await db.Roles.FirstOrDefaultAsync(r => r.RolId == id && r.Estado != RolEstado.Eliminado, ct);
-            if (role is null) return Results.NotFound();
-
-            var list = request.Permissions ?? Array.Empty<PermissionDto>();
-            var normalized = list
-                .Where(p => p is not null)
-                .Select(p => new PermissionDto
-                {
-                    Modulo = (p.Modulo ?? string.Empty).Trim(),
-                    Accion = (p.Accion ?? string.Empty).Trim(),
-                })
-                .Where(p => !string.IsNullOrWhiteSpace(p.Modulo) && !string.IsNullOrWhiteSpace(p.Accion))
-                .DistinctBy(p => $"{p.Modulo}:{p.Accion}", StringComparer.OrdinalIgnoreCase)
-                .ToArray();
-
-            foreach (var p in normalized)
-            {
-                var modulo = p.Modulo ?? string.Empty;
-                var accion = p.Accion ?? string.Empty;
-
-                if (modulo.Length > 120)
-                {
-                    return Results.ValidationProblem(new Dictionary<string, string[]> { [nameof(PermissionDto.Modulo)] = ["Modulo no puede exceder 120 caracteres."] });
-                }
-                if (accion.Length > 12)
-                {
-                    return Results.ValidationProblem(new Dictionary<string, string[]> { [nameof(PermissionDto.Accion)] = ["Accion no puede exceder 12 caracteres."] });
-                }
-            }
-
-            // Solo se persisten permisos que correspondan a pantallas/funcionalidades existentes.
-            var validKeys = permissionCatalog.GetPermissionKeys();
-            if (validKeys.Count > 0)
-            {
-                normalized = normalized
-                    .Where(p => validKeys.Contains(PermissionCatalogService.BuildKey(p.Modulo, p.Accion)))
-                    .ToArray();
-            }
-
-            var existing = await db.RolesPermisos
-                .Where(rp => rp.RolId == id)
-                .ToListAsync(ct);
-
-            db.RolesPermisos.RemoveRange(existing);
-            foreach (var p in normalized)
-            {
-                db.RolesPermisos.Add(new RolPermiso
-                {
-                    RolId = id,
-                    Modulo = p.Modulo ?? string.Empty,
-                    Accion = p.Accion ?? string.Empty,
-                });
-            }
-
-            await db.SaveChangesAsync(ct);
-            return Results.NoContent();
+            var result = await administration.UpdateRolePermissionsAsync(id, request, ct);
+            return result.IsSuccess ? Results.NoContent() : Failure(result);
         })
         .RequireAuthorization(Permissions.Policy(Permissions.Modulos.AdministracionPermisos, Permissions.Actions.Editar));
 
         group.MapGet("/permissions/catalog", (
-            [FromServices] PermissionCatalogService permissionCatalog) =>
+            [FromServices] AdministrationService administration) =>
         {
-            var data = permissionCatalog.GetCatalog()
+            var data = administration.GetPermissionCatalog()
                 .Select(m => new
                 {
                     modulo = m.Modulo,
@@ -383,46 +150,12 @@ public static class AdminEndpoints
         return endpoints;
     }
 
-    public sealed class UserDto
-    {
-        public required int UsuarioId { get; set; }
-        public required string Email { get; set; }
-        public required string Name { get; set; }
-        public required UsuarioEstado Estado { get; set; }
-        public required DateTime CreadoEn { get; set; }
-        public DateTime? UltimoLoginEn { get; set; }
-        public string[] Roles { get; set; } = Array.Empty<string>();
-    }
-
-    public sealed class UpdateUserRolesRequest
-    {
-        public string[]? Roles { get; set; }
-    }
-
-    public sealed class RoleDto
-    {
-        public required int RolId { get; set; }
-        public required string Nombre { get; set; }
-        public string? Descripcion { get; set; }
-        public required RolEstado Estado { get; set; }
-        public int PermisosCount { get; set; }
-    }
-
-    public sealed class UpsertRoleRequest
-    {
-        public string? Nombre { get; set; }
-        public string? Descripcion { get; set; }
-        public RolEstado? Estado { get; set; }
-    }
-
-    public sealed class PermissionDto
-    {
-        public string? Modulo { get; set; }
-        public string? Accion { get; set; }
-    }
-
-    public sealed class UpdateRolePermissionsRequest
-    {
-        public PermissionDto[]? Permissions { get; set; }
-    }
+    private static IResult Failure(OperationResult result) =>
+        result.Status switch
+        {
+            OperationStatus.NotFound => Results.NotFound(),
+            OperationStatus.ValidationFailed => Results.ValidationProblem(
+                result.Errors.ToDictionary(pair => pair.Key, pair => pair.Value)),
+            _ => Results.Problem(),
+        };
 }

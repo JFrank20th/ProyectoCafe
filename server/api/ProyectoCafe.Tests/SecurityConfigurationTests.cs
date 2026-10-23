@@ -1,4 +1,5 @@
 using ProyectoCafe.API.Auth;
+using ProyectoCafe.Application.Security;
 using ProyectoCafe.Tests.Infrastructure;
 
 namespace ProyectoCafe.Tests;

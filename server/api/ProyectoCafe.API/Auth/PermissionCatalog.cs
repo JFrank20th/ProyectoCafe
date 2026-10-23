@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
+using ProyectoCafe.Application.Abstractions.Security;
+using ProyectoCafe.Application.Security;
 
 namespace ProyectoCafe.API.Auth;
-
-public sealed record PermissionCatalogItem(string Modulo, IReadOnlyList<string> Acciones);
 
 /// <summary>
 /// Construye el catálogo de permisos a partir de los endpoints protegidos registrados en la API.
@@ -10,7 +10,7 @@ public sealed record PermissionCatalogItem(string Modulo, IReadOnlyList<string> 
 /// <c>RequireAuthorization(Permissions.Policy(...))</c> aparece automáticamente en el módulo de Roles,
 /// sin necesidad de mantener una lista manual de módulos y acciones.
 /// </summary>
-public sealed class PermissionCatalogService
+public sealed class PermissionCatalogService : IPermissionCatalog
 {
     private readonly object _sync = new();
     private IReadOnlyCollection<EndpointDataSource> _dataSources = Array.Empty<EndpointDataSource>();
@@ -67,10 +67,8 @@ public sealed class PermissionCatalogService
         return keys;
     }
 
-    public static string BuildKey(string? modulo, string? accion)
-    {
-        return $"{modulo}:{accion}";
-    }
+    public static string BuildKey(string? modulo, string? accion) =>
+        PermissionKey.Build(modulo, accion);
 
     private static IReadOnlyList<PermissionCatalogItem> Build(
         IReadOnlyCollection<EndpointDataSource> dataSources)

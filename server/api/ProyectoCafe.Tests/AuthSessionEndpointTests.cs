@@ -7,6 +7,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using ProyectoCafe.API.Auth;
+using ProyectoCafe.Application.Security;
 using ProyectoCafe.Domain.Entities;
 using ProyectoCafe.Tests.Infrastructure;
 

@@ -9,6 +9,20 @@ ProyectoCafe migra la funcionalidad de berry-free-react-admin-template a una arq
 >
 > Alcance funcional actual: **Administración** (usuarios, roles y permisos). El resto de módulos operativos fue retirado. La pantalla **Dashboard** se mantiene vacía, sin funcionalidad.
 
+## Arquitectura del backend
+
+El backend respeta una arquitectura por capas real:
+
+- `Domain`: entidades y reglas de dominio, sin dependencias externas.
+- `Application`: DTOs, casos de uso y puertos de persistencia/seguridad.
+- `Infrastructure`: EF Core, migraciones y repositorios.
+- `API`: Minimal APIs y detalles de transporte/seguridad perimetral.
+
+Los endpoints no acceden directamente a `ProyectoCafeDbContext`: invocan los
+servicios de Application, que a su vez usan las abstracciones implementadas por
+Infrastructure. El detalle de reglas y estructura está en
+[`server/api/README.md`](server/api/README.md).
+
 # Configurar la clave de firma JWT (solo la primera vez; se guarda fuera del repo)
 Set-Location -Path "c:\ProyectoCafe\server\api\ProyectoCafe.API"
 dotnet user-secrets set "Auth:Jwt:SigningKey" "$([Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(48)))"

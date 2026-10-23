@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using ProyectoCafe.API.Auth;
+using ProyectoCafe.Application.Abstractions.Security;
 
 namespace ProyectoCafe.Tests;
 

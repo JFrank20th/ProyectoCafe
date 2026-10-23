@@ -1,8 +1,10 @@
+using ProyectoCafe.Application.Security;
+
 namespace ProyectoCafe.API.Auth;
 
 public static class Permissions
 {
-    public const string PolicyPrefix = "perm:";
+    public const string PolicyPrefix = PermissionKey.PolicyPrefix;
 
     public static class Actions
     {

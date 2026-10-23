@@ -1,3 +1,5 @@
+using ProyectoCafe.Application.Security;
+
 namespace ProyectoCafe.API.Auth;
 
 /// <summary>

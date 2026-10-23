@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using ProyectoCafe.Application.Security;
 using System.Text;
 
 namespace ProyectoCafe.API.Auth;

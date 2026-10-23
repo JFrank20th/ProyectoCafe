@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ProyectoCafe.API.Auth;
+using ProyectoCafe.Application.Security;
 using ProyectoCafe.Domain.Entities;
 using ProyectoCafe.Infrastructure.Data;
 

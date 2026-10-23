@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 
-namespace ProyectoCafe.API.Auth;
+namespace ProyectoCafe.Application.Security;
 
 public static class PasswordHasher
 {

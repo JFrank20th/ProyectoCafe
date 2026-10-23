@@ -1,15 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.EntityFrameworkCore;
-using ProyectoCafe.Domain.Entities;
-using ProyectoCafe.Infrastructure.Data;
+using ProyectoCafe.Application.Abstractions.Persistence;
 
 namespace ProyectoCafe.API.Auth;
 
 public sealed class PermissionAuthorizationHandler(
-    ProyectoCafeDbContext db,
+    IUsuarioRepository usuarios,
     IHttpContextAccessor httpContextAccessor) : AuthorizationHandler<PermissionRequirement>
 {
-    private readonly ProyectoCafeDbContext _db = db;
+    private readonly IUsuarioRepository _usuarios = usuarios;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
     protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, PermissionRequirement requirement)
@@ -27,12 +25,11 @@ public sealed class PermissionAuthorizationHandler(
 
         var ct = _httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
 
-        var hasPermission = await _db.UsuariosRoles
-            .Where(ur => ur.UsuarioId == userId)
-            .Join(_db.Roles, ur => ur.RolId, r => r.RolId, (_, r) => r)
-            .Where(r => r.Estado == RolEstado.Activo)
-            .Join(_db.RolesPermisos, r => r.RolId, rp => rp.RolId, (_, rp) => rp)
-            .AnyAsync(rp => rp.Modulo == requirement.Modulo && rp.Accion == requirement.Accion, ct);
+        var hasPermission = await _usuarios.HasPermissionAsync(
+            userId,
+            requirement.Modulo,
+            requirement.Accion,
+            ct);
 
         if (hasPermission)
         {
