@@ -15,7 +15,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useTheme } from '@mui/material/styles';
 
-import { IconBuildingStore, IconCoins, IconPackage, IconReceipt, IconScale } from '@tabler/icons-react';
+import { IconAlertTriangle, IconKey, IconLockAccess, IconShield, IconUsers } from '@tabler/icons-react';
 
 import { KpiMetricCard, resolveKpiTonePalette, type KpiTone } from '@/components/dashboard/kpi-metric-card';
 import { useLocale, useTranslations } from '@/hooks/useTranslations';
@@ -97,22 +97,22 @@ export default function DashboardPage() {
     : [];
 
   const guideItems: Array<{ tone: KpiTone; label: string; description: string }> = [
-    { tone: 'production', label: t('guideProductionLabel'), description: t('guideProductionDescription') },
-    { tone: 'commercial', label: t('guideCommercialLabel'), description: t('guideCommercialDescription') },
-    { tone: 'finance', label: t('guideFinanceLabel'), description: t('guideFinanceDescription') },
-    { tone: 'traceability', label: t('guideTraceabilityLabel'), description: t('guideTraceabilityDescription') },
+    { tone: 'production', label: t('guideUsersLabel'), description: t('guideUsersDescription') },
+    { tone: 'commercial', label: t('guideRolesLabel'), description: t('guideRolesDescription') },
+    { tone: 'finance', label: t('guidePermissionsLabel'), description: t('guidePermissionsDescription') },
+    { tone: 'traceability', label: t('guideAccessLabel'), description: t('guideAccessDescription') },
     { tone: 'risk', label: t('guideRiskLabel'), description: t('guideRiskDescription') },
   ];
 
   const statusChips: Array<{ label: string; color: 'success' | 'info' | 'warning' | 'default' }> = [
     { label: t('statusReady'), color: 'success' },
-    { label: t('statusTraceable'), color: 'info' },
-    { label: t('statusAttention'), color: 'warning' },
+    { label: t('statusNoRole'), color: 'info' },
+    { label: t('statusPending'), color: 'warning' },
     { label: t('statusInactive'), color: 'default' },
   ];
 
   const primary = resolveKpiTonePalette(theme, 'production');
-  const commercial = resolveKpiTonePalette(theme, 'commercial');
+  const secondary = resolveKpiTonePalette(theme, 'commercial');
 
   function handleSelectPeriod(period: DashboardPeriod) {
     if (period === 'custom') {
@@ -152,7 +152,7 @@ export default function DashboardPage() {
           overflow: 'hidden',
           borderColor: 'divider',
           backgroundColor: 'background.paper',
-          backgroundImage: `radial-gradient(circle at top right, ${withAlpha(primary.main, 0.16)} 0%, transparent 38%), radial-gradient(circle at bottom left, ${withAlpha(commercial.main, 0.12)} 0%, transparent 42%)`,
+          backgroundImage: `radial-gradient(circle at top right, ${withAlpha(primary.main, 0.16)} 0%, transparent 38%), radial-gradient(circle at bottom left, ${withAlpha(secondary.main, 0.12)} 0%, transparent 42%)`,
         }}
       >
         <CardContent sx={{ p: { xs: 3, md: 4 }, display: 'grid', gap: 2.5 }}>
@@ -315,21 +315,21 @@ export default function DashboardPage() {
 
             <Stack sx={{ gap: 1.5 }}>
               <Stack direction="row" sx={{ alignItems: 'flex-start', gap: 1.25 }}>
-                <Chip size="small" label={t('guideProductionLabel')} color="primary" />
+                <Chip size="small" label={t('guideUsersLabel')} color="primary" />
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  {t('focusProduction')}
+                  {t('focusUsers')}
                 </Typography>
               </Stack>
               <Stack direction="row" sx={{ alignItems: 'flex-start', gap: 1.25 }}>
-                <Chip size="small" label={t('guideCommercialLabel')} color="secondary" />
+                <Chip size="small" label={t('guideRolesLabel')} color="secondary" />
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  {t('focusCommercial')}
+                  {t('focusRoles')}
                 </Typography>
               </Stack>
               <Stack direction="row" sx={{ alignItems: 'flex-start', gap: 1.25 }}>
-                <Chip size="small" label={t('guideTraceabilityLabel')} color="info" />
+                <Chip size="small" label={t('guidePermissionsLabel')} color="info" />
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  {t('focusTraceability')}
+                  {t('focusPermissions')}
                 </Typography>
               </Stack>
             </Stack>
@@ -404,7 +404,7 @@ export default function DashboardPage() {
           >
             <Alert severity="success">{t('alertSuccess')}</Alert>
             <Alert severity="info">{t('alertInfo')}</Alert>
-            <Alert severity="warning" icon={<IconScale size={18} stroke={1.8} />}>
+            <Alert severity="warning" icon={<IconAlertTriangle size={18} stroke={1.8} />}>
               {t('alertWarning')}
             </Alert>
           </Box>
@@ -478,13 +478,13 @@ function formatDateRange(locale: string, from: string, to: string) {
 function getDashboardMetricIcon(tone: KpiTone): ReactNode {
   switch (tone) {
     case 'commercial':
-      return <IconReceipt size={24} stroke={1.8} />;
+      return <IconShield size={24} stroke={1.8} />;
     case 'finance':
-      return <IconCoins size={24} stroke={1.8} />;
+      return <IconKey size={24} stroke={1.8} />;
     case 'traceability':
-      return <IconPackage size={24} stroke={1.8} />;
+      return <IconLockAccess size={24} stroke={1.8} />;
     case 'production':
     default:
-      return <IconBuildingStore size={24} stroke={1.8} />;
+      return <IconUsers size={24} stroke={1.8} />;
   }
 }

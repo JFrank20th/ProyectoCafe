@@ -36,20 +36,11 @@ import { styled, useTheme, type CSSObject } from '@mui/material/styles';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 
 import {
-  IconBox,
-  IconBuildingStore,
-  IconCoins,
-  IconCreditCard,
-  IconDashboard,
-  IconPackage,
-  IconReceipt,
-  IconRuler,
-  IconScale,
-  IconShield,
-  IconTags,
-  IconUsers,
   IconChevronDown,
   IconChevronUp,
+  IconDashboard,
+  IconShield,
+  IconUsers,
 } from '@tabler/icons-react';
 
 export type AppSidebarProps = {
@@ -109,32 +100,6 @@ const MiniDrawerStyled = styled(Drawer, { shouldForwardProp: (prop) => prop !== 
 
 const navIconByKey: Record<string, ComponentType<{ size?: number; stroke?: number }>> = {
   dashboard: IconDashboard,
-
-  clientes: IconUsers,
-  ventas: IconReceipt,
-
-  balance: IconScale,
-  costos: IconCoins,
-  gastos: IconReceipt,
-  pasivos: IconCreditCard,
-
-  unidadesMedida: IconRuler,
-  productos: IconBox,
-  lotes: IconPackage,
-  procesosInventario: IconPackage,
-  insumos: IconPackage,
-  fincas: IconBuildingStore,
-  parcelas: IconTags,
-  operacionesProduccion: IconReceipt,
-  operacionesAgricolas: IconReceipt,
-  proveedores: IconUsers,
-  recepcionesCafe: IconReceipt,
-
-  catalogos: IconTags,
-  campo: IconBuildingStore,
-  proceso: IconPackage,
-
-  tiposVenta: IconReceipt,
   usuarios: IconUsers,
   roles: IconShield,
   seguridad: IconShield,
@@ -252,7 +217,7 @@ export function AppSidebar({ user, open, onClose }: AppSidebarProps) {
 
     if (item.items && item.items.length > 0) {
       const expanded = Boolean(openByKey[key]);
-      const Icon = navIconByKey[item.labelKey] ?? IconBuildingStore;
+      const Icon = navIconByKey[item.labelKey] ?? IconDashboard;
 
       return (
         <Box key={key}>
@@ -282,7 +247,7 @@ export function AppSidebar({ user, open, onClose }: AppSidebarProps) {
 
     if (!item.href) return null;
 
-    const Icon = navIconByKey[item.labelKey] ?? IconBuildingStore;
+    const Icon = navIconByKey[item.labelKey] ?? IconDashboard;
 
     return (
       <ListItemButton
@@ -312,7 +277,7 @@ export function AppSidebar({ user, open, onClose }: AppSidebarProps) {
     const key = `${prefix}/${item.labelKey}`;
     const label = t(item.labelKey);
     const selected = isItemActive(item);
-    const Icon = navIconByKey[item.labelKey] ?? IconBuildingStore;
+    const Icon = navIconByKey[item.labelKey] ?? IconDashboard;
 
     if (item.items && item.items.length > 0) {
       const button = (
@@ -436,7 +401,7 @@ export function AppSidebar({ user, open, onClose }: AppSidebarProps) {
                   const childKey = `${miniMenu.key}/${child.labelKey}`;
                   const childLabel = t(child.labelKey);
                   const childSelected = isItemActive(child);
-                  const Icon = navIconByKey[child.labelKey] ?? IconBuildingStore;
+                  const Icon = navIconByKey[child.labelKey] ?? IconDashboard;
 
                   if (child.items && child.items.length > 0) {
                     return (

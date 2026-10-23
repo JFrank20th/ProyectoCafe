@@ -30,7 +30,6 @@ public sealed class SecurityBootstrapHostedService(
                 await db.Database.MigrateAsync(cancellationToken);
             }
 
-            await EnsureCultivosPermissionsMigratedAsync(db, cancellationToken);
             await EnsureBootstrapRolesAsync(db, cancellationToken);
             await EnsureBootstrapUsersAsync(db, cancellationToken);
             await EnsureAdminPermissionsAsync(db, cancellationToken);
@@ -42,56 +41,6 @@ public sealed class SecurityBootstrapHostedService(
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-
-    private static async Task EnsureCultivosPermissionsMigratedAsync(ProyectoCafeDbContext db, CancellationToken ct)
-    {
-        var legacyModule = Permissions.Modulos.ProduccionParcelasLegacy;
-        var newModule = Permissions.Modulos.ProduccionCultivos;
-
-        var legacyPermissions = await db.RolesPermisos
-            .Where(rp => rp.Modulo == legacyModule)
-            .Select(rp => new { rp.RolId, rp.Accion })
-            .ToListAsync(ct);
-
-        if (legacyPermissions.Count == 0)
-        {
-            return;
-        }
-
-        var existingNewPermissions = await db.RolesPermisos
-            .Where(rp => rp.Modulo == newModule)
-            .Select(rp => new { rp.RolId, rp.Accion })
-            .ToListAsync(ct);
-
-        var existingKeys = existingNewPermissions
-            .Select(x => $"{x.RolId}:{x.Accion}")
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        var added = false;
-        foreach (var permission in legacyPermissions)
-        {
-            var key = $"{permission.RolId}:{permission.Accion}";
-            if (existingKeys.Contains(key))
-            {
-                continue;
-            }
-
-            db.RolesPermisos.Add(new RolPermiso
-            {
-                RolId = permission.RolId,
-                Modulo = newModule,
-                Accion = permission.Accion,
-            });
-
-            existingKeys.Add(key);
-            added = true;
-        }
-
-        if (added)
-        {
-            await db.SaveChangesAsync(ct);
-        }
-    }
 
     private async Task EnsureBootstrapRolesAsync(ProyectoCafeDbContext db, CancellationToken ct)
     {

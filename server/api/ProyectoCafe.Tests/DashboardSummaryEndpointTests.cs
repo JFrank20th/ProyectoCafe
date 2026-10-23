@@ -37,7 +37,7 @@ public sealed class DashboardSummaryEndpointTests
     }
 
     [Fact]
-    public async Task GetSummary_AppliesRequestedPeriodToMetrics()
+    public async Task GetSummary_ReportsAdministrationMetricsForRequestedPeriod()
     {
         await using var factory = new DashboardApiFactory();
         using var client = factory.CreateClient();
@@ -53,32 +53,33 @@ public sealed class DashboardSummaryEndpointTests
         Assert.Equal("30d", summary.Window.Period);
         Assert.NotNull(summary.Window.From);
         Assert.NotNull(summary.Window.To);
-        Assert.Equal(1, summary.Production.ActiveLotsCount);
-        Assert.Equal(1, summary.Production.LotsWithStockCount);
-        Assert.Equal(120m, summary.Production.AvailableQuantity);
-        Assert.Equal("kg", summary.Production.AvailableUnit);
-        Assert.Equal(5, summary.Production.ProcessRecordsCount);
 
-        Assert.Equal(1, summary.Commercial.ActiveSalesCount);
-        Assert.Equal(500m, summary.Commercial.ActiveSalesTotal);
-        Assert.Equal(1, summary.Commercial.ActiveCustomersCount);
+        // Usuarios no eliminados: 6 (el usuario eliminado lógicamente no cuenta).
+        Assert.Equal(6, summary.Users.TotalCount);
+        Assert.Equal(4, summary.Users.ActiveCount);
+        Assert.Equal(1, summary.Users.PendingCount);
+        Assert.Equal(1, summary.Users.InactiveCount);
+        Assert.Equal(5, summary.Users.NewCount);
 
-        Assert.Equal(200m, summary.Finance.GrossMarginAmount);
-        Assert.Equal(40m, summary.Finance.GrossMarginPercent);
-        Assert.Equal(50m, summary.Finance.ActiveCostsTotal);
+        // Roles no eliminados: 3, de los cuales 2 están activos.
+        Assert.Equal(3, summary.Roles.TotalCount);
+        Assert.Equal(2, summary.Roles.ActiveCount);
+        Assert.Equal(3, summary.Roles.AssignmentsCount);
 
-        Assert.Equal(1, summary.Traceability.ActiveLotsCount);
-        Assert.Equal(1, summary.Traceability.TraceableLotsCount);
-        Assert.Equal(100m, summary.Traceability.CoveragePercent);
+        // Permisos: 6 asignaciones, 4 combinaciones distintas en 3 módulos.
+        Assert.Equal(6, summary.Permissions.AssignmentsCount);
+        Assert.Equal(4, summary.Permissions.DistinctCount);
+        Assert.Equal(3, summary.Permissions.ModuleCount);
+
+        // Cobertura: 3 de 4 usuarios activos tienen rol vigente.
+        Assert.Equal(4, summary.Access.ActiveUsersCount);
+        Assert.Equal(3, summary.Access.UsersWithRolesCount);
+        Assert.Equal(75m, summary.Access.CoveragePercent);
 
         Assert.NotNull(summary.PreviousPeriod);
         Assert.Equal("30d", summary.PreviousPeriod!.Window.Period);
-        Assert.Equal(1, summary.PreviousPeriod.Production.ActiveLotsCount);
-        Assert.Equal(80m, summary.PreviousPeriod.Production.AvailableQuantity);
-        Assert.Equal(900m, summary.PreviousPeriod.Commercial.ActiveSalesTotal);
-        Assert.Equal(500m, summary.PreviousPeriod.Finance.GrossMarginAmount);
-        Assert.Equal(55.6m, summary.PreviousPeriod.Finance.GrossMarginPercent);
-        Assert.Equal(100m, summary.PreviousPeriod.Traceability.CoveragePercent);
+        Assert.Equal(1, summary.PreviousPeriod.Users.NewCount);
+        Assert.Equal(6, summary.PreviousPeriod.Users.TotalCount);
     }
 
     [Fact]
@@ -103,14 +104,34 @@ public sealed class DashboardSummaryEndpointTests
         Assert.Equal("custom", summary.Window.Period);
         Assert.Equal(rangeStart, summary.Window.From);
         Assert.Equal(rangeEnd, summary.Window.To);
+
+        // Solo el usuario creado hace 45 días cae dentro del rango personalizado.
+        Assert.Equal(1, summary.Users.NewCount);
+
         Assert.NotNull(summary.PreviousPeriod);
         Assert.Equal("custom", summary.PreviousPeriod!.Window.Period);
-        Assert.Equal(1, summary.Production.ActiveLotsCount);
-        Assert.Equal(3, summary.Production.ProcessRecordsCount);
-        Assert.Equal(900m, summary.Commercial.ActiveSalesTotal);
-        Assert.Equal(55.6m, summary.Finance.GrossMarginPercent);
-        Assert.Equal(0m, summary.PreviousPeriod.Commercial.ActiveSalesTotal);
-        Assert.Equal(1, summary.PreviousPeriod.Production.ProcessRecordsCount);
+        Assert.Equal(0, summary.PreviousPeriod.Users.NewCount);
+    }
+
+    [Fact]
+    public async Task GetSummary_ReturnsNoPreviousPeriodForAllTimeWindow()
+    {
+        await using var factory = new DashboardApiFactory();
+        using var client = factory.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/dashboard/summary?period=all");
+        request.Headers.Add(TestAuthHandler.UserHeaderName, "1");
+
+        var response = await client.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+
+        var summary = await response.Content.ReadFromJsonAsync<DashboardEndpoints.DashboardSummaryResponse>();
+
+        Assert.NotNull(summary);
+        Assert.Equal("all", summary.Window.Period);
+        Assert.Null(summary.Window.From);
+        Assert.Null(summary.Window.To);
+        Assert.Null(summary.PreviousPeriod);
+        Assert.Equal(6, summary.Users.NewCount);
     }
 
     [Fact]
@@ -227,296 +248,96 @@ public sealed class DashboardSummaryEndpointTests
         {
             var nowUtc = DateTime.UtcNow;
 
-            db.Productos.Add(new Producto
-            {
-                ProductoId = 1,
-                Nombre = "Cafe pergamino",
-                Precio = 0m,
-                PrecioInternet = 0m,
-                PrecioMayorista = 0m,
-                Stock = 200m,
-                ManejaLotes = true,
-                TipoLote = "Cafe",
-                Estado = true,
-                UnidadMedida = "kg",
-                PermiteDecimal = true,
-            });
+            db.Roles.AddRange(
+                new Rol { RolId = 1, Nombre = "Admin", Estado = RolEstado.Activo },
+                new Rol { RolId = 2, Nombre = "Operador", Estado = RolEstado.Activo },
+                new Rol { RolId = 3, Nombre = "Auditor", Estado = RolEstado.Inactivo },
+                new Rol { RolId = 4, Nombre = "Legacy", Estado = RolEstado.Eliminado });
 
-            db.Lotes.AddRange(
-                new Lote
+            db.Usuarios.AddRange(
+                new Usuario
                 {
-                    LoteId = 1,
-                    ProductoId = 1,
-                    CodigoLote = "LOT-30D",
-                    CantidadInicial = 140m,
-                    CantidadDisponible = 120m,
-                    Estado = "Activo",
-                    FechaCreacion = nowUtc.AddDays(-5),
+                    UsuarioId = 1,
+                    Email = "activo.reciente@test.local",
+                    EmailNormalizado = "activo.reciente@test.local",
+                    Nombre = "Activo reciente",
+                    PasswordHash = "hash",
+                    Estado = UsuarioEstado.Activo,
+                    CreadoEn = nowUtc.AddDays(-5),
                 },
-                new Lote
+                new Usuario
                 {
-                    LoteId = 2,
-                    ProductoId = 1,
-                    CodigoLote = "LOT-90D",
-                    CantidadInicial = 100m,
-                    CantidadDisponible = 80m,
-                    Estado = "Activo",
-                    FechaCreacion = nowUtc.AddDays(-45),
+                    UsuarioId = 2,
+                    Email = "activo.anterior@test.local",
+                    EmailNormalizado = "activo.anterior@test.local",
+                    Nombre = "Activo anterior",
+                    PasswordHash = "hash",
+                    Estado = UsuarioEstado.Activo,
+                    CreadoEn = nowUtc.AddDays(-45),
                 },
-                new Lote
+                new Usuario
                 {
-                    LoteId = 3,
-                    ProductoId = 1,
-                    CodigoLote = "LOT-INACTIVO",
-                    CantidadInicial = 50m,
-                    CantidadDisponible = 50m,
-                    Estado = "Inactivo",
-                    FechaCreacion = nowUtc.AddDays(-2),
+                    UsuarioId = 3,
+                    Email = "pendiente@test.local",
+                    EmailNormalizado = "pendiente@test.local",
+                    Nombre = "Pendiente",
+                    PasswordHash = "hash",
+                    Estado = UsuarioEstado.PendienteActivacion,
+                    CreadoEn = nowUtc.AddDays(-10),
+                },
+                new Usuario
+                {
+                    UsuarioId = 4,
+                    Email = "inactivo@test.local",
+                    EmailNormalizado = "inactivo@test.local",
+                    Nombre = "Inactivo",
+                    PasswordHash = "hash",
+                    Estado = UsuarioEstado.Inactivo,
+                    CreadoEn = nowUtc.AddDays(-3),
+                },
+                new Usuario
+                {
+                    UsuarioId = 5,
+                    Email = "eliminado@test.local",
+                    EmailNormalizado = "eliminado@test.local",
+                    Nombre = "Eliminado",
+                    PasswordHash = "hash",
+                    Estado = UsuarioEstado.Eliminado,
+                    CreadoEn = nowUtc.AddDays(-1),
+                },
+                new Usuario
+                {
+                    UsuarioId = 6,
+                    Email = "activo.con.rol@test.local",
+                    EmailNormalizado = "activo.con.rol@test.local",
+                    Nombre = "Activo con rol",
+                    PasswordHash = "hash",
+                    Estado = UsuarioEstado.Activo,
+                    CreadoEn = nowUtc.AddDays(-20),
+                },
+                new Usuario
+                {
+                    UsuarioId = 7,
+                    Email = "activo.sin.rol@test.local",
+                    EmailNormalizado = "activo.sin.rol@test.local",
+                    Nombre = "Activo sin rol",
+                    PasswordHash = "hash",
+                    Estado = UsuarioEstado.Activo,
+                    CreadoEn = nowUtc.AddDays(-15),
                 });
 
-            db.CosechasCafe.AddRange(
-                new CosechaCafe
-                {
-                    CosechaCafeId = 1,
-                    CultivoId = 1,
-                    ProductoId = 1,
-                    Cultivo = "Arabica",
-                    FechaCosecha = nowUtc.AddDays(-4),
-                    Cantidad = 60m,
-                    Estado = "Registrada",
-                    LoteId = 1,
-                },
-                new CosechaCafe
-                {
-                    CosechaCafeId = 2,
-                    CultivoId = 1,
-                    ProductoId = 1,
-                    Cultivo = "Arabica",
-                    FechaCosecha = nowUtc.AddDays(-40),
-                    Cantidad = 55m,
-                    Estado = "Registrada",
-                    LoteId = 2,
-                });
+            db.UsuariosRoles.AddRange(
+                new UsuarioRol { UsuarioId = 1, RolId = 1 },
+                new UsuarioRol { UsuarioId = 2, RolId = 1 },
+                new UsuarioRol { UsuarioId = 6, RolId = 2 });
 
-            db.RecepcionesCafe.AddRange(
-                new RecepcionCafe
-                {
-                    RecepcionCafeId = 1,
-                    ProveedorId = 1,
-                    ProductoId = 1,
-                    TipoCafe = "Oreado",
-                    FechaRecepcion = nowUtc.AddDays(-3),
-                    CodigoLote = "REC-001",
-                    Cantidad = 40m,
-                    CantidadDisponible = 40m,
-                    PrecioUnitario = 2m,
-                    Total = 80m,
-                    Estado = "Registrada",
-                    LoteId = 1,
-                },
-                new RecepcionCafe
-                {
-                    RecepcionCafeId = 2,
-                    ProveedorId = 1,
-                    ProductoId = 1,
-                    TipoCafe = "Oreado",
-                    FechaRecepcion = nowUtc.AddDays(-50),
-                    CodigoLote = "REC-002",
-                    Cantidad = 35m,
-                    CantidadDisponible = 35m,
-                    PrecioUnitario = 2m,
-                    Total = 70m,
-                    Estado = "Registrada",
-                    LoteId = 2,
-                });
-
-            db.ProcesosInventario.AddRange(
-                new ProcesoInventario
-                {
-                    ProcesoInventarioId = 1,
-                    RecepcionCafeId = 1,
-                    LoteOrigenId = 1,
-                    ProductoSalidaId = 1,
-                    LoteSalidaId = 1,
-                    FechaProceso = nowUtc.AddDays(-2),
-                    UsaLoteCompleto = false,
-                    CantidadOrigenConsumida = 50m,
-                    CantidadSalida = 45m,
-                    CostoProceso = 10m,
-                    Estado = "Registrado",
-                },
-                new ProcesoInventario
-                {
-                    ProcesoInventarioId = 2,
-                    RecepcionCafeId = 2,
-                    LoteOrigenId = 2,
-                    ProductoSalidaId = 1,
-                    LoteSalidaId = 2,
-                    FechaProceso = nowUtc.AddDays(-45),
-                    UsaLoteCompleto = false,
-                    CantidadOrigenConsumida = 40m,
-                    CantidadSalida = 36m,
-                    CostoProceso = 8m,
-                    Estado = "Registrado",
-                },
-                new ProcesoInventario
-                {
-                    ProcesoInventarioId = 3,
-                    RecepcionCafeId = 1,
-                    LoteOrigenId = 1,
-                    ProductoSalidaId = 1,
-                    LoteSalidaId = 1,
-                    FechaProceso = nowUtc.AddDays(-1),
-                    UsaLoteCompleto = false,
-                    CantidadOrigenConsumida = 20m,
-                    CantidadSalida = 80m,
-                    CostoProceso = 12m,
-                    Estado = "Registrado",
-                },
-                new ProcesoInventario
-                {
-                    ProcesoInventarioId = 4,
-                    RecepcionCafeId = 2,
-                    LoteOrigenId = 2,
-                    ProductoSalidaId = 1,
-                    LoteSalidaId = 2,
-                    FechaProceso = nowUtc.AddDays(-42),
-                    UsaLoteCompleto = false,
-                    CantidadOrigenConsumida = 18m,
-                    CantidadSalida = 70m,
-                    CostoProceso = 10m,
-                    Estado = "Registrado",
-                });
-
-            db.OperacionesAgricolas.Add(new OperacionAgricola
-            {
-                OperacionAgricolaId = 1,
-                CultivoId = 1,
-                TipoOperacion = "Cosecha",
-                FechaOperacion = nowUtc.AddDays(-6),
-                Cantidad = 22m,
-                Cultivo = "Cafe cereza",
-                CostoInsumo = 0m,
-                CostoManoObra = 0m,
-                CostoOtros = 4m,
-                CostoTotal = 4m,
-                Observaciones = "Cosecha sin lote inmediato",
-                Estado = "Registrada",
-            });
-
-            db.LoteMovimientos.AddRange(
-                new LoteMovimiento
-                {
-                    MovimientoId = 1,
-                    LoteId = 1,
-                    Tipo = "Salida",
-                    Fecha = nowUtc.AddDays(-1),
-                    Cantidad = 10m,
-                },
-                new LoteMovimiento
-                {
-                    MovimientoId = 2,
-                    LoteId = 2,
-                    Tipo = "Salida",
-                    Fecha = nowUtc.AddDays(-41),
-                    Cantidad = 8m,
-                });
-
-            db.Ventas.AddRange(
-                new Venta
-                {
-                    VentaId = 1,
-                    ClienteId = 10,
-                    Fecha = nowUtc.AddDays(-4),
-                    Total = 500m,
-                    EstadoPago = "Pagado",
-                    TipoPrecio = "Normal",
-                    Estado = true,
-                },
-                new Venta
-                {
-                    VentaId = 2,
-                    ClienteId = 20,
-                    Fecha = nowUtc.AddDays(-45),
-                    Total = 900m,
-                    EstadoPago = "Pagado",
-                    TipoPrecio = "Normal",
-                    Estado = true,
-                },
-                new Venta
-                {
-                    VentaId = 3,
-                    ClienteId = 30,
-                    Fecha = nowUtc.AddDays(-2),
-                    Total = 700m,
-                    EstadoPago = "Pagado",
-                    TipoPrecio = "Normal",
-                    Estado = false,
-                });
-
-            db.VentaDetalles.AddRange(
-                new VentaDetalle
-                {
-                    DetalleId = 1,
-                    VentaId = 1,
-                    ProductoId = 1,
-                    LoteId = 1,
-                    Cantidad = 10m,
-                    PrecioUnitario = 50m,
-                    CostoUnitario = 30m,
-                    Subtotal = 500m,
-                },
-                new VentaDetalle
-                {
-                    DetalleId = 2,
-                    VentaId = 2,
-                    ProductoId = 1,
-                    LoteId = 2,
-                    Cantidad = 20m,
-                    PrecioUnitario = 45m,
-                    CostoUnitario = 20m,
-                    Subtotal = 900m,
-                },
-                new VentaDetalle
-                {
-                    DetalleId = 3,
-                    VentaId = 3,
-                    ProductoId = 1,
-                    LoteId = 1,
-                    Cantidad = 14m,
-                    PrecioUnitario = 50m,
-                    CostoUnitario = 10m,
-                    Subtotal = 700m,
-                });
-
-            db.Costos.AddRange(
-                new Costo
-                {
-                    CostoId = 1,
-                    Nombre = "Secado reciente",
-                    TipoCosto = "Proceso",
-                    Monto = 50m,
-                    Fecha = nowUtc.AddDays(-4),
-                    Estado = true,
-                },
-                new Costo
-                {
-                    CostoId = 2,
-                    Nombre = "Secado anterior",
-                    TipoCosto = "Proceso",
-                    Monto = 80m,
-                    Fecha = nowUtc.AddDays(-40),
-                    Estado = true,
-                },
-                new Costo
-                {
-                    CostoId = 3,
-                    Nombre = "Costo inactivo",
-                    TipoCosto = "Proceso",
-                    Monto = 999m,
-                    Fecha = nowUtc.AddDays(-3),
-                    Estado = false,
-                });
+            db.RolesPermisos.AddRange(
+                new RolPermiso { RolId = 1, Modulo = "Administracion.Usuarios", Accion = "Ver" },
+                new RolPermiso { RolId = 1, Modulo = "Administracion.Usuarios", Accion = "Editar" },
+                new RolPermiso { RolId = 1, Modulo = "Administracion.Roles", Accion = "Ver" },
+                new RolPermiso { RolId = 2, Modulo = "Administracion.Usuarios", Accion = "Ver" },
+                new RolPermiso { RolId = 2, Modulo = "Administracion.Permisos", Accion = "Ver" },
+                new RolPermiso { RolId = 3, Modulo = "Administracion.Roles", Accion = "Ver" });
 
             db.SaveChanges();
         }

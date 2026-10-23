@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ProyectoCafe.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class AddSeguridadUsuariosRolesRbac : Migration
+    public partial class InitialAdministration : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -41,11 +41,7 @@ namespace ProyectoCafe.Infrastructure.Migrations
                     EmailNormalizado = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     Nombre = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
                     PasswordHash = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
-                    Estado = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
-                    EmailConfirmado = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
-                    EmailConfirmadoEn = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    EmailConfirmacionTokenHash = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
-                    EmailConfirmacionTokenExpiraEn = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Estado = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
                     CreadoEn = table.Column<DateTime>(type: "datetime2(7)", nullable: false, defaultValueSql: "sysdatetime()"),
                     ActualizadoEn = table.Column<DateTime>(type: "datetime2", nullable: true),
                     UltimoLoginEn = table.Column<DateTime>(type: "datetime2", nullable: true),

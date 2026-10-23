@@ -4,8 +4,8 @@
 
 ## Edición lista para impresión y PDF
 
-**Versión del documento:** 1.0  
-**Fecha de emisión:** 20 de abril de 2026  
+**Versión del documento:** 2.0  
+**Fecha de emisión:** 22 de octubre de 2026  
 **Formato recomendado:** A4 vertical  
 **Margen recomendado:** 18 mm a 20 mm  
 **Uso sugerido:** impresión física o exportación a PDF
@@ -16,8 +16,9 @@
 | --- | --- |
 | Documento fuente | MANUAL_USUARIO_SISTEMA.md |
 | Edición | Impresión / PDF |
-| Público objetivo | Usuarios operativos, administrativos y de consulta |
-| Control editorial | Esta edición conserva el contenido funcional y añade portada y saltos de página para exportación |
+| Público objetivo | Usuarios administrativos y de consulta |
+| Alcance | Dashboard y Administración |
+| Control editorial | Edición enfocada exclusivamente en los módulos vigentes del sistema |
 
 ## Recomendaciones de exportación
 
@@ -25,17 +26,16 @@
 2. Configure márgenes entre 18 mm y 20 mm.
 3. Si la herramienta de exportación lo permite, active numeración de páginas en encabezado o pie.
 4. Mantenga los saltos de página incluidos en el documento.
-5. Para impresión física, use doble cara solo si la encuadernación no interfiere con tablas o listados extensos.
 
 <div style="page-break-after: always;"></div>
 
 ## 1. Propósito del manual
 
-Este manual explica cómo usar ProyectoCafe para registrar la operación del negocio y mantener la trazabilidad desde la producción o compra del café hasta la venta final.
+Este manual explica cómo usar ProyectoCafe en su alcance actual: el **Dashboard** y el módulo de **Administración**.
 
-Está pensado para usuarios no técnicos. Por esa razón, el documento se enfoca en lo que el usuario ve en pantalla, qué debe capturar en cada paso y cómo validar que la información quedó correctamente registrada.
+El documento está pensado para usuarios no técnicos. Se enfoca en lo que el usuario ve en pantalla, qué debe hacer en cada paso y cómo validar que la información quedó correctamente registrada.
 
-Este manual describe el comportamiento actual del sistema a abril de 2026. Cuando existe una necesidad operativa del negocio que aún no está disponible como campo o pantalla, se indica claramente como límite actual.
+ProyectoCafe ya no incluye módulos operativos de compras, producción, inventario, ventas ni contabilidad. Por eso, este manual no describe esas pantallas: toda la gestión disponible gira alrededor de las cuentas, los roles y los permisos que dan acceso al portal.
 
 ## Índice
 
@@ -47,241 +47,285 @@ Este manual describe el comportamiento actual del sistema a abril de 2026. Cuand
 6. Navegación general.
 7. Módulo Dashboard.
 8. Módulo Administración.
-9. Módulo Compras.
-10. Módulo Producción.
-11. Módulo Inventario.
-12. Módulo Ventas.
-13. Módulo Contabilidad.
-14. Proceso integral de trazabilidad del negocio.
-15. Buenas prácticas operativas.
-16. Límites actuales del sistema.
-17. Glosario breve.
-18. Cierre.
+9. Proceso integral de seguridad y accesos.
+10. Buenas prácticas administrativas.
+11. Límites actuales del sistema.
+12. Glosario breve.
+13. Cierre.
 
 ## 2. Alcance del sistema
 
-ProyectoCafe está organizado en los siguientes módulos:
+ProyectoCafe está organizado en los siguientes componentes:
 
-| Módulo | Propósito principal |
+| Componente | Propósito principal |
 | --- | --- |
 | Acceso y autenticación | Ingreso al sistema, creación de cuenta y control de sesión |
-| Dashboard | Vista resumida del estado operativo, comercial, financiero y de trazabilidad |
+| Dashboard | Resumen de usuarios, roles, permisos y cobertura de acceso |
 | Administración | Gestión de usuarios, roles y permisos |
-| Compras | Registro de proveedores y recepciones de café compradas |
-| Producción | Registro de fincas, cultivos, operaciones agrícolas, cosechas, transformaciones y empaques |
-| Inventario | Consulta de lotes, productos, insumos y catálogos maestros |
-| Ventas | Registro de clientes, tipos de venta y ventas con salida por lote |
-| Contabilidad | Consulta de balance y administración de costos, gastos y pasivos |
+
+### 2.1 Dashboard
+
+Es la pantalla de entrada después de iniciar sesión. Presenta indicadores de administración y seguridad: altas de usuarios, estado de las cuentas, roles vigentes, permisos registrados y cobertura de acceso.
+
+### 2.2 Administración
+
+Agrupa las pantallas que controlan quién puede entrar al sistema y qué puede hacer cada usuario:
+
+1. **Usuarios**: consulta de cuentas, activación, desactivación, asignación de roles y eliminación lógica.
+2. **Roles**: creación y mantenimiento de perfiles de acceso y asignación de permisos por módulo y acción.
+
+### 2.3 Acceso compartido
+
+Las pantallas de inicio de sesión, registro y confirmación de correo son infraestructura compartida. No son un módulo de negocio, pero condicionan el uso del Dashboard y de Administración.
 
 ## 3. Reglas generales de uso
 
-Antes de trabajar en cualquier módulo, tenga presentes estas reglas:
+Antes de trabajar en el sistema, tenga presentes estas reglas:
 
-1. Las opciones visibles en el menú dependen de los permisos del usuario. Si no ve un módulo, normalmente significa que no tiene autorización para usarlo.
-2. En los procesos operativos sensibles, como cosechas, recepciones, transformaciones, empaques y ventas, el sistema prioriza registrar y anular. En general, no se editan registros ya creados; si hubo un error, se anula el registro y se vuelve a crear correctamente.
-3. Los lotes son el eje de la trazabilidad. Siempre que el sistema pida un lote o genere un lote, ese dato debe tratarse como la referencia principal para seguir el producto.
-4. Si un código de lote se deja vacío en los formularios que lo permiten, el sistema puede generarlo automáticamente.
-5. El botón Actualizar recarga la información visible. Es útil después de registrar, anular o modificar datos en otro módulo.
+1. Las opciones visibles en el menú dependen de los permisos del usuario. Si no ve una pantalla, normalmente significa que no tiene autorización para usarla.
+2. Toda cuenta nueva queda pendiente de activación hasta que un administrador la habilite.
+3. Un usuario activo sin rol asignado no puede acceder a las secciones protegidas del portal.
+4. Los permisos se agrupan por módulo y acción. En el alcance actual solo existen los módulos de Administración.
+5. El botón **Actualizar** recarga la información visible. Es útil después de activar usuarios, cambiar roles o modificar permisos.
+6. La eliminación de usuarios y roles es lógica: el registro deja de mostrarse en las listas, pero conserva su historial.
 
 ## 4. Conceptos clave
 
-### 4.1 Finca
+### 4.1 Usuario
 
-Es la unidad productiva principal. Sirve para identificar dónde se desarrolla la actividad agrícola.
+Es una cuenta con correo, nombre, contraseña y estado. Puede estar pendiente de activación, activa, inactiva o eliminada.
 
-### 4.2 Cultivo
+### 4.2 Rol
 
-Es el registro del cultivo dentro de una finca. Se usa para identificar qué se produce, dónde se produce y relacionar operaciones agrícolas y cosechas con mayor precisión.
+Es un perfil de acceso que agrupa permisos. Se asigna a los usuarios para definir qué pantallas y acciones pueden usar.
 
-### 4.3 Operación agrícola
+### 4.3 Permiso
 
-Es cualquier actividad realizada sobre el cultivo, por ejemplo aplicación de insumos, fertilización, poda, riego, jornal o mantenimiento. Estas operaciones también afectan costos y trazabilidad del lote cuando el lote proviene de una cosecha propia.
+Es la combinación de un módulo y una acción. Por ejemplo, el permiso **Ver** sobre el módulo **Administracion.Usuarios** habilita la consulta de usuarios.
 
-### 4.4 Cosecha
+### 4.4 Módulo
 
-Es el registro del café recolectado en un cultivo. Al registrarlo, el sistema genera un lote inicial.
+Es el área funcional sobre la que se aplica un permiso. En el alcance actual existen tres módulos de Administración:
 
-### 4.5 Recepción de café
+1. `Administracion.Usuarios`.
+2. `Administracion.Roles`.
+3. `Administracion.Permisos`.
 
-Es el ingreso de café comprado a un proveedor. También genera un lote inicial, pero su origen queda marcado como compra.
+### 4.5 Acción
 
-### 4.6 Lote
+Es la operación permitida sobre un módulo. Las acciones disponibles son **Ver**, **Crear**, **Editar** y **Eliminar**, según lo que exponga cada pantalla.
 
-Es la unidad central de trazabilidad. Un lote tiene código, producto, cantidad inicial, cantidad disponible, estado, origen y movimientos posteriores.
+### 4.6 Cobertura de acceso
 
-### 4.7 Transformación o bache
+Es el porcentaje de usuarios activos que tienen al menos un rol vigente asignado. Una cobertura del 100 % indica que todos los usuarios activos cuentan con un perfil de acceso.
 
-Es el proceso por el cual un lote origen se convierte en otro lote de salida, por ejemplo en despulpado, secado, trillado o tostión. Para efectos operativos, un bache de tostión se controla como una transformación.
+### 4.7 Periodo
 
-### 4.8 Empaque
+Es la ventana de tiempo usada en el Dashboard. En el alcance actual, el periodo filtra únicamente las **altas de usuarios**; los demás indicadores reflejan el estado actual del sistema.
 
-Es el proceso de convertir un lote origen en lotes de salida listos para presentaciones comerciales, por ejemplo 250 g, 454 g o 500 g.
+### 4.8 Estado de usuario
 
-### 4.9 Presentación
+1. **Pendiente de activación**: la cuenta se registró, pero aún no fue habilitada.
+2. **Activo**: la cuenta puede iniciar sesión y usar los módulos permitidos por sus roles.
+3. **Inactivo**: la cuenta existe, pero no puede operar.
+4. **Eliminado**: la cuenta fue retirada de las listas activas.
 
-Es el tamaño comercial del producto empacado. Se define por código, nombre y peso en gramos.
+### 4.9 Estado de rol
 
-### 4.10 Tipo de venta
-
-Es la clasificación comercial usada para aplicar precio. En el sistema actual existen, como mínimo, Normal, Mayorista e Internet, dependiendo de la configuración de la empresa.
-
-### 4.11 Precio aplicado
-
-Es el valor unitario que el sistema toma para una venta según el tipo de venta elegido y la configuración del producto.
-
-### 4.12 Trazabilidad
-
-Es la capacidad de seguir un producto desde su origen hasta su salida final. En ProyectoCafe esto se logra principalmente a través de la relación entre lote, movimientos, transformaciones, empaques, costos y ventas.
+1. **Activo**: el rol puede asignarse y sus permisos se aplican.
+2. **Inactivo**: el rol se conserva, pero no se considera vigente.
+3. **Eliminado**: el rol fue retirado de las listas activas.
 
 ## 5. Acceso al sistema
 
-## 5.1 Descripción general
+### 5.1 Descripción general
 
-El acceso al sistema se realiza desde las pantallas de inicio de sesión y registro. Un usuario puede entrar con sus credenciales o crear una cuenta, la cual queda pendiente de activación por un administrador.
+El acceso se realiza desde las pantallas de inicio de sesión y registro. Un usuario puede entrar con sus credenciales o crear una cuenta, la cual queda pendiente de activación por un administrador.
 
-## 5.2 Funcionalidades principales
+### 5.2 Funcionalidades principales
 
 1. Iniciar sesión con correo y contraseña.
 2. Crear una cuenta nueva.
 3. Volver a la pantalla de inicio desde el registro.
-4. Trabajar con una sesión autenticada para que el sistema muestre solo los módulos permitidos.
+4. Trabajar con una sesión autenticada para que el sistema muestre solo las opciones permitidas.
 
-## 5.3 Pantallas y opciones
+### 5.3 Pantallas y opciones
 
-### Pantalla de inicio de sesión
-
-Opciones principales:
+#### Pantalla de inicio de sesión
 
 1. Email.
 2. Contraseña.
-3. Botón Ingresar.
-4. Enlace Crear cuenta.
+3. Botón **Ingresar**.
+4. Enlace **Crear cuenta**.
 
-### Pantalla de registro
+#### Pantalla de registro
 
-Opciones principales:
-
-1. Registro de nueva cuenta.
-2. Mensaje de que la cuenta quedará pendiente de activación.
-3. Botón Registrarse.
-4. Enlace Volver a iniciar sesión.
+1. Nombre.
+2. Email.
+3. Contraseña.
+4. Mensaje de que la cuenta quedará pendiente de activación.
+5. Botón **Registrarse**.
+6. Enlace **Volver a iniciar sesión**.
 
 Si la organización tiene habilitado el flujo de confirmación de correo, el usuario debe completar ese paso según la instrucción recibida antes o después de la activación administrativa.
 
-## 5.4 Flujo paso a paso
+### 5.4 Flujo paso a paso
 
 1. Abra el portal.
 2. Ingrese su correo y contraseña.
-3. Haga clic en Ingresar.
+3. Haga clic en **Ingresar**.
 4. Si su usuario está activo, verá el Dashboard y el menú lateral.
-5. Si aún no tiene acceso, use Crear cuenta y complete el registro.
-6. Espere la activación y asignación de roles por parte de un administrador.
+5. Si aún no tiene acceso, use **Crear cuenta** y complete el registro.
+6. Espere la activación y la asignación de roles por parte de un administrador.
 
-## 5.5 Ejemplo práctico
+### 5.5 Ejemplo práctico
 
-Ejemplo: un nuevo auxiliar de ventas se registra con su correo corporativo. Luego un administrador lo activa y le asigna el rol adecuado. Después de eso, al iniciar sesión verá Ventas e Inventario, pero no verá Producción ni Administración si no tiene esos permisos.
+Una nueva persona del equipo administrativo se registra con su correo corporativo. Luego un administrador la activa y le asigna el rol adecuado. Al iniciar sesión, verá el Dashboard y las pantallas de Administración que sus permisos permitan.
+
+<div style="page-break-after: always;"></div>
 
 ## 6. Navegación general
 
-## 6.1 Descripción general
+### 6.1 Descripción general
 
-La navegación se realiza desde el menú lateral. El sistema agrupa los módulos por área: principal, ventas, producción, contabilidad, inventario, compras y administración.
+La navegación se realiza desde el menú lateral. El sistema agrupa las opciones en dos secciones:
 
-## 6.2 Funcionalidades principales
+1. **Principal**: Dashboard.
+2. **Administración**: Usuarios y Roles, dentro del grupo Seguridad.
+
+### 6.2 Funcionalidades principales
 
 1. Acceso directo a cada pantalla habilitada.
 2. Ocultamiento automático de opciones no autorizadas.
-3. Botones comunes para actualizar, crear, ver detalle, editar, eliminar o anular.
+3. Botones comunes para actualizar, crear, editar, asignar permisos o eliminar.
 
-## 6.3 Elementos visibles más comunes
+### 6.3 Elementos visibles más comunes
 
 1. Dashboard como pantalla principal.
-2. Botón Actualizar para recargar datos.
-3. Botón Nuevo para crear registros.
-4. Listado en tabla con estado y acciones.
-5. Chips o etiquetas para mostrar estado del registro.
-6. Cuadros de diálogo para crear, editar, anular o confirmar eliminación.
+2. Botón **Actualizar** para recargar datos.
+3. Botón **Nuevo rol** para crear perfiles de acceso.
+4. Listados en tabla con estado y acciones.
+5. Chips o etiquetas para mostrar estados.
+6. Cuadros de diálogo para crear, editar, asignar permisos o confirmar eliminaciones.
 
-## 6.4 Flujo de uso paso a paso
+### 6.4 Flujo de uso paso a paso
 
 1. Ingrese al sistema.
 2. Revise el menú lateral.
-3. Entre al módulo deseado.
-4. Use Actualizar si necesita refrescar la información.
-5. Use Nuevo para registrar un dato nuevo.
-6. Use Ver detalle para revisar trazabilidad o información extendida.
-7. Use Anular cuando un proceso operativo ya creado deba revertirse.
+3. Entre al Dashboard o a Administración.
+4. Use **Actualizar** si necesita refrescar la información.
+5. En Administración, use las acciones disponibles según su nivel de permiso.
 
-## 6.5 Ejemplo práctico
+### 6.5 Ejemplo práctico
 
-Ejemplo: un operador registra una cosecha en Producción. Luego entra a Inventario, abre Lotes, filtra por producto y revisa el lote generado en el detalle de trazabilidad.
+Un administrador entra al Dashboard, detecta que hay cuentas activas sin rol y luego abre **Administración > Usuarios** para asignarles el rol correspondiente.
 
 <div style="page-break-after: always;"></div>
 
 ## 7. Módulo Dashboard
 
-## 7.1 Descripción general del propósito
+### 7.1 Descripción general del propósito
 
-El Dashboard es la portada operativa del sistema. Resume el estado de la producción, las ventas, la trazabilidad y el comportamiento financiero general.
+El Dashboard es la portada del sistema. Resume el estado de la seguridad de acceso al portal a partir de cuatro indicadores:
 
-## 7.2 Funcionalidades principales
+1. Nuevos usuarios.
+2. Roles activos.
+3. Permisos vigentes.
+4. Cobertura de acceso.
 
-1. Consultar indicadores clave.
-2. Cambiar el período de análisis.
-3. Usar rango personalizado de fechas.
-4. Comparar el período actual con el período anterior.
+### 7.2 Funcionalidades principales
+
+1. Consultar indicadores clave de administración.
+2. Cambiar el periodo usado para contar las altas de usuarios.
+3. Usar un rango personalizado de fechas.
+4. Comparar las altas del periodo con el periodo anterior equivalente.
 5. Interpretar la información con ayudas visuales de color.
 
-## 7.3 Explicación de opciones y pantalla
+### 7.3 Explicación de opciones y pantalla
 
 La pantalla incluye:
 
-1. Encabezado principal con descripción del estado operativo.
-2. Selector de período con opciones de 7 días, 30 días, 90 días, 12 meses, histórico y rango personalizado.
-3. Campos Desde y Hasta cuando se usa rango personalizado.
-4. Botón Aplicar rango.
-5. Tarjetas KPI, entre ellas producción disponible, ventas comprometidas, margen bruto esperado y lotes con trazabilidad.
-6. Guía rápida de semántica visual para producción, comercial, finanzas, trazabilidad y riesgo.
+1. Encabezado principal con la descripción del panel de administración.
+2. Selector de periodo con opciones de 7 días, 30 días, 90 días, 12 meses, histórico y rango personalizado.
+3. Campos **Desde** y **Hasta** cuando se usa rango personalizado.
+4. Botón **Aplicar rango**.
+5. Cuatro tarjetas KPI.
+6. Bloque **Qué vigilar**, con los frentes de usuarios, roles y permisos.
+7. Guía rápida de semántica visual.
+8. Bloque de estados de acceso con chips y alertas.
 
-## 7.4 Flujo de uso paso a paso
+### 7.4 Interpretación de los indicadores
+
+| Indicador | Qué muestra | Cómo se calcula |
+| --- | --- | --- |
+| Nuevos usuarios | Altas registradas en el periodo | Usuarios no eliminados creados dentro de la ventana seleccionada |
+| Roles activos | Roles disponibles para asignar | Roles no eliminados con estado activo |
+| Permisos vigentes | Permisos efectivos registrados | Combinaciones distintas de módulo y acción asignadas a roles |
+| Cobertura de acceso | Porcentaje de usuarios activos con rol | Usuarios activos con al menos un rol vigente ÷ usuarios activos |
+
+Cada tarjeta muestra además un dato de apoyo:
+
+1. **Nuevos usuarios**: cuántos usuarios activos hay sobre el total.
+2. **Roles activos**: cuántas asignaciones existen sobre el total de roles.
+3. **Permisos vigentes**: cuántos módulos y asignaciones se registran.
+4. **Cobertura de acceso**: cuántos usuarios activos tienen rol.
+
+### 7.5 Comparación contra el periodo anterior
+
+La tarjeta **Nuevos usuarios** muestra la diferencia contra el periodo inmediatamente anterior de la misma duración. Por ejemplo, si se consultan 30 días, la comparación usa los 30 días previos.
+
+Las demás tarjetas representan el estado actual del sistema, por lo que muestran la etiqueta **Estado actual** en lugar de una variación temporal.
+
+Si se elige **Histórico**, no existe un periodo anterior equivalente y la comparación se muestra como **Sin comparativo**.
+
+### 7.6 Flujo de uso paso a paso
 
 1. Ingrese al Dashboard.
-2. Seleccione el período operativo deseado.
-3. Si necesita un rango manual, elija Rango personalizado.
+2. Seleccione el periodo de altas deseado.
+3. Si necesita un rango manual, elija **Rango personalizado**.
 4. Ingrese fecha inicial y fecha final.
-5. Haga clic en Aplicar rango.
-6. Revise las tarjetas KPI y la comparación contra el período anterior.
-7. Use esta vista para decidir en qué módulo profundizar después.
+5. Haga clic en **Aplicar rango**.
+6. Revise las cuatro tarjetas KPI y la comparación de nuevos usuarios.
+7. Use la cobertura de acceso para detectar cuentas activas sin rol.
+8. Diríjase a Administración para corregir lo que corresponda.
 
-## 7.5 Ejemplo práctico
+### 7.7 Ejemplo práctico
 
-Ejemplo: el gerente revisa el Dashboard en período de 30 días para confirmar cuántos lotes siguen trazables, cuánto margen bruto se está generando y si la operación necesita más atención en ventas o producción.
+Un administrador revisa el Dashboard en un periodo de 30 días y observa:
+
+1. Cinco usuarios nuevos frente a tres del periodo anterior.
+2. Cuatro roles activos.
+3. Siete permisos vigentes en tres módulos.
+4. Una cobertura de acceso del 85,7 %, porque uno de los siete usuarios activos no tiene rol.
+
+Con esa lectura, entra a **Administración > Usuarios** y asigna un rol al usuario pendiente de cobertura.
 
 <div style="page-break-after: always;"></div>
 
 ## 8. Módulo Administración
 
-## 8.1 Descripción general del propósito
+### 8.1 Descripción general del propósito
 
-Este módulo controla quién puede entrar al sistema y qué puede hacer cada usuario. Está orientado a la seguridad operativa.
+Este módulo controla quién puede entrar al sistema y qué puede hacer cada usuario. Está orientado a la seguridad operativa del portal.
 
-## 8.2 Funcionalidades principales
+### 8.2 Funcionalidades principales
 
 1. Consultar usuarios registrados.
 2. Activar o desactivar usuarios.
 3. Asignar roles a usuarios.
-4. Crear y editar roles.
+4. Crear, editar y eliminar roles.
 5. Asignar permisos por módulo y acción.
+6. Consultar el catálogo de permisos expuesto por la API.
 
-## 8.3 Pantalla Usuarios
+### 8.3 Pantalla Usuarios
 
-### Propósito
+#### Propósito
 
 Permite administrar el estado operativo de cada usuario y asignarle roles.
 
-Nota operativa: esta pantalla administra cuentas ya registradas. La creación inicial de usuarios se realiza desde el flujo de registro del portal y luego el administrador activa la cuenta y asigna roles.
+Nota operativa: esta pantalla administra cuentas ya registradas. La creación inicial se realiza desde el flujo de registro del portal; luego el administrador activa la cuenta y asigna roles.
 
-### Opciones y campos de la pantalla
+#### Opciones y campos de la pantalla
 
 1. Email.
 2. Nombre.
@@ -289,1097 +333,188 @@ Nota operativa: esta pantalla administra cuentas ya registradas. La creación in
 4. Fecha de creación.
 5. Último login.
 6. Roles asignados.
-7. Acción Editar roles.
-8. Acción Activar o Desactivar.
-9. Acción Eliminar.
+7. Acción **Editar roles**.
+8. Acción **Activar** o **Desactivar**.
+9. Acción **Eliminar**.
 
-### Flujo de uso paso a paso
+#### Flujo de uso paso a paso
 
-1. Entre a Administración.
-2. Abra Usuarios.
-3. Revise el estado del usuario.
-4. Si el usuario está pendiente, use Activar.
-5. Si necesita cambiar acceso, use Editar roles.
+1. Entre a **Administración**.
+2. Abra **Usuarios**.
+3. Revise el estado de la cuenta.
+4. Si el usuario está pendiente, use **Activar**.
+5. Si necesita cambiar el acceso, use **Editar roles**.
 6. Seleccione uno o varios roles.
 7. Guarde los cambios.
 8. Si el usuario no debe seguir operando, desactívelo o elimínelo según la política interna.
 
-### Ejemplo práctico
+#### Ejemplo práctico
 
-Ejemplo: un nuevo operador de producción ya se registró. El administrador lo activa, le asigna el rol de Producción y guarda. A partir de ese momento el usuario podrá ver Fincas, Cultivos, Operaciones, Cosechas, Transformaciones y Empaques.
+Una nueva persona se registra en el portal y queda pendiente. El administrador la activa, le asigna el rol **User** y guarda. A partir de ese momento la cuenta puede iniciar sesión y ver las pantallas que sus permisos habiliten.
 
-## 8.4 Pantalla Roles
+### 8.4 Pantalla Roles
 
-### Propósito
+#### Propósito
 
-Permite crear perfiles de acceso y definir qué pantallas y acciones puede usar cada perfil.
+Permite crear perfiles de acceso y definir qué módulos y acciones puede usar cada perfil.
 
-### Opciones y campos de la pantalla
+#### Opciones y campos de la pantalla
 
 1. Nombre del rol.
 2. Descripción.
 3. Estado del rol.
 4. Cantidad de permisos asignados.
-5. Acción Editar.
-6. Acción Permisos.
-7. Acción Eliminar.
+5. Acción **Editar**.
+6. Acción **Permisos**.
+7. Acción **Eliminar**.
+8. Botón **Nuevo rol**.
 
-### Gestión de permisos
+#### Gestión de permisos
 
-Desde la opción Permisos se seleccionan acciones por módulo. En términos operativos, los permisos suelen responder a acciones como Ver, Crear, Editar y Eliminar. En varios procesos, la acción Eliminar se usa en la interfaz como capacidad para anular.
+Desde la opción **Permisos** se seleccionan acciones por módulo. El catálogo se construye automáticamente a partir de los endpoints protegidos que expone la API. En el alcance actual aparecen únicamente:
 
-### Flujo de uso paso a paso
+| Módulo | Acciones disponibles |
+| --- | --- |
+| Administracion.Usuarios | Ver, Editar, Eliminar |
+| Administracion.Roles | Ver, Crear, Editar, Eliminar |
+| Administracion.Permisos | Ver, Editar |
 
-1. Abra Administración.
-2. Ingrese a Roles.
-3. Haga clic en Nuevo rol si necesita crear uno.
+La acción **Eliminar** se usa en la interfaz como capacidad para retirar registros de las listas activas.
+
+#### Flujo de uso paso a paso
+
+1. Abra **Administración**.
+2. Ingrese a **Roles**.
+3. Haga clic en **Nuevo rol** si necesita crear uno.
 4. Capture nombre, descripción y estado.
 5. Guarde.
-6. Abra la acción Permisos.
+6. Abra la acción **Permisos**.
 7. Marque los módulos y acciones necesarios.
 8. Guarde nuevamente.
 
-### Ejemplo práctico
+#### Ejemplo práctico
 
-Ejemplo: la empresa crea el rol Comercial Mayorista. Ese rol recibe permisos para ver y crear ventas, ver clientes, ver lotes y consultar productos, pero no recibe permisos para costos, fincas ni roles.
+La empresa crea el rol **Soporte administrativo**. Ese rol recibe permisos para ver usuarios, ver roles y ver permisos, pero no recibe permisos para editar ni eliminar. Con ese perfil, la persona puede consultar la administración sin modificar la configuración de seguridad.
 
-<div style="page-break-after: always;"></div>
+### 8.5 Catálogo de permisos
 
-## 9. Módulo Compras
+El catálogo de permisos no se mantiene a mano. Se descubre a partir de las rutas protegidas de la API, de modo que cualquier nueva pantalla que use la política de permisos aparece automáticamente en el diálogo de **Permisos**.
 
-## 9.1 Descripción general del propósito
+Esto implica dos reglas prácticas:
 
-El módulo de Compras se usa cuando el café no proviene de producción propia, sino de un proveedor. Su objetivo es registrar correctamente el origen comprado para que la trazabilidad no se rompa.
+1. Si una acción no existe en la API, no aparece en el catálogo.
+2. Si se retira una funcionalidad, sus permisos dejan de ofrecerse en la administración.
 
-## 9.2 Funcionalidades principales
+### 8.6 Roles iniciales
 
-1. Crear y mantener el catálogo de proveedores.
-2. Registrar recepciones de café compradas.
-3. Generar lotes de origen por compra.
-4. Anular recepciones cuando hubo un registro incorrecto.
+El sistema crea y mantiene dos roles base:
 
-## 9.3 Pantalla Proveedores
+1. **Admin**: recibe automáticamente todos los permisos que la API expone.
+2. **User**: rol de apoyo para cuentas sin privilegios administrativos.
 
-### Propósito
-
-Mantener la base de terceros a quienes se compra café.
-
-### Opciones y campos de la pantalla
-
-1. Nombre.
-2. Documento.
-3. Teléfono.
-4. Email.
-5. Dirección.
-6. Estado activo o inactivo.
-
-### Flujo de uso paso a paso
-
-1. Entre a Compras.
-2. Abra Proveedores.
-3. Haga clic en Nuevo.
-4. Ingrese los datos básicos del proveedor.
-5. Active el registro.
-6. Guarde.
-
-### Ejemplo práctico
-
-Ejemplo: la empresa empezará a comprar café pergamino a un nuevo aliado. Antes de registrar la recepción, primero crea el proveedor para poder asociar correctamente la compra.
-
-## 9.4 Pantalla Recepciones de café
-
-### Propósito
-
-Registrar cada compra de café y convertirla en un lote trazable dentro del inventario.
-
-### Opciones y campos de la pantalla
-
-1. Proveedor.
-2. Producto.
-3. Estado del café.
-4. Fecha de recepción.
-5. Número de documento.
-6. Cantidad.
-7. Precio unitario.
-8. Humedad.
-9. Código de lote opcional.
-10. Observaciones.
-11. Estado de la recepción.
-
-### Resultado del registro
-
-Al guardar una recepción, el sistema genera un lote inicial asociado a esa compra.
-
-### Flujo de uso paso a paso
-
-1. Entre a Compras.
-2. Abra Recepciones de café.
-3. Haga clic en Nuevo.
-4. Seleccione el proveedor.
-5. Seleccione el producto comprado.
-6. Defina el estado del café, por ejemplo cereza, recién lavado o seco.
-7. Ingrese fecha, cantidad y precio unitario.
-8. Capture humedad y documento si corresponde.
-9. Si ya tiene un código físico de lote, escríbalo. Si no, deje el campo vacío.
-10. Guarde.
-11. Verifique que en la tabla aparezcan la recepción y su código de lote.
-
-### Ejemplo práctico
-
-Ejemplo: se reciben 120 kg de café seco de un proveedor. Se registra la fecha, el precio unitario, el documento de compra y el estado del café. Al guardar, el sistema crea el lote que luego podrá venderse o transformarse.
+El rol **Admin** se sincroniza al iniciar la aplicación: si aparece un permiso nuevo, se agrega a este rol sin intervención manual.
 
 <div style="page-break-after: always;"></div>
 
-## 10. Módulo Producción
+## 9. Proceso integral de seguridad y accesos
 
-## 10.1 Descripción general del propósito
+### 9.1 Secuencia recomendada
 
-Este módulo administra la producción propia: dónde se produce, qué actividades se realizan en el cultivo, qué se cosecha, cómo se transforma el café y cómo se empaca.
+1. La persona se registra en el portal.
+2. El administrador revisa la cuenta en **Administración > Usuarios**.
+3. El administrador activa la cuenta.
+4. El administrador asigna uno o varios roles.
+5. Si hace falta un perfil nuevo, se crea en **Administración > Roles**.
+6. Se asignan los permisos por módulo y acción.
+7. Se guarda y se verifica que el usuario vea las pantallas esperadas.
+8. Se revisa el Dashboard para confirmar la cobertura de acceso.
 
-## 10.2 Funcionalidades principales
+### 9.2 Escenario práctico: habilitar a una persona nueva
 
-1. Registrar fincas y cultivos.
-2. Registrar operaciones agrícolas y costos asociados.
-3. Registrar cosechas y generar lotes de origen.
-4. Procesar transformaciones, incluyendo tostión por bache.
-5. Empacar café en presentaciones comerciales.
+1. La persona se registra con su correo corporativo.
+2. Queda en estado **Pendiente de activación**.
+3. El administrador la activa.
+4. Le asigna el rol **User** o un rol personalizado.
+5. La persona inicia sesión y confirma que ve el Dashboard y las pantallas autorizadas.
 
-## 10.3 Pantalla Fincas
+### 9.3 Escenario práctico: crear un perfil de solo consulta
 
-### Propósito
+1. En **Roles**, crear el rol **Consulta administrativa**.
+2. Asignar **Ver** en Usuarios, Roles y Permisos.
+3. Guardar.
+4. En **Usuarios**, asignar ese rol a la persona correspondiente.
+5. Verificar que la persona pueda consultar sin ver botones de edición o eliminación.
 
-Crear y mantener el catálogo de fincas donde opera el negocio.
+### 9.4 Escenario práctico: retirar acceso a una persona
 
-### Opciones y campos de la pantalla
+1. En **Usuarios**, ubicar la cuenta.
+2. Usar **Desactivar** si el acceso debe poder reactivarse.
+3. Usar **Eliminar** si la cuenta debe salir de las listas activas.
+4. Revisar el Dashboard: la cobertura de acceso se recalcula automáticamente.
 
-1. Nombre.
-2. Descripción.
-3. Ubicación.
-4. Municipio.
-5. Departamento.
-6. Área en hectáreas.
-7. Estado activo o inactivo.
+### 9.5 Verificación de consistencia
 
-### Flujo de uso paso a paso
+Después de un cambio de seguridad, conviene validar:
 
-1. Entre a Producción.
-2. Abra Fincas.
-3. Haga clic en Nuevo.
-4. Complete los datos de identificación y ubicación.
-5. Guarde.
-
-### Ejemplo práctico
-
-Ejemplo: se crea la finca El Mirador con su municipio, departamento y área, para luego asociarle cultivos y cosechas.
-
-## 10.4 Pantalla Cultivos
-
-### Propósito
-
-Organizar la producción dentro de cada finca y registrar con precisión qué se cultiva y de dónde proviene cada cosecha.
-
-### Opciones y campos de la pantalla
-
-1. Finca asociada.
-2. Producto asociado.
-3. Nombre del cultivo.
-4. Descripción.
-5. Cultivo.
-6. Área en hectáreas.
-7. Estado.
-
-### Flujo de uso paso a paso
-
-1. Abra Producción.
-2. Ingrese a Cultivos.
-3. Haga clic en Nuevo.
-4. Seleccione la finca y el producto.
-5. Ingrese el nombre, la descripción, el cultivo y el área.
-6. Active el registro si corresponde.
-7. Guarde.
-
-### Ejemplo práctico
-
-Ejemplo: en la finca El Mirador se crea el cultivo Lote Norte, asociado al producto café en cereza, para distinguir cosechas y operaciones agrícolas.
-
-## 10.5 Pantalla Operaciones agrícolas
-
-### Propósito
-
-Registrar las actividades realizadas en el cultivo y los costos que estas generan.
-
-### Funcionalidades principales
-
-1. Registrar aplicación de insumo.
-2. Registrar fertilización, poda, riego, jornal o mantenimiento.
-3. Asociar insumos cuando aplique.
-4. Capturar costo de mano de obra y otros costos.
-5. Anular operaciones cuando sea necesario revertir consumo y costo.
-
-### Opciones y campos de la pantalla
-
-1. Cultivo.
-2. Tipo de operación.
-3. Fecha.
-4. Insumo, cuando aplique.
-5. Cantidad de insumo.
-6. Costo de mano de obra.
-7. Costo otros.
-8. Observaciones.
-9. Estado de la operación.
-
-### Flujo de uso paso a paso
-
-1. Entre a Producción.
-2. Abra Operaciones agrícolas.
-3. Haga clic en Nuevo.
-4. Seleccione el cultivo.
-5. Elija el tipo de operación.
-6. Si usó insumos, selecciónelos y capture la cantidad.
-7. Ingrese costos de mano de obra y otros costos.
-8. Agregue observaciones si hace falta.
-9. Guarde.
-
-### Ejemplo práctico
-
-Ejemplo: se registra una fertilización en el cultivo Lote Norte, con el insumo utilizado, la cantidad aplicada y el costo de mano de obra. Más adelante, este costo podrá verse relacionado al lote cuando ese cultivo genere una cosecha.
-
-## 10.6 Pantalla Cosechas de café
-
-### Propósito
-
-Registrar el café recolectado en un cultivo y convertirlo en un lote inicial de producción propia.
-
-### Funcionalidades principales
-
-1. Registrar la cosecha.
-2. Indicar producto y estado del café.
-3. Capturar cantidad, humedad y costo de cosecha.
-4. Generar el lote inicial.
-5. Anular la cosecha si fue registrada incorrectamente.
-
-### Opciones y campos de la pantalla
-
-1. Cultivo.
-2. Producto.
-3. Estado del café.
-4. Fecha de cosecha.
-5. Cantidad.
-6. Humedad.
-7. Costo de cosecha.
-8. Código de lote opcional.
-9. Observaciones.
-10. Estado del registro.
-
-### Flujo de uso paso a paso
-
-1. Abra Producción.
-2. Ingrese a Cosechas de café.
-3. Haga clic en Nuevo.
-4. Seleccione el cultivo y el producto.
-5. Elija el estado del café.
-6. Ingrese fecha, cantidad y costo de cosecha.
-7. Capture humedad si la conoce.
-8. Defina un código de lote solo si la empresa ya maneja uno físico.
-9. Guarde.
-10. Revise el código de lote creado.
-
-### Ejemplo práctico
-
-Ejemplo: en el cultivo Lote Norte se cosechan 80 kg de café en cereza. Se registra la fecha, cantidad, humedad y costo. El sistema genera un lote que más adelante puede secarse, trillarse o tostarse.
-
-## 10.7 Pantalla Transformaciones de café
-
-### Propósito
-
-Registrar procesos que toman un lote origen y generan un nuevo lote de salida. Aquí se puede controlar el proceso de tostión por bache.
-
-### Funcionalidades principales
-
-1. Seleccionar lote origen con stock.
-2. Elegir el producto de salida.
-3. Definir el tipo de transformación.
-4. Registrar cantidades de entrada y salida.
-5. Calcular merma y rendimiento visibles en el listado.
-6. Asociar costo del proceso.
-7. Generar un nuevo lote de salida.
-8. Anular la transformación si hubo error.
-
-### Opciones y campos de la pantalla
-
-1. Lote origen.
-2. Producto salida.
-3. Tipo de transformación.
-4. Fecha de transformación.
-5. Cantidad de entrada.
-6. Cantidad de salida.
-7. Costo del proceso.
-8. Código de lote de salida opcional.
-9. Observaciones.
-10. Estado del registro.
-
-### Recomendación operativa para tostión por bache
-
-Use esta pantalla cada vez que un lote entre al proceso de tostión. Cada registro debe representar un bache real, con su lote origen, cantidad de entrada, cantidad de salida y costo del proceso.
-
-### Nota importante
-
-Puede aparecer una opción interna llamada Empaque 454 g dentro del tipo de transformación. Para el proceso normal de empaque comercial se recomienda usar la pantalla Empaques de café, que es la ruta operativa principal para presentaciones.
-
-### Flujo de uso paso a paso
-
-1. Abra Producción.
-2. Entre a Transformaciones de café.
-3. Haga clic en Nuevo.
-4. Seleccione el lote origen.
-5. Seleccione el producto de salida.
-6. Elija el tipo de transformación, por ejemplo Tostión.
-7. Ingrese fecha, cantidad de entrada, cantidad de salida y costo del proceso.
-8. Si ya tiene un código de lote de salida, escríbalo.
-9. Guarde.
-10. Revise el nuevo lote resultante.
-
-### Ejemplo práctico
-
-Ejemplo: un lote de café seco entra a un bache de tostión. Se registran 50 kg de entrada, 45 kg de salida y el costo del proceso. El sistema deja trazado el lote origen y el lote tostado resultante.
-
-## 10.8 Pantalla Empaques de café
-
-### Propósito
-
-Transformar un lote origen en uno o varios lotes de salida listos para su venta en presentaciones comerciales.
-
-### Funcionalidades principales
-
-1. Seleccionar el lote origen con stock.
-2. Definir fecha y costo de empaque.
-3. Agregar una o varias líneas de empaque.
-4. Elegir productos de salida con presentación asociada.
-5. Crear lotes de salida por cada línea.
-6. Consultar el peso total de la operación.
-7. Anular empaques cuando sea necesario revertir lotes de salida.
-
-### Opciones y campos de la pantalla
-
-1. Lote origen.
-2. Fecha de empaque.
-3. Costo de empaque.
-4. Observaciones.
-5. Líneas de empaque.
-6. Producto de salida por línea.
-7. Cantidad por línea.
-8. Código de lote de salida opcional por línea.
-9. Peso total calculado.
-
-### Flujo de uso paso a paso
-
-1. Abra Producción.
-2. Entre a Empaques de café.
-3. Haga clic en Nuevo.
-4. Seleccione el lote origen.
-5. Ingrese la fecha y el costo de empaque.
-6. Agregue una línea por cada presentación que vaya a producir.
-7. En cada línea, seleccione el producto de salida correcto.
-8. Ingrese la cantidad de unidades a empacar.
-9. Repita para todas las presentaciones necesarias.
-10. Guarde.
-11. Revise los lotes de salida generados.
-
-### Ejemplo práctico
-
-Ejemplo: de un lote de café tostado se empacan 100 bolsas de 250 g, 60 bolsas de 454 g y 40 bolsas de 500 g. Cada presentación queda trazada como salida del lote origen y genera sus propios lotes de empaque.
+1. Que el usuario pueda iniciar sesión.
+2. Que vea solo las opciones permitidas.
+3. Que las acciones sensibles estén bloqueadas cuando corresponda.
+4. Que la cobertura de acceso del Dashboard siga siendo la esperada.
 
 <div style="page-break-after: always;"></div>
 
-## 11. Módulo Inventario
+## 10. Buenas prácticas administrativas
 
-## 11.1 Descripción general del propósito
-
-Este módulo se enfoca en tres tareas diarias: revisar existencias, mantener productos y entrar rápido a recepciones, ventas o transformaciones. La trazabilidad por lote se conserva, pero queda detrás de una experiencia más simple para usuarios operativos.
-
-## 11.2 Funcionalidades principales
-
-1. Consultar existencias por producto y bajar al detalle por lote cuando haga falta.
-2. Ir directamente a entradas, salidas o transformaciones desde inventario.
-3. Crear productos sin depender de varias pantallas previas.
-4. Mantener unidades de medida y definir el formato del producto sin salir del flujo principal.
-
-## 11.3 Pantalla Existencias
-
-### Propósito
-
-Dar una vista rápida de qué productos tienen stock, cuántos lotes activos existen y cuánto hay disponible antes de revisar el detalle de un lote específico.
-
-### Funcionalidades principales
-
-1. Ver un resumen por producto con cantidad disponible y número de lotes.
-2. Filtrar por producto.
-3. Abrir el detalle de lotes de un producto.
-4. Entrar al historial completo de un lote.
-5. Ir directamente a registrar una salida o una transformación desde el resumen del producto.
-
-### Explicación de opciones y pantallas
-
-En la vista principal se muestra:
-
-1. Tarjetas con total de productos, lotes activos y lotes sin stock.
-2. Tabla resumen por producto.
-3. Botones para ver detalle, registrar salida y transformar o empacar.
-4. Debajo, la lista de lotes del producto seleccionado o del conjunto filtrado.
-
-En el historial de un lote se muestran estas secciones:
-
-1. Resumen general del lote.
-2. Origen.
-3. Historial de movimientos.
-4. Transformaciones relacionadas.
-5. Costos relacionados.
-6. Operaciones agrícolas relacionadas.
-
-### Flujo de uso paso a paso
-
-1. Abra Inventario.
-2. Ingrese a Existencias.
-3. Revise primero el resumen por producto.
-4. Si necesita una acción, use Registrar salida o Transformar o empacar desde la fila del producto.
-5. Si necesita trazabilidad, filtre por producto y abra el lote correspondiente.
-6. Revise origen, movimientos y transformaciones para entender el recorrido completo.
-
-### Ejemplo práctico
-
-Ejemplo: el área comercial quiere saber si todavía hay stock de Café molido 454 g. Desde Existencias revisa el resumen del producto, confirma cuántos lotes activos tiene y, si necesita detalle, abre el lote para revisar su historial.
-
-## 11.4 Pantalla Productos
-
-### Propósito
-
-Mantener el catálogo comercial de productos con la menor cantidad posible de pasos.
-
-### Funcionalidades principales
-
-1. Crear y editar productos.
-2. Definir o reutilizar el formato del producto sin salir del formulario.
-3. Definir unidad de medida.
-4. Configurar precios por tipo de venta.
-5. Activar o inactivar productos.
-
-### Opciones y campos de la pantalla
-
-1. Nombre.
-2. Descripción.
-3. Unidad.
-4. Formato.
-5. Tabla de precios por tipo de venta.
-6. Estado.
-
-### Flujo de uso paso a paso
-
-1. Abra Inventario.
-2. Entre a Productos.
-3. Haga clic en Nuevo.
-4. Ingrese el nombre del producto.
-5. Defina la unidad.
-6. Complete el formato si el producto lo necesita, o reutilice uno ya usado.
-7. Ingrese los precios según cada tipo de venta activo.
-8. Guarde.
-
-### Ejemplo práctico
-
-Ejemplo: se crea el producto Café tostado molido 454 g, se completa el formato 454 g dentro del mismo formulario, se define la unidad UN y se cargan sus precios Normal, Mayorista e Internet.
-
-## 11.5 Entradas, salidas y transformaciones
-
-### Propósito
-
-Ejecutar las operaciones reales del inventario desde su módulo fuente, sin una pantalla intermedia adicional.
-
-### Funcionalidades principales
-
-1. Registrar entrada desde Compras.
-2. Registrar salida desde Ventas.
-3. Transformar o empacar usando un lote existente como origen.
-
-### Flujo de uso paso a paso
-
-1. Revise Existencias si necesita confirmar stock o trazabilidad.
-2. Entre directamente a Recepciones de café, Ventas o Procesos según la tarea.
-3. Complete el flujo correspondiente.
-
-### Ejemplo práctico
-
-Ejemplo: para empacar café, el usuario revisa Existencias, entra a Procesos, elige el lote a usar, indica el producto resultante y registra el nuevo lote de salida.
-
-## 11.6 Pantalla Unidades de Medida
-
-### Propósito
-
-Mantener el único catálogo auxiliar que sigue siendo compartido por todo el inventario.
-
-### Elementos incluidos
-
-1. Unidades de medida activas e inactivas.
-
-### Flujo de uso paso a paso
-
-1. Abra Inventario.
-2. Ingrese a Unidades de medida.
-3. Cree, edite o inactive la unidad que necesite.
-
-### Ejemplo práctico
-
-Ejemplo: el administrador crea la unidad KG para nuevos productos y la deja disponible para captura en Productos. Los materiales o insumos de trabajo se administran desde Producción.
-
-## 11.7 Recomendación de uso
-
-Para la operación diaria, use primero Existencias, Productos, Recepciones de café, Ventas y Procesos. Entre a Unidades de medida solo cuando haga falta una nueva unidad base. Los materiales se administran desde Producción.
+1. Active las cuentas solo después de validar la identidad de la persona.
+2. Asigne el rol de menor privilegio suficiente para la tarea.
+3. Use roles por función y evite asignar permisos individuales sin un perfil claro.
+4. Revise el Dashboard al menos una vez por semana para detectar cuentas activas sin rol.
+5. Desactive las cuentas que dejan la organización antes de eliminarlas, para conservar el historial.
+6. Documente internamente qué significa cada rol personalizado.
+7. No comparta credenciales entre personas.
+8. Mantenga el rol **Admin** reservado para tareas de configuración.
 
 <div style="page-break-after: always;"></div>
 
-## 12. Módulo Ventas
+## 11. Límites actuales del sistema
 
-## 12.1 Descripción general del propósito
+Para no inducir a error, tenga en cuenta estos límites del alcance actual:
 
-El módulo de Ventas registra al cliente, el tipo de precio aplicado y la salida de inventario por lote. Es la etapa final de la trazabilidad comercial.
-
-## 12.2 Funcionalidades principales
-
-1. Mantener el catálogo de clientes.
-2. Configurar tipos de venta.
-3. Registrar ventas con una o varias líneas.
-4. Asociar el lote vendido al detalle de la venta.
-5. Consultar rentabilidad y salidas por lote.
-6. Anular ventas cuando se deba revertir la salida de inventario.
-
-## 12.3 Pantalla Clientes
-
-### Propósito
-
-Administrar la base de clientes que participan en la venta.
-
-### Opciones y campos de la pantalla
-
-1. Nombre.
-2. Documento.
-3. Teléfono.
-4. Email.
-5. Dirección.
-6. Estado.
-
-### Flujo de uso paso a paso
-
-1. Abra Ventas.
-2. Entre a Clientes.
-3. Haga clic en Nuevo.
-4. Ingrese los datos básicos.
-5. Guarde.
-
-### Ejemplo práctico
-
-Ejemplo: se crea el cliente Tienda La Estación para poder registrar una venta mayorista con sus datos completos.
-
-## 12.4 Pantalla Tipos de venta
-
-### Propósito
-
-Definir los tipos comerciales que controlan el precio aplicado en la venta.
-
-### Opciones y campos de la pantalla
-
-1. Código.
-2. Nombre.
-3. Orden.
-4. Estado.
-
-### Flujo de uso paso a paso
-
-1. Abra Ventas.
-2. Entre a Tipos de venta.
-3. Haga clic en Nuevo.
-4. Ingrese código y nombre.
-5. Defina el orden.
-6. Active el registro.
-7. Guarde.
-
-### Ejemplo práctico
-
-Ejemplo: se crean los tipos Normal y Mayorista. Después, en Productos, se define el precio para cada tipo, y en Ventas el usuario solo tendrá que seleccionar el tipo adecuado.
-
-## 12.5 Pantalla Ventas
-
-### Propósito
-
-Registrar la salida comercial del producto y dejar vinculados cliente, lote, precio aplicado y resultado económico de la operación.
-
-### Funcionalidades principales
-
-1. Seleccionar cliente.
-2. Definir método y estado de pago.
-3. Seleccionar tipo de precio.
-4. Agregar varias líneas de producto.
-5. Seleccionar lote cuando el producto se maneja por lotes.
-6. Ver precio unitario y subtotal calculados automáticamente.
-7. Consultar detalle completo de la venta.
-8. Revisar resumen de rentabilidad.
-9. Revisar salidas por lote.
-10. Anular la venta y revertir el inventario.
-
-### Opciones y campos de la pantalla de registro
-
-1. Cliente.
-2. Método de pago.
-3. Estado de pago.
-4. Tipo de precio.
-5. Líneas de venta.
-6. Producto por línea.
-7. Lote por línea, cuando aplica.
-8. Cantidad.
-9. Precio unitario calculado.
-10. Subtotal por línea.
-11. Total general.
-
-### Detalle de la venta
-
-Al abrir Ver detalle, el usuario puede consultar:
-
-1. Cliente.
-2. Fecha.
-3. Método de pago.
-4. Estado de pago.
-5. Tipo de precio.
-6. Total.
-7. Costo total.
-8. Margen bruto.
-9. Rentabilidad.
-10. Detalle por producto y lote.
-11. Salidas por lote.
-12. Pagos registrados, si existen.
-
-### Flujo de uso paso a paso
-
-1. Abra Ventas.
-2. Ingrese a la pantalla Ventas.
-3. Haga clic en Nuevo.
-4. Seleccione el cliente.
-5. Seleccione método de pago, si corresponde.
-6. Seleccione el estado de pago.
-7. Seleccione el tipo de precio.
-8. Agregue una línea.
-9. Seleccione el producto.
-10. Si el producto trabaja por lote, seleccione el lote disponible.
-11. Capture la cantidad.
-12. Verifique el precio unitario que propone el sistema.
-13. Revise el subtotal.
-14. Agregue más líneas si hace falta.
-15. Revise el total general.
-16. Guarde.
-17. Abra Ver detalle para revisar la rentabilidad y las salidas por lote.
-
-### Ejemplo práctico
-
-Ejemplo: un cliente compra 20 unidades de café tostado 454 g bajo precio Mayorista. El usuario selecciona el cliente, el tipo de precio Mayorista, el lote disponible del producto y la cantidad. El sistema calcula automáticamente el precio unitario y deja la salida vinculada al lote vendido.
+1. El sistema no incluye módulos operativos de compras, producción, inventario, ventas ni contabilidad.
+2. Los usuarios se crean desde el registro del portal; la administración no crea cuentas manualmente.
+3. La recuperación de contraseña no forma parte de este manual.
+4. La eliminación de usuarios y roles es lógica, no física.
+5. El Dashboard no muestra datos de negocio; solo indicadores de administración y seguridad.
+6. El periodo del Dashboard solo filtra las altas de usuarios.
+7. El catálogo de permisos depende de los endpoints realmente expuestos por la API.
 
 <div style="page-break-after: always;"></div>
 
-## 13. Módulo Contabilidad
-
-## 13.1 Descripción general del propósito
-
-El módulo de Contabilidad ayuda a revisar la carga económica de la operación y registrar conceptos manuales que complementan la trazabilidad de costos.
-
-## 13.2 Funcionalidades principales
-
-1. Consultar el balance resumido.
-2. Registrar costos manuales.
-3. Consultar costos generados desde producción.
-4. Registrar gastos.
-5. Registrar pasivos.
-
-## 13.3 Pantalla Balance
-
-### Propósito
-
-Ofrecer una vista resumida de costos, gastos, pasivos y posición neta.
-
-### Opciones y campos de la pantalla
-
-1. Tarjeta de costos activos.
-2. Tarjeta de gastos activos.
-3. Tarjeta de pasivos activos.
-4. Tarjeta de total egresos.
-5. Resumen de posición neta.
-
-### Flujo de uso paso a paso
-
-1. Abra Contabilidad.
-2. Entre a Balance.
-3. Revise los totales activos por categoría.
-4. Use el resultado para profundizar luego en Costos, Gastos o Pasivos.
-
-### Ejemplo práctico
-
-Ejemplo: el administrador financiero revisa si la carga de costos y gastos del período operativo amerita revisar con más detalle los costos generados por cosecha, transformación o empaque.
-
-## 13.4 Pantalla Costos
-
-### Propósito
-
-Consultar todos los costos y registrar aquellos que son manuales.
-
-### Funcionalidades principales
-
-1. Ver costos manuales y automáticos.
-2. Identificar el tipo de costo.
-3. Identificar el módulo fuente.
-4. Ver la relación con finca, cultivo o lote.
-5. Crear, editar y eliminar costos manuales.
-
-### Opciones y campos de la pantalla
-
-1. Nombre.
-2. Tipo de costo.
-3. Fuente.
-4. Relación.
-5. Monto.
-6. Fecha.
-7. Estado.
-
-### Flujo de uso paso a paso
-
-1. Abra Contabilidad.
-2. Ingrese a Costos.
-3. Revise si el costo ya existe como automático.
-4. Si necesita uno manual, haga clic en Nuevo.
-5. Ingrese nombre, monto, fecha y estado.
-6. Guarde.
-
-### Ejemplo práctico
-
-Ejemplo: se registra manualmente un costo extraordinario de mantenimiento de equipo que no nació desde Producción, pero que debe quedar contabilizado en el sistema.
-
-## 13.5 Pantalla Gastos
-
-### Propósito
-
-Registrar egresos operativos o administrativos que no son costos directos de producción.
-
-### Opciones y campos de la pantalla
-
-1. Nombre.
-2. Monto.
-3. Fecha.
-4. Estado.
-
-### Flujo de uso paso a paso
-
-1. Abra Contabilidad.
-2. Entre a Gastos.
-3. Haga clic en Nuevo.
-4. Ingrese nombre, monto, fecha y estado.
-5. Guarde.
-
-### Ejemplo práctico
-
-Ejemplo: se registra un gasto de transporte administrativo que no se quiere cargar como costo directo de un lote.
-
-## 13.6 Pantalla Pasivos
-
-### Propósito
-
-Registrar obligaciones financieras o compromisos pendientes.
-
-### Opciones y campos de la pantalla
-
-1. Nombre.
-2. Monto.
-3. Fecha.
-4. Estado.
-
-### Flujo de uso paso a paso
-
-1. Abra Contabilidad.
-2. Entre a Pasivos.
-3. Haga clic en Nuevo.
-4. Ingrese nombre, monto, fecha y estado.
-5. Guarde.
-
-### Ejemplo práctico
-
-Ejemplo: se registra un pasivo correspondiente a una obligación pendiente con un tercero para que el balance refleje la posición real del negocio.
-
-<div style="page-break-after: always;"></div>
-
-## 14. Proceso integral de trazabilidad del negocio
-
-Esta es la sección más importante del manual. Resume cómo capturar la operación para conservar la trazabilidad completa del negocio.
-
-## 14.1 Preparación de datos maestros
-
-Antes de iniciar la operación diaria, valide que existan estos registros:
-
-1. Fincas.
-2. Cultivos.
-3. Unidades de medida.
-4. Productos.
-5. Insumos.
-6. Tipos de venta.
-7. Clientes.
-8. Proveedores, si habrá compras.
-
-### Recomendación para formatos 250 g, 454 g y 500 g
-
-1. Cree o valide los productos de salida de 250 g, 454 g y 500 g desde Inventario, Productos.
-2. Complete el formato correspondiente dentro de cada producto.
-3. Cargue los precios Normal y Mayorista en cada producto.
-
-## 14.2 Producción del café desde cultivo hasta empaque
-
-### Paso 1. Registrar la estructura productiva
-
-1. Cree la finca.
-2. Cree los cultivos asociados.
-3. Mantenga activas únicamente las ubicaciones vigentes.
-
-### Paso 2. Registrar operaciones agrícolas
-
-1. Capture cada actividad relevante realizada en el cultivo.
-2. Registre insumos, mano de obra y otros costos.
-3. Anule el registro si hubo error y vuelva a crearlo correctamente.
-
-### Paso 3. Registrar la cosecha
-
-1. Capture cultivo, producto, estado del café, fecha, cantidad y costo de cosecha.
-2. Guarde.
-3. Verifique el lote generado.
-
-### Paso 4. Consultar el lote en inventario
-
-1. Vaya a Inventario, Lotes.
-2. Localice el código de lote.
-3. Abra el detalle.
-4. Revise la sección Origen para comprobar que el lote quedó asociado a la cosecha correcta.
-
-### Paso 5. Procesar el lote por baches
-
-1. Si el café debe cambiar de estado, use Transformaciones de café.
-2. Registre cada bache como una transformación individual.
-3. Si el proceso es tostión, use tipo de transformación Tostión.
-4. Registre cantidad de entrada, cantidad de salida y costo del proceso.
-5. Guarde y valide el nuevo lote de salida.
-
-### Paso 6. Empacar el café
-
-1. Use Empaques de café con el lote origen ya transformado o tostado.
-2. Agregue una línea por cada presentación comercial.
-3. Seleccione el producto de salida correspondiente a 250 g, 454 g o 500 g.
-4. Ingrese la cantidad de unidades a empacar.
-5. Guarde.
-6. Revise los lotes de salida generados para cada presentación.
-
-## 14.3 Gestión de inventario
-
-Para mantener un inventario confiable:
-
-1. No registre ventas sin seleccionar el lote correcto cuando el producto se maneje por lote.
-2. Use el detalle del lote para verificar origen, transformaciones, empaques y salidas.
-3. Mantenga los productos y sus formatos activos según el portafolio vigente.
-4. Valide stock y cantidad disponible antes de vender o transformar.
-
-## 14.4 Proceso de tostión por baches
-
-Use esta secuencia como procedimiento estándar:
-
-1. Identifique el lote que entrará a tostión.
-2. Abra Producción, Transformaciones de café.
-3. Cree un nuevo registro con tipo Tostión.
-4. Capture el lote origen.
-5. Capture la cantidad de entrada al bache.
-6. Capture la cantidad de salida del bache.
-7. Registre el costo del proceso.
-8. Guarde y valide el código del nuevo lote tostado.
-9. Consulte el lote de salida en Inventario, Lotes.
-10. Verifique que el origen del nuevo lote apunte al lote tostado de entrada.
-
-## 14.5 Manejo de diferentes formatos
-
-Para trabajar con 250 g, 454 g y 500 g:
-
-1. Cree un producto específico para cada formato si el negocio los vende por separado.
-2. En cada producto, complete el formato correcto dentro del formulario.
-3. Valide unidad, cantidad y código antes de guardar.
-4. En Empaques de café, use una línea por cada producto de salida.
-5. Guarde el empaque para que el sistema genere los lotes correspondientes.
-
-### Ejemplo práctico de empaque múltiple
-
-1. Lote tostado origen: LT-20260420-01.
-2. Formatos a producir: 250 g, 454 g y 500 g.
-3. Cantidades: 100, 60 y 40 unidades respectivamente.
-4. Resultado esperado: tres salidas asociadas al mismo empaque, cada una con su lote de salida y su relación con el lote origen.
-
-## 14.6 Aplicación de precios mayorista y detal
-
-El sistema actual aplica precio de esta forma:
-
-1. Los precios se configuran en el producto por tipo de venta.
-2. El usuario elige el tipo de precio al crear la venta.
-3. El precio unitario de cada línea se calcula automáticamente según ese tipo.
-
-### Procedimiento recomendado
-
-1. Defina al menos los tipos de venta Normal y Mayorista.
-2. Configure en cada producto el precio correspondiente a Normal y Mayorista.
-3. Al registrar la venta, elija el tipo de precio correcto antes de agregar las líneas.
-4. Verifique el precio unitario calculado por el sistema en cada línea.
-
-### Interpretación práctica
-
-1. Normal equivale al precio detal en la operación diaria.
-2. Mayorista equivale al precio para clientes al por mayor.
-3. Internet puede mantenerse como un tercer canal si la empresa lo usa.
-
-## 14.7 Trazabilidad de la venta paso a paso
-
-Para que la venta quede completamente trazable dentro del alcance actual del sistema, siga esta secuencia:
-
-### Paso 1. Verifique que el producto a vender exista y tenga precio
-
-1. Revise el producto en Inventario, Productos.
-2. Confirme que el precio Normal y Mayorista estén cargados.
-
-### Paso 2. Verifique que exista stock y lote disponible
-
-1. Vaya a Inventario, Lotes.
-2. Confirme que el lote esté activo y con cantidad disponible.
-
-### Paso 3. Registre o valide el cliente
-
-1. Si el cliente no existe, créelo en Ventas, Clientes.
-2. Si la venta no requiere cliente identificado por política interna, defina previamente cómo manejará ese caso la organización.
-
-### Paso 4. Cree la venta
-
-1. Abra Ventas.
-2. Haga clic en Nuevo.
-3. Seleccione el cliente.
-4. Seleccione método de pago, si aplica.
-5. Seleccione el estado de pago.
-6. Seleccione el tipo de precio, por ejemplo Normal o Mayorista.
-7. Agregue las líneas de producto.
-8. Seleccione el lote exacto en cada línea cuando corresponda.
-9. Capture la cantidad.
-10. Revise el precio unitario y el subtotal.
-11. Guarde.
-
-### Paso 5. Verifique el detalle de la venta
-
-1. Abra Ver detalle en la venta recién creada.
-2. Confirme cliente, fecha, método de pago, tipo de precio y total.
-3. Confirme que cada línea tenga el lote correcto.
-4. Revise la sección Salidas por lote.
-
-### Paso 6. Verifique la trazabilidad desde el lote
-
-1. Vaya a Inventario, Lotes.
-2. Abra el lote vendido.
-3. Revise la sección Movimientos del lote.
-4. Confirme que aparezca la referencia a la venta y al cliente.
-
-## 14.8 Datos que deben quedar registrados en la venta
-
-Dentro del alcance actual del sistema, una venta bien registrada debe dejar trazados estos datos:
-
-| Dato | Estado actual en el sistema | Dónde se valida |
-| --- | --- | --- |
-| Registro de la venta | Sí | Pantalla Ventas y detalle de venta |
-| Producto vendido | Sí | Líneas de la venta |
-| Lote o bache de origen | Sí, cuando el producto maneja lotes | Línea de venta y salidas por lote |
-| Tipo de venta | Sí | Campo Tipo de precio |
-| Precio aplicado | Sí | Precio unitario y subtotal |
-| Cliente | Sí | Encabezado de la venta |
-| Método de pago | Sí, si se selecciona | Encabezado y pagos |
-| Estado de pago | Sí | Encabezado de la venta |
-| Fecha de la venta | Sí | Encabezado y listado |
-| Usuario que realiza la venta | No visible como campo operativo en la pantalla de venta actual | Requiere control complementario o futura mejora |
-| Descuento | No existe como campo nativo en la venta actual | Requiere control complementario o futura mejora |
-
-## 14.9 Qué hacer con descuento y usuario mientras no existan como campos visibles
-
-Para no inducir a error, este manual no presenta descuento ni usuario capturador como datos operativos visibles de la venta, porque hoy no aparecen como campos nativos en el flujo de ventas revisado.
-
-Mientras esa funcionalidad no exista de forma explícita en la interfaz, la organización debe definir un control complementario interno si necesita:
-
-1. Registrar descuentos comerciales por operación.
-2. Exigir que el usuario capturador quede visible dentro del comprobante o consulta de venta.
-
-## 14.10 Escenario práctico 1: producción propia hasta venta detal
-
-1. Crear finca y cultivo.
-2. Registrar operaciones agrícolas.
-3. Registrar cosecha y generar lote.
-4. Registrar tostión por bache en Transformaciones.
-5. Registrar empaque en 454 g.
-6. Crear o validar el cliente.
-7. Registrar la venta con tipo de precio Normal.
-8. Abrir el lote final y confirmar origen, transformación, empaque y movimiento de venta.
-
-## 14.11 Escenario práctico 2: compra de café y venta mayorista
-
-1. Crear o validar proveedor.
-2. Registrar recepción de café y generar lote de compra.
-3. Si aplica, transformar o empacar el producto.
-4. Crear o validar cliente mayorista.
-5. Registrar la venta con tipo de precio Mayorista.
-6. Confirmar en el detalle de la venta el lote usado y el precio aplicado.
-7. Abrir el lote vendido para verificar que el origen quedó como Recepción de compra.
-
-<div style="page-break-after: always;"></div>
-
-## 15. Buenas prácticas operativas
-
-1. No deje para después la selección del lote en ventas. Ese dato es la base de la trazabilidad comercial.
-2. Configure primero los productos y sus formatos antes de intentar empacar.
-3. Registre cada bache de tostión por separado, aunque provenga del mismo lote general.
-4. Use la anulación en lugar de editar procesos operativos ya registrados.
-5. Revise el detalle del lote al menos una vez después de cada operación crítica: cosecha, transformación, empaque y venta.
-6. Mantenga activos solo los catálogos vigentes para reducir errores de captura.
-
-<div style="page-break-after: always;"></div>
-
-## 16. Límites actuales del sistema
-
-Este punto es importante para que el usuario no espere funciones que aún no están visibles en la operación diaria:
-
-1. Las ventas no muestran un campo nativo para descuento.
-2. Las ventas no muestran un campo operativo visible para identificar directamente el usuario que registró la venta.
-3. Los procesos de cosecha, recepción, transformación, empaque y operación agrícola se manejan principalmente mediante crear y anular, no mediante edición posterior.
-4. El balance es una vista de resumen; no reemplaza el análisis detallado por lote o por período contable formal.
-5. Los métodos de pago se seleccionan en ventas, pero su administración no aparece como módulo visible dentro del portal revisado.
-
-<div style="page-break-after: always;"></div>
-
-## 17. Glosario breve
+## 12. Glosario breve
 
 | Término | Significado |
 | --- | --- |
-| Lote origen | Lote que entra a un proceso |
-| Lote salida | Lote que resulta de una transformación o empaque |
-| Bache | Registro individual de un proceso, por ejemplo una tostión |
-| Formato | Tamaño comercial del producto, expresado en gramos u otra unidad |
-| Tipo de precio | Regla comercial con la que el sistema calcula el precio de venta |
-| Movimiento de lote | Entrada o salida registrada sobre un lote |
-| Anulación | Reversión operativa de un registro ya creado |
+| Usuario | Cuenta que puede iniciar sesión en el portal |
+| Rol | Perfil que agrupa permisos y se asigna a usuarios |
+| Permiso | Combinación de módulo y acción autorizada |
+| Módulo | Área funcional sobre la que se aplica un permiso |
+| Acción | Operación permitida: Ver, Crear, Editar o Eliminar |
+| Cobertura de acceso | Porcentaje de usuarios activos con al menos un rol |
+| Activación | Cambio de una cuenta pendiente a estado activo |
+| Eliminación lógica | Retiro de un registro de las listas activas sin borrar su historial |
+| Periodo | Ventana de tiempo usada para contar altas de usuarios |
+| Catálogo de permisos | Lista de módulos y acciones descubierta desde la API |
 
 <div style="page-break-after: always;"></div>
 
-## 18. Cierre
+## 13. Cierre
 
 Si el usuario sigue este manual en el orden propuesto, podrá:
 
-1. Registrar la producción o compra del café.
-2. Convertir esa materia prima en lotes trazables.
-3. Transformar y empacar el producto en diferentes formatos.
-4. Aplicar precio mayorista o detal según el caso.
-5. Registrar la venta vinculada al lote correcto.
-6. Consultar la trazabilidad completa desde el origen hasta la salida final.
+1. Ingresar al portal y entender el estado de su cuenta.
+2. Interpretar los indicadores del Dashboard.
+3. Activar cuentas y asignar roles.
+4. Crear roles y ajustar permisos por módulo y acción.
+5. Verificar que la cobertura de acceso sea la esperada.
 
-La recomendación final es usar siempre el detalle del lote como punto de validación, porque allí converge la mayor parte de la trazabilidad del negocio.
+La recomendación final es revisar el Dashboard después de cada cambio de seguridad: allí se refleja de inmediato el efecto de las altas, los roles y los permisos sobre el acceso al sistema.

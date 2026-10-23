@@ -36,23 +36,25 @@ public sealed class PermissionCatalogEndpointTests
         var byModule = catalog!
             .ToDictionary(item => item.Modulo, item => item.Acciones, StringComparer.OrdinalIgnoreCase);
 
-        // Solo lectura: no existen endpoints de creación/edición/eliminación para estos módulos.
-        Assert.Equal(new[] { "Ver" }, byModule["Inventario.Lotes"]);
-        Assert.Equal(new[] { "Ver" }, byModule["Ventas.MetodosPago"]);
+        // El alcance actual del proyecto solo expone los módulos de Administración.
+        Assert.Equal(3, catalog!.Length);
+        Assert.Equal(
+            new[]
+            {
+                "Administracion.Permisos",
+                "Administracion.Roles",
+                "Administracion.Usuarios",
+            },
+            catalog.Select(item => item.Modulo).ToArray());
 
         // Usuarios se activa/desactiva y se le asignan roles, pero no se crea desde administración.
-        Assert.DoesNotContain("Crear", byModule["Administracion.Usuarios"]);
+        Assert.Equal(new[] { "Ver", "Editar", "Eliminar" }, byModule["Administracion.Usuarios"]);
 
-        // Ventas permite crear y eliminar, pero no editar.
-        Assert.Contains("Ver", byModule["Ventas.Ventas"]);
-        Assert.Contains("Crear", byModule["Ventas.Ventas"]);
-        Assert.Contains("Eliminar", byModule["Ventas.Ventas"]);
-        Assert.DoesNotContain("Editar", byModule["Ventas.Ventas"]);
+        // Roles permite el ciclo CRUD completo.
+        Assert.Equal(new[] { "Ver", "Crear", "Editar", "Eliminar" }, byModule["Administracion.Roles"]);
 
         // El propio módulo de permisos se descubre por sus endpoints de consulta y edición.
-        Assert.Contains("Ver", byModule["Administracion.Permisos"]);
-        Assert.Contains("Editar", byModule["Administracion.Permisos"]);
-        Assert.DoesNotContain("Crear", byModule["Administracion.Permisos"]);
+        Assert.Equal(new[] { "Ver", "Editar" }, byModule["Administracion.Permisos"]);
     }
 
     private sealed record CatalogItem(string Modulo, string[] Acciones);

@@ -21,55 +21,42 @@ export type DashboardSummaryWindow = {
   comparisonAvailable: boolean;
 };
 
-export type DashboardSummary = {
+export type DashboardUsersSummary = {
+  totalCount: number;
+  activeCount: number;
+  pendingCount: number;
+  inactiveCount: number;
+  newCount: number;
+};
+
+export type DashboardRolesSummary = {
+  totalCount: number;
+  activeCount: number;
+  assignmentsCount: number;
+};
+
+export type DashboardPermissionsSummary = {
+  assignmentsCount: number;
+  distinctCount: number;
+  moduleCount: number;
+};
+
+export type DashboardAccessSummary = {
+  activeUsersCount: number;
+  usersWithRolesCount: number;
+  coveragePercent: number;
+};
+
+export type DashboardAdminMetrics = {
+  users: DashboardUsersSummary;
+  roles: DashboardRolesSummary;
+  permissions: DashboardPermissionsSummary;
+  access: DashboardAccessSummary;
+};
+
+export type DashboardSummary = DashboardAdminMetrics & {
   window: DashboardSummaryWindow;
-  previousPeriod: {
-    window: DashboardSummaryWindow;
-    production: {
-      activeLotsCount: number;
-      lotsWithStockCount: number;
-      availableQuantity: number;
-      availableUnit: string | null;
-      processRecordsCount: number;
-    };
-    commercial: {
-      activeSalesCount: number;
-      activeSalesTotal: number;
-      activeCustomersCount: number;
-    };
-    finance: {
-      grossMarginAmount: number;
-      grossMarginPercent: number;
-      activeCostsTotal: number;
-    };
-    traceability: {
-      activeLotsCount: number;
-      traceableLotsCount: number;
-      coveragePercent: number;
-    };
-  } | null;
-  production: {
-    activeLotsCount: number;
-    lotsWithStockCount: number;
-    availableQuantity: number;
-    availableUnit: string | null;
-    processRecordsCount: number;
-  };
-  commercial: {
-    activeSalesCount: number;
-    activeSalesTotal: number;
-    activeCustomersCount: number;
-  };
-  finance: {
-    grossMarginAmount: number;
-    grossMarginPercent: number;
-    activeCostsTotal: number;
-  };
-  traceability: {
-    activeLotsCount: number;
-    traceableLotsCount: number;
-    coveragePercent: number;
-  };
+  previousPeriod: (DashboardAdminMetrics & { window: DashboardSummaryWindow }) | null;
   generatedAtUtc: string;
 };
 

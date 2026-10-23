@@ -20,56 +20,56 @@ export function buildDashboardMetrics(
   locale: string,
   t: DashboardTranslator
 ): DashboardMetricViewModel[] {
-  const productionTrend = getProductionTrend(summary, locale, t);
-  const commercialTrend = getMonetaryTrend(summary.commercial.activeSalesTotal, summary.previousPeriod?.commercial.activeSalesTotal, locale, t);
-  const financeTrend = getPointsTrend(summary.finance.grossMarginPercent, summary.previousPeriod?.finance.grossMarginPercent, locale, t);
-  const traceabilityTrend = getPointsTrend(summary.traceability.coveragePercent, summary.previousPeriod?.traceability.coveragePercent, locale, t);
+  const newUsersTrend = getNewUsersTrend(summary, locale, t);
 
   return [
     {
       tone: 'production',
-      title: t('kpiProductionLabel'),
-      value: formatProductionValue(locale, summary.production),
-      trendLabel: productionTrend.label,
-      trendIntent: productionTrend.intent,
-      caption: t('kpiProductionCaption', {
-        count: summary.production.lotsWithStockCount,
-        processes: summary.production.processRecordsCount,
+      title: t('kpiUsersLabel'),
+      value: formatCount(locale, summary.users.newCount),
+      trendLabel: newUsersTrend.label,
+      trendIntent: newUsersTrend.intent,
+      caption: t('kpiUsersCaption', {
+        active: summary.users.activeCount,
+        total: summary.users.totalCount,
       }),
-      description: t('kpiProductionDescription'),
+      description: t('kpiUsersDescription'),
     },
     {
       tone: 'commercial',
-      title: t('kpiCommercialLabel'),
-      value: formatCurrency(locale, summary.commercial.activeSalesTotal),
-      trendLabel: commercialTrend.label,
-      trendIntent: commercialTrend.intent,
-      caption: t('kpiCommercialCaption', {
-        count: summary.commercial.activeSalesCount,
-        customers: summary.commercial.activeCustomersCount,
+      title: t('kpiRolesLabel'),
+      value: formatCount(locale, summary.roles.activeCount),
+      trendLabel: t('currentState'),
+      trendIntent: 'neutral',
+      caption: t('kpiRolesCaption', {
+        total: summary.roles.totalCount,
+        assignments: summary.roles.assignmentsCount,
       }),
-      description: t('kpiCommercialDescription'),
+      description: t('kpiRolesDescription'),
     },
     {
       tone: 'finance',
-      title: t('kpiFinanceLabel'),
-      value: formatPercent(locale, summary.finance.grossMarginPercent),
-      trendLabel: financeTrend.label,
-      trendIntent: financeTrend.intent,
-      caption: t('kpiFinanceCaption', { amount: formatCurrency(locale, summary.finance.activeCostsTotal) }),
-      description: t('kpiFinanceDescription'),
+      title: t('kpiPermissionsLabel'),
+      value: formatCount(locale, summary.permissions.distinctCount),
+      trendLabel: t('currentState'),
+      trendIntent: 'neutral',
+      caption: t('kpiPermissionsCaption', {
+        modules: summary.permissions.moduleCount,
+        assignments: summary.permissions.assignmentsCount,
+      }),
+      description: t('kpiPermissionsDescription'),
     },
     {
       tone: 'traceability',
-      title: t('kpiTraceabilityLabel'),
-      value: formatPercent(locale, summary.traceability.coveragePercent),
-      trendLabel: traceabilityTrend.label,
-      trendIntent: traceabilityTrend.intent,
-      caption: t('kpiTraceabilityCaption', {
-        count: summary.traceability.traceableLotsCount,
-        total: summary.traceability.activeLotsCount,
+      title: t('kpiAccessLabel'),
+      value: formatPercent(locale, summary.access.coveragePercent),
+      trendLabel: t('currentState'),
+      trendIntent: 'neutral',
+      caption: t('kpiAccessCaption', {
+        users: summary.access.usersWithRolesCount,
+        active: summary.access.activeUsersCount,
       }),
-      description: t('kpiTraceabilityDescription'),
+      description: t('kpiAccessDescription'),
     },
   ];
 }
@@ -79,51 +79,14 @@ type DashboardTrendViewModel = {
   intent: DashboardMetricTrendIntent;
 };
 
-function getProductionTrend(summary: DashboardSummary, locale: string, t: DashboardTranslator): DashboardTrendViewModel {
-  const previous = summary.previousPeriod?.production;
-  if (!previous) {
+function getNewUsersTrend(summary: DashboardSummary, locale: string, t: DashboardTranslator): DashboardTrendViewModel {
+  const previousValue = summary.previousPeriod?.users.newCount;
+  if (previousValue === undefined) {
     return createUnavailableTrend(t);
   }
 
-  const currentUnit = summary.production.availableUnit?.trim().toLowerCase();
-  const previousUnit = previous.availableUnit?.trim().toLowerCase();
-  const compareQuantity = Boolean(currentUnit && previousUnit && currentUnit === previousUnit);
-
-  if (compareQuantity) {
-    const delta = summary.production.availableQuantity - previous.availableQuantity;
-    return createTrend(t, formatSignedQuantity(locale, delta, summary.production.availableUnit), delta);
-  }
-
-  const delta = summary.production.lotsWithStockCount - previous.lotsWithStockCount;
+  const delta = summary.users.newCount - previousValue;
   return createTrend(t, formatSignedCount(locale, delta), delta);
-}
-
-function getMonetaryTrend(
-  currentValue: number,
-  previousValue: number | undefined,
-  locale: string,
-  t: DashboardTranslator
-): DashboardTrendViewModel {
-  if (previousValue === undefined) {
-    return createUnavailableTrend(t);
-  }
-
-  const delta = currentValue - previousValue;
-  return createTrend(t, formatSignedCurrency(locale, delta), delta);
-}
-
-function getPointsTrend(
-  currentValue: number,
-  previousValue: number | undefined,
-  locale: string,
-  t: DashboardTranslator
-): DashboardTrendViewModel {
-  if (previousValue === undefined) {
-    return createUnavailableTrend(t);
-  }
-
-  const delta = currentValue - previousValue;
-  return createTrend(t, formatSignedPoints(locale, delta), delta);
 }
 
 function createTrend(t: DashboardTranslator, delta: string, value: number): DashboardTrendViewModel {
@@ -152,15 +115,6 @@ function resolveTrendIntent(value: number): DashboardMetricTrendIntent {
   return 'neutral';
 }
 
-export function formatCurrency(locale: string, value: number) {
-  const formatter = new Intl.NumberFormat(locale, {
-    notation: Math.abs(value) >= 100000 ? 'compact' : 'standard',
-    maximumFractionDigits: Math.abs(value) >= 100000 ? 1 : 0,
-  });
-
-  return `$${formatter.format(value)}`;
-}
-
 export function formatPercent(locale: string, value: number) {
   const formatter = new Intl.NumberFormat(locale, {
     minimumFractionDigits: Number.isInteger(value) ? 0 : 1,
@@ -170,61 +124,22 @@ export function formatPercent(locale: string, value: number) {
   return `${formatter.format(value)}%`;
 }
 
-export function formatQuantity(locale: string, value: number) {
-  return new Intl.NumberFormat(locale, {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: Math.abs(value) >= 100 ? 0 : 1,
-  }).format(value);
-}
-
 export function formatCount(locale: string, value: number) {
   return new Intl.NumberFormat(locale, {
     maximumFractionDigits: 0,
   }).format(value);
 }
 
-export function formatPoints(locale: string, value: number) {
-  const formatter = new Intl.NumberFormat(locale, {
-    minimumFractionDigits: Number.isInteger(value) ? 0 : 1,
-    maximumFractionDigits: 1,
-  });
-
-  return `${formatter.format(value)} pp`;
-}
-
-export function formatProductionValue(locale: string, production: DashboardSummary['production']) {
-  if (production.availableUnit && production.availableQuantity > 0) {
-    return `${formatQuantity(locale, production.availableQuantity)} ${production.availableUnit}`;
-  }
-
-  return formatCount(locale, production.lotsWithStockCount);
-}
-
-function formatSignedCurrency(locale: string, value: number) {
-  return formatSignedValue(value, formatCurrency(locale, Math.abs(value)));
-}
-
 function formatSignedCount(locale: string, value: number) {
-  return formatSignedValue(value, formatCount(locale, Math.abs(value)));
-}
+  const absolute = formatCount(locale, Math.abs(value));
 
-function formatSignedQuantity(locale: string, value: number, unit?: string | null) {
-  const base = `${formatQuantity(locale, Math.abs(value))}${unit ? ` ${unit}` : ''}`;
-  return formatSignedValue(value, base);
-}
-
-function formatSignedPoints(locale: string, value: number) {
-  return formatSignedValue(value, formatPoints(locale, Math.abs(value)));
-}
-
-function formatSignedValue(value: number, formattedAbsoluteValue: string) {
   if (value > 0) {
-    return `+${formattedAbsoluteValue}`;
+    return `+${absolute}`;
   }
 
   if (value < 0) {
-    return `-${formattedAbsoluteValue}`;
+    return `-${absolute}`;
   }
 
-  return formattedAbsoluteValue;
+  return absolute;
 }

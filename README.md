@@ -6,6 +6,8 @@ ProyectoCafe migra la funcionalidad de berry-free-react-admin-template a una arq
 - Frontend: `ProyectoCafe/Portal` (Next.js)
 
 > Este repo está en construcción: migración por módulos, evitando copiar la estructura legacy.
+>
+> Alcance funcional actual: **Dashboard** y **Administración** (usuarios, roles y permisos). El resto de módulos operativos fue retirado.
 
 # Iniciar Back y front
 Set-Location -Path "c:\ProyectoCafe\Portal"; npm run dev

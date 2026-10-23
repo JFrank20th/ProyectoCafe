@@ -1,10 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using ProyectoCafe.Application.Produccion.OperacionesAgricolas;
+using ProyectoCafe.Domain.Entities;
 using ProyectoCafe.Infrastructure.Data;
 
 namespace ProyectoCafe.API.Endpoints;
 
+/// <summary>
+/// Resumen del Dashboard para los módulos vigentes (Administración).
+/// Expone indicadores de usuarios, roles, permisos y cobertura de acceso.
+/// </summary>
 public static class DashboardEndpoints
 {
     public static IEndpointRouteBuilder MapDashboardEndpoints(this IEndpointRouteBuilder endpoints)
@@ -52,10 +56,10 @@ public static class DashboardEndpoints
                 previousPeriod = new DashboardPreviousPeriodSummary
                 {
                     Window = previousWindow.ToResponse(),
-                    Production = previous.Production,
-                    Commercial = previous.Commercial,
-                    Finance = previous.Finance,
-                    Traceability = previous.Traceability,
+                    Users = previous.Users,
+                    Roles = previous.Roles,
+                    Permissions = previous.Permissions,
+                    Access = previous.Access,
                 };
             }
 
@@ -63,10 +67,10 @@ public static class DashboardEndpoints
             {
                 Window = window.ToResponse(),
                 PreviousPeriod = previousPeriod,
-                Production = current.Production,
-                Commercial = current.Commercial,
-                Finance = current.Finance,
-                Traceability = current.Traceability,
+                Users = current.Users,
+                Roles = current.Roles,
+                Permissions = current.Permissions,
+                Access = current.Access,
                 GeneratedAtUtc = nowUtc,
             };
 
@@ -83,245 +87,109 @@ public static class DashboardEndpoints
         var startUtc = window.StartInclusiveUtc;
         var endUtc = window.EndExclusiveUtc;
 
-        var activeLotsQuery = db.Lotes.Where(lote => lote.Estado == "Activo");
+        // Usuarios vigentes (se excluyen los eliminados lógicamente).
+        var usersQuery = db.Usuarios.Where(usuario => usuario.Estado != UsuarioEstado.Eliminado);
+
+        var totalUsers = await usersQuery.CountAsync(ct);
+        var activeUsers = await usersQuery
+            .CountAsync(usuario => usuario.Estado == UsuarioEstado.Activo, ct);
+        var pendingUsers = await usersQuery
+            .CountAsync(usuario => usuario.Estado == UsuarioEstado.PendienteActivacion, ct);
+        var inactiveUsers = await usersQuery
+            .CountAsync(usuario => usuario.Estado == UsuarioEstado.Inactivo, ct);
+
+        // Usuarios creados dentro de la ventana consultada.
+        var newUsersQuery = usersQuery;
         if (startUtc.HasValue)
         {
-            activeLotsQuery = activeLotsQuery.Where(lote => lote.FechaCreacion >= startUtc.Value);
+            newUsersQuery = newUsersQuery.Where(usuario => usuario.CreadoEn >= startUtc.Value);
         }
 
         if (endUtc.HasValue)
         {
-            activeLotsQuery = activeLotsQuery.Where(lote => lote.FechaCreacion < endUtc.Value);
+            newUsersQuery = newUsersQuery.Where(usuario => usuario.CreadoEn < endUtc.Value);
         }
 
-        var activeLots = await activeLotsQuery
-            .Join(
-                db.Productos,
-                lote => lote.ProductoId,
-                producto => producto.ProductoId,
-                (lote, producto) => new ActiveLotRow
-                {
-                    LoteId = lote.LoteId,
-                    CantidadDisponible = lote.CantidadDisponible,
-                    UnidadMedida = producto.UnidadMedida,
-                })
-            .ToListAsync(ct);
+        var newUsers = await newUsersQuery.CountAsync(ct);
 
-        var lotsWithStock = activeLots
-            .Where(lote => lote.CantidadDisponible > 0)
-            .ToList();
+        // Roles vigentes (se excluyen los eliminados lógicamente).
+        var rolesQuery = db.Roles.Where(rol => rol.Estado != RolEstado.Eliminado);
+        var totalRoles = await rolesQuery.CountAsync(ct);
+        var activeRoles = await rolesQuery
+            .CountAsync(rol => rol.Estado == RolEstado.Activo, ct);
 
-        var availableUnits = lotsWithStock
-            .Select(lote => lote.UnidadMedida?.Trim())
-            .Where(unidad => !string.IsNullOrWhiteSpace(unidad))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        var roleAssignments = await db.UsuariosRoles.CountAsync(ct);
 
-        var activeLotsCount = activeLots.Count;
-        var lotsWithStockCount = lotsWithStock.Count;
-        var availableQuantity = lotsWithStock.Sum(lote => lote.CantidadDisponible);
-        var availableUnit = availableUnits.Length == 1 ? availableUnits[0] : null;
-
-        var filteredLegacyHarvests = db.CosechasCafe.Where(item => item.Estado != "Anulada");
-        if (startUtc.HasValue)
-        {
-            filteredLegacyHarvests = filteredLegacyHarvests.Where(item => item.FechaCosecha.HasValue && item.FechaCosecha.Value >= startUtc.Value);
-        }
-
-        if (endUtc.HasValue)
-        {
-            filteredLegacyHarvests = filteredLegacyHarvests.Where(item => item.FechaCosecha.HasValue && item.FechaCosecha.Value < endUtc.Value);
-        }
-
-        var filteredOperationalHarvests = db.OperacionesAgricolas
-            .Where(item => item.Estado != "Anulada" && item.TipoOperacion == TiposOperacionAgricola.Cosecha);
-        if (startUtc.HasValue)
-        {
-            filteredOperationalHarvests = filteredOperationalHarvests.Where(item => item.FechaOperacion.HasValue && item.FechaOperacion.Value >= startUtc.Value);
-        }
-
-        if (endUtc.HasValue)
-        {
-            filteredOperationalHarvests = filteredOperationalHarvests.Where(item => item.FechaOperacion.HasValue && item.FechaOperacion.Value < endUtc.Value);
-        }
-
-        var filteredRecepciones = db.RecepcionesCafe.Where(item => item.Estado != "Anulada");
-        if (startUtc.HasValue)
-        {
-            filteredRecepciones = filteredRecepciones.Where(item => item.FechaRecepcion.HasValue && item.FechaRecepcion.Value >= startUtc.Value);
-        }
-
-        if (endUtc.HasValue)
-        {
-            filteredRecepciones = filteredRecepciones.Where(item => item.FechaRecepcion.HasValue && item.FechaRecepcion.Value < endUtc.Value);
-        }
-
-        var filteredProcesos = db.ProcesosInventario.Where(item => item.Estado != "Anulado");
-        if (startUtc.HasValue)
-        {
-            filteredProcesos = filteredProcesos.Where(item => item.FechaProceso.HasValue && item.FechaProceso.Value >= startUtc.Value);
-        }
-
-        if (endUtc.HasValue)
-        {
-            filteredProcesos = filteredProcesos.Where(item => item.FechaProceso.HasValue && item.FechaProceso.Value < endUtc.Value);
-        }
-
-        var productionProcessCount = 0;
-        productionProcessCount += await filteredLegacyHarvests.CountAsync(ct);
-        productionProcessCount += await filteredOperationalHarvests.CountAsync(ct);
-        productionProcessCount += await filteredRecepciones.CountAsync(ct);
-        productionProcessCount += await filteredProcesos.CountAsync(ct);
-
-        var filteredSales = db.Ventas.Where(venta => venta.Estado == true);
-        if (startUtc.HasValue)
-        {
-            filteredSales = filteredSales.Where(venta => venta.Fecha.HasValue && venta.Fecha.Value >= startUtc.Value);
-        }
-
-        if (endUtc.HasValue)
-        {
-            filteredSales = filteredSales.Where(venta => venta.Fecha.HasValue && venta.Fecha.Value < endUtc.Value);
-        }
-
-        var commercialSummary = await filteredSales
-            .GroupBy(_ => 1)
-            .Select(group => new CommercialSummaryRow
-            {
-                ActiveSalesCount = group.Count(),
-                ActiveSalesTotal = group.Sum(item => item.Total),
-                ActiveCustomersCount = group.Select(item => item.ClienteId).Distinct().Count(),
-            })
-            .FirstOrDefaultAsync(ct);
-
-        var financeBase = await db.VentaDetalles
-            .Join(
-                filteredSales,
-                detalle => detalle.VentaId,
-                venta => venta.VentaId,
-                (detalle, _) => detalle)
-            .GroupBy(_ => 1)
-            .Select(group => new FinanceBaseRow
-            {
-                Revenue = group.Sum(item => item.Subtotal),
-                Cost = group.Sum(item => item.CostoUnitario * item.Cantidad),
-            })
-            .FirstOrDefaultAsync(ct);
-
-        var filteredCosts = db.Costos.Where(costo => costo.Estado != false);
-        if (startUtc.HasValue)
-        {
-            filteredCosts = filteredCosts.Where(costo => costo.Fecha.HasValue && costo.Fecha.Value >= startUtc.Value);
-        }
-
-        if (endUtc.HasValue)
-        {
-            filteredCosts = filteredCosts.Where(costo => costo.Fecha.HasValue && costo.Fecha.Value < endUtc.Value);
-        }
-
-        var activeCostsTotal = await filteredCosts
-            .SumAsync(costo => (decimal?)costo.Monto, ct) ?? 0m;
-
-        var filteredLoteMovimientos = db.LoteMovimientos.AsQueryable();
-        if (startUtc.HasValue)
-        {
-            filteredLoteMovimientos = filteredLoteMovimientos.Where(item => item.Fecha >= startUtc.Value);
-        }
-
-        if (endUtc.HasValue)
-        {
-            filteredLoteMovimientos = filteredLoteMovimientos.Where(item => item.Fecha < endUtc.Value);
-        }
-
-        var traceableLotIds = await filteredLegacyHarvests
-            .Select(item => item.LoteId)
-            .Concat(filteredOperationalHarvests.Where(item => item.LoteId.HasValue).Select(item => item.LoteId!.Value))
-            .Concat(filteredRecepciones.Where(item => item.LoteId.HasValue).Select(item => item.LoteId!.Value))
-            .Concat(filteredProcesos.Select(item => item.LoteSalidaId))
-            .Concat(filteredLoteMovimientos.Select(item => item.LoteId))
+        // Permisos efectivos registrados por rol.
+        var permissionAssignments = await db.RolesPermisos.CountAsync(ct);
+        var distinctPermissions = await db.RolesPermisos
+            .Select(permiso => new { permiso.Modulo, permiso.Accion })
             .Distinct()
-            .ToListAsync(ct);
+            .CountAsync(ct);
+        var permissionModules = await db.RolesPermisos
+            .Select(permiso => permiso.Modulo)
+            .Distinct()
+            .CountAsync(ct);
 
-        var activeLotIds = activeLots
-            .Select(lote => lote.LoteId)
-            .ToHashSet();
+        // Usuarios activos que tienen al menos un rol vigente asignado.
+        var usersWithRoles = await db.UsuariosRoles
+            .Join(
+                db.Usuarios.Where(usuario => usuario.Estado == UsuarioEstado.Activo),
+                asignacion => asignacion.UsuarioId,
+                usuario => usuario.UsuarioId,
+                (asignacion, _) => asignacion)
+            .Join(
+                db.Roles.Where(rol => rol.Estado != RolEstado.Eliminado),
+                asignacion => asignacion.RolId,
+                rol => rol.RolId,
+                (asignacion, _) => asignacion.UsuarioId)
+            .Distinct()
+            .CountAsync(ct);
 
-        var traceableLotsCount = traceableLotIds.Count(activeLotIds.Contains);
-        var traceabilityCoveragePercent = activeLotsCount == 0
+        var coveragePercent = activeUsers == 0
             ? 0m
-            : Math.Round(traceableLotsCount * 100m / activeLotsCount, 1, MidpointRounding.AwayFromZero);
-
-        var revenue = financeBase?.Revenue ?? 0m;
-        var grossMarginAmount = revenue - (financeBase?.Cost ?? 0m);
-        var grossMarginPercent = revenue == 0m
-            ? 0m
-            : Math.Round(grossMarginAmount * 100m / revenue, 1, MidpointRounding.AwayFromZero);
+            : Math.Round(usersWithRoles * 100m / activeUsers, 1, MidpointRounding.AwayFromZero);
 
         return new DashboardMetricSnapshot
         {
-            Production = new DashboardProductionSummary
+            Users = new DashboardUsersSummary
             {
-                ActiveLotsCount = activeLotsCount,
-                LotsWithStockCount = lotsWithStockCount,
-                AvailableQuantity = availableQuantity,
-                AvailableUnit = availableUnit,
-                ProcessRecordsCount = productionProcessCount,
+                TotalCount = totalUsers,
+                ActiveCount = activeUsers,
+                PendingCount = pendingUsers,
+                InactiveCount = inactiveUsers,
+                NewCount = newUsers,
             },
-            Commercial = new DashboardCommercialSummary
+            Roles = new DashboardRolesSummary
             {
-                ActiveSalesCount = commercialSummary?.ActiveSalesCount ?? 0,
-                ActiveSalesTotal = commercialSummary?.ActiveSalesTotal ?? 0m,
-                ActiveCustomersCount = commercialSummary?.ActiveCustomersCount ?? 0,
+                TotalCount = totalRoles,
+                ActiveCount = activeRoles,
+                AssignmentsCount = roleAssignments,
             },
-            Finance = new DashboardFinanceSummary
+            Permissions = new DashboardPermissionsSummary
             {
-                GrossMarginAmount = grossMarginAmount,
-                GrossMarginPercent = grossMarginPercent,
-                ActiveCostsTotal = activeCostsTotal,
+                AssignmentsCount = permissionAssignments,
+                DistinctCount = distinctPermissions,
+                ModuleCount = permissionModules,
             },
-            Traceability = new DashboardTraceabilitySummary
+            Access = new DashboardAccessSummary
             {
-                ActiveLotsCount = activeLotsCount,
-                TraceableLotsCount = traceableLotsCount,
-                CoveragePercent = traceabilityCoveragePercent,
+                ActiveUsersCount = activeUsers,
+                UsersWithRolesCount = usersWithRoles,
+                CoveragePercent = coveragePercent,
             },
         };
     }
 
-    private sealed class ActiveLotRow
-    {
-        public int LoteId { get; init; }
-
-        public decimal CantidadDisponible { get; init; }
-
-        public string? UnidadMedida { get; init; }
-    }
-
-    private sealed class CommercialSummaryRow
-    {
-        public int ActiveSalesCount { get; init; }
-
-        public decimal ActiveSalesTotal { get; init; }
-
-        public int ActiveCustomersCount { get; init; }
-    }
-
-    private sealed class FinanceBaseRow
-    {
-        public decimal Revenue { get; init; }
-
-        public decimal Cost { get; init; }
-    }
-
     private sealed class DashboardMetricSnapshot
     {
-        public required DashboardProductionSummary Production { get; init; }
+        public required DashboardUsersSummary Users { get; init; }
 
-        public required DashboardCommercialSummary Commercial { get; init; }
+        public required DashboardRolesSummary Roles { get; init; }
 
-        public required DashboardFinanceSummary Finance { get; init; }
+        public required DashboardPermissionsSummary Permissions { get; init; }
 
-        public required DashboardTraceabilitySummary Traceability { get; init; }
+        public required DashboardAccessSummary Access { get; init; }
     }
 
     private sealed class DashboardPeriodWindow
@@ -453,13 +321,13 @@ public static class DashboardEndpoints
 
         public DashboardPreviousPeriodSummary? PreviousPeriod { get; init; }
 
-        public required DashboardProductionSummary Production { get; init; }
+        public required DashboardUsersSummary Users { get; init; }
 
-        public required DashboardCommercialSummary Commercial { get; init; }
+        public required DashboardRolesSummary Roles { get; init; }
 
-        public required DashboardFinanceSummary Finance { get; init; }
+        public required DashboardPermissionsSummary Permissions { get; init; }
 
-        public required DashboardTraceabilitySummary Traceability { get; init; }
+        public required DashboardAccessSummary Access { get; init; }
 
         public DateTime GeneratedAtUtc { get; init; }
     }
@@ -479,51 +347,52 @@ public static class DashboardEndpoints
     {
         public required DashboardSummaryWindow Window { get; init; }
 
-        public required DashboardProductionSummary Production { get; init; }
+        public required DashboardUsersSummary Users { get; init; }
 
-        public required DashboardCommercialSummary Commercial { get; init; }
+        public required DashboardRolesSummary Roles { get; init; }
 
-        public required DashboardFinanceSummary Finance { get; init; }
+        public required DashboardPermissionsSummary Permissions { get; init; }
 
-        public required DashboardTraceabilitySummary Traceability { get; init; }
+        public required DashboardAccessSummary Access { get; init; }
     }
 
-    public sealed class DashboardProductionSummary
+    public sealed class DashboardUsersSummary
     {
-        public int ActiveLotsCount { get; init; }
+        public int TotalCount { get; init; }
 
-        public int LotsWithStockCount { get; init; }
+        public int ActiveCount { get; init; }
 
-        public decimal AvailableQuantity { get; init; }
+        public int PendingCount { get; init; }
 
-        public string? AvailableUnit { get; init; }
+        public int InactiveCount { get; init; }
 
-        public int ProcessRecordsCount { get; init; }
+        /// <summary>Usuarios creados dentro de la ventana consultada.</summary>
+        public int NewCount { get; init; }
     }
 
-    public sealed class DashboardCommercialSummary
+    public sealed class DashboardRolesSummary
     {
-        public int ActiveSalesCount { get; init; }
+        public int TotalCount { get; init; }
 
-        public decimal ActiveSalesTotal { get; init; }
+        public int ActiveCount { get; init; }
 
-        public int ActiveCustomersCount { get; init; }
+        public int AssignmentsCount { get; init; }
     }
 
-    public sealed class DashboardFinanceSummary
+    public sealed class DashboardPermissionsSummary
     {
-        public decimal GrossMarginAmount { get; init; }
+        public int AssignmentsCount { get; init; }
 
-        public decimal GrossMarginPercent { get; init; }
+        public int DistinctCount { get; init; }
 
-        public decimal ActiveCostsTotal { get; init; }
+        public int ModuleCount { get; init; }
     }
 
-    public sealed class DashboardTraceabilitySummary
+    public sealed class DashboardAccessSummary
     {
-        public int ActiveLotsCount { get; init; }
+        public int ActiveUsersCount { get; init; }
 
-        public int TraceableLotsCount { get; init; }
+        public int UsersWithRolesCount { get; init; }
 
         public decimal CoveragePercent { get; init; }
     }

@@ -5,30 +5,28 @@ import type { DashboardSummary } from '../api/dashboard';
 import {
   buildDashboardMetrics,
   formatCount,
-  formatCurrency,
-  formatPoints,
   formatPercent,
-  formatProductionValue,
 } from './summary-metrics';
 
 const messages: Record<string, string> = {
-  kpiProductionLabel: 'Produccion disponible',
-  kpiProductionCaption: '{count} lotes con stock, {processes} procesos activos',
-  kpiProductionDescription: 'Volumen util del periodo.',
-  kpiCommercialLabel: 'Ventas comprometidas',
-  kpiCommercialCaption: '{count} ventas, {customers} clientes activos',
-  kpiCommercialDescription: 'Demanda y clientes del periodo.',
-  kpiFinanceLabel: 'Margen bruto esperado',
-  kpiFinanceCaption: '{amount} costos activos',
-  kpiFinanceDescription: 'Rentabilidad del periodo.',
-  kpiTraceabilityLabel: 'Lotes con trazabilidad',
-  kpiTraceabilityCaption: '{count} lotes trazables de {total} activos',
-  kpiTraceabilityDescription: 'Cobertura documental del periodo.',
+  kpiUsersLabel: 'Nuevos usuarios',
+  kpiUsersCaption: '{active} usuarios activos de {total}',
+  kpiUsersDescription: 'Altas registradas en el periodo.',
+  kpiRolesLabel: 'Roles activos',
+  kpiRolesCaption: '{assignments} asignaciones sobre {total} roles',
+  kpiRolesDescription: 'Roles disponibles para asignar permisos.',
+  kpiPermissionsLabel: 'Permisos vigentes',
+  kpiPermissionsCaption: '{modules} módulos, {assignments} asignaciones',
+  kpiPermissionsDescription: 'Permisos efectivos registrados por rol.',
+  kpiAccessLabel: 'Cobertura de acceso',
+  kpiAccessCaption: '{users} de {active} usuarios activos con rol',
+  kpiAccessDescription: 'Usuarios activos con al menos un rol vigente.',
   deltaVsPrevious: '{delta} vs periodo anterior',
   deltaUnavailable: 'Sin comparativo',
+  currentState: 'Estado actual',
 };
 
-test('buildDashboardMetrics mapea los 4 KPI usando los campos correctos del resumen', () => {
+test('buildDashboardMetrics mapea los 4 KPI de administración con los campos correctos', () => {
   const summary: DashboardSummary = {
     window: {
       period: '30d',
@@ -43,50 +41,50 @@ test('buildDashboardMetrics mapea los 4 KPI usando los campos correctos del resu
         to: '2026-03-20',
         comparisonAvailable: true,
       },
-      production: {
-        activeLotsCount: 4,
-        lotsWithStockCount: 1,
-        availableQuantity: 80,
-        availableUnit: 'kg',
-        processRecordsCount: 5,
+      users: {
+        totalCount: 10,
+        activeCount: 6,
+        pendingCount: 2,
+        inactiveCount: 2,
+        newCount: 3,
       },
-      commercial: {
-        activeSalesCount: 3,
-        activeSalesTotal: 84000,
-        activeCustomersCount: 2,
+      roles: {
+        totalCount: 4,
+        activeCount: 3,
+        assignmentsCount: 8,
       },
-      finance: {
-        grossMarginAmount: 14000,
-        grossMarginPercent: 15.2,
-        activeCostsTotal: 51000,
+      permissions: {
+        assignmentsCount: 12,
+        distinctCount: 6,
+        moduleCount: 3,
       },
-      traceability: {
-        activeLotsCount: 4,
-        traceableLotsCount: 3,
-        coveragePercent: 75.6,
+      access: {
+        activeUsersCount: 6,
+        usersWithRolesCount: 5,
+        coveragePercent: 83.3,
       },
     },
-    production: {
-      activeLotsCount: 5,
-      lotsWithStockCount: 2,
-      availableQuantity: 120,
-      availableUnit: 'kg',
-      processRecordsCount: 6,
+    users: {
+      totalCount: 12,
+      activeCount: 7,
+      pendingCount: 3,
+      inactiveCount: 2,
+      newCount: 5,
     },
-    commercial: {
-      activeSalesCount: 4,
-      activeSalesTotal: 92000,
-      activeCustomersCount: 3,
+    roles: {
+      totalCount: 5,
+      activeCount: 4,
+      assignmentsCount: 9,
     },
-    finance: {
-      grossMarginAmount: 18000,
-      grossMarginPercent: 19.6,
-      activeCostsTotal: 54000,
+    permissions: {
+      assignmentsCount: 14,
+      distinctCount: 7,
+      moduleCount: 3,
     },
-    traceability: {
-      activeLotsCount: 5,
-      traceableLotsCount: 4,
-      coveragePercent: 80,
+    access: {
+      activeUsersCount: 7,
+      usersWithRolesCount: 6,
+      coveragePercent: 85.7,
     },
     generatedAtUtc: '2026-04-19T12:00:00.000Z',
   };
@@ -97,87 +95,116 @@ test('buildDashboardMetrics mapea los 4 KPI usando los campos correctos del resu
 
   assert.deepEqual(metrics[0], {
     tone: 'production',
-    title: 'Produccion disponible',
-    value: formatProductionValue('es', summary.production),
-    trendLabel: '+40 kg vs periodo anterior',
+    title: 'Nuevos usuarios',
+    value: formatCount('es', 5),
+    trendLabel: '+2 vs periodo anterior',
     trendIntent: 'positive',
-    caption: '2 lotes con stock, 6 procesos activos',
-    description: 'Volumen util del periodo.',
+    caption: '7 usuarios activos de 12',
+    description: 'Altas registradas en el periodo.',
   });
 
   assert.equal(metrics[1].tone, 'commercial');
-  assert.equal(metrics[1].value, formatCurrency('es', summary.commercial.activeSalesTotal));
-  assert.equal(metrics[1].trendLabel, `+${formatCurrency('es', 8000)} vs periodo anterior`);
-  assert.equal(metrics[1].trendIntent, 'positive');
-  assert.equal(metrics[1].caption, '4 ventas, 3 clientes activos');
+  assert.equal(metrics[1].value, formatCount('es', 4));
+  assert.equal(metrics[1].trendLabel, 'Estado actual');
+  assert.equal(metrics[1].trendIntent, 'neutral');
+  assert.equal(metrics[1].caption, '9 asignaciones sobre 5 roles');
 
   assert.equal(metrics[2].tone, 'finance');
-  assert.equal(metrics[2].value, formatPercent('es', summary.finance.grossMarginPercent));
-  assert.equal(metrics[2].trendLabel, `+${formatPoints('es', 4.4)} vs periodo anterior`);
-  assert.equal(metrics[2].trendIntent, 'positive');
-  assert.equal(metrics[2].caption, `${formatCurrency('es', summary.finance.activeCostsTotal)} costos activos`);
+  assert.equal(metrics[2].value, formatCount('es', 7));
+  assert.equal(metrics[2].caption, '3 módulos, 14 asignaciones');
 
   assert.equal(metrics[3].tone, 'traceability');
-  assert.equal(metrics[3].value, formatPercent('es', summary.traceability.coveragePercent));
-  assert.equal(metrics[3].trendLabel, `+${formatPoints('es', 4.4)} vs periodo anterior`);
-  assert.equal(metrics[3].trendIntent, 'positive');
-  assert.equal(metrics[3].caption, '4 lotes trazables de 5 activos');
+  assert.equal(metrics[3].value, formatPercent('es', 85.7));
+  assert.equal(metrics[3].caption, '6 de 7 usuarios activos con rol');
 });
 
-test('formatProductionValue usa el conteo de lotes cuando no hay cantidad o unidad disponible', () => {
-  const value = formatProductionValue('es', {
-    activeLotsCount: 3,
-    lotsWithStockCount: 3,
-    availableQuantity: 0,
-    availableUnit: null,
-    processRecordsCount: 1,
+test('buildDashboardMetrics usa el comparativo del periodo anterior solo para nuevos usuarios', () => {
+  const summary = createSummary({
+    previousPeriod: {
+      window: {
+        period: '30d',
+        from: '2026-02-19',
+        to: '2026-03-20',
+        comparisonAvailable: true,
+      },
+      users: {
+        totalCount: 6,
+        activeCount: 4,
+        pendingCount: 1,
+        inactiveCount: 1,
+        newCount: 8,
+      },
+      roles: {
+        totalCount: 2,
+        activeCount: 2,
+        assignmentsCount: 3,
+      },
+      permissions: {
+        assignmentsCount: 4,
+        distinctCount: 4,
+        moduleCount: 3,
+      },
+      access: {
+        activeUsersCount: 4,
+        usersWithRolesCount: 4,
+        coveragePercent: 100,
+      },
+    },
   });
 
-  assert.equal(value, formatCount('es', 3));
+  const metrics = buildDashboardMetrics(summary, 'es', translate);
+
+  assert.equal(metrics[0].trendLabel, '-3 vs periodo anterior');
+  assert.equal(metrics[0].trendIntent, 'negative');
 });
 
 test('buildDashboardMetrics muestra estado neutral cuando no existe periodo anterior comparable', () => {
-  const summary: DashboardSummary = {
-    window: {
-      period: 'all',
-      from: null,
-      to: null,
-      comparisonAvailable: false,
-    },
-    previousPeriod: null,
-    production: {
-      activeLotsCount: 3,
-      lotsWithStockCount: 3,
-      availableQuantity: 0,
-      availableUnit: null,
-      processRecordsCount: 2,
-    },
-    commercial: {
-      activeSalesCount: 1,
-      activeSalesTotal: 1000,
-      activeCustomersCount: 1,
-    },
-    finance: {
-      grossMarginAmount: 200,
-      grossMarginPercent: 20,
-      activeCostsTotal: 800,
-    },
-    traceability: {
-      activeLotsCount: 3,
-      traceableLotsCount: 2,
-      coveragePercent: 66.7,
-    },
-    generatedAtUtc: '2026-04-19T12:00:00.000Z',
-  };
+  const summary = createSummary({ previousPeriod: null });
 
   const metrics = buildDashboardMetrics(summary, 'es', translate);
 
   assert.equal(metrics[0].trendLabel, 'Sin comparativo');
   assert.equal(metrics[0].trendIntent, 'neutral');
-  assert.equal(metrics[1].trendLabel, 'Sin comparativo');
-  assert.equal(metrics[2].trendLabel, 'Sin comparativo');
-  assert.equal(metrics[3].trendLabel, 'Sin comparativo');
+  assert.equal(metrics[1].trendLabel, 'Estado actual');
+  assert.equal(metrics[2].trendLabel, 'Estado actual');
+  assert.equal(metrics[3].trendLabel, 'Estado actual');
 });
+
+function createSummary(overrides: Partial<DashboardSummary> = {}): DashboardSummary {
+  return {
+    window: {
+      period: '30d',
+      from: '2026-03-21',
+      to: '2026-04-19',
+      comparisonAvailable: true,
+    },
+    previousPeriod: null,
+    users: {
+      totalCount: 12,
+      activeCount: 7,
+      pendingCount: 3,
+      inactiveCount: 2,
+      newCount: 5,
+    },
+    roles: {
+      totalCount: 5,
+      activeCount: 4,
+      assignmentsCount: 9,
+    },
+    permissions: {
+      assignmentsCount: 14,
+      distinctCount: 7,
+      moduleCount: 3,
+    },
+    access: {
+      activeUsersCount: 7,
+      usersWithRolesCount: 6,
+      coveragePercent: 85.7,
+    },
+    generatedAtUtc: '2026-04-19T12:00:00.000Z',
+    ...overrides,
+  };
+}
 
 function translate(key: string, params?: Record<string, string | number>) {
   const template = messages[key];
