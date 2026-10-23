@@ -221,23 +221,7 @@ public static class AuthEndpoints
             user.UltimoLoginEn = now;
             user.ActualizadoEn = now;
 
-            var roles = await db.UsuariosRoles
-                .Where(ur => ur.UsuarioId == user.UsuarioId)
-                .Join(db.Roles, ur => ur.RolId, r => r.RolId, (_, r) => r)
-                .Where(r => r.Estado == RolEstado.Activo)
-                .Select(r => r.Nombre)
-                .Distinct()
-                .ToArrayAsync(ct);
-
-            var permissions = await db.UsuariosRoles
-                .Where(ur => ur.UsuarioId == user.UsuarioId)
-                .Join(db.Roles, ur => ur.RolId, r => r.RolId, (_, r) => r)
-                .Where(r => r.Estado == RolEstado.Activo)
-                .Join(db.RolesPermisos, r => r.RolId, rp => rp.RolId, (_, rp) => rp)
-                .Select(rp => Permissions.PolicyPrefix + rp.Modulo + ":" + rp.Accion)
-                .Distinct()
-                .OrderBy(x => x)
-                .ToArrayAsync(ct);
+            var (roles, permissions) = await LoadUserAccessAsync(db, user.UsuarioId, ct);
 
             await db.SaveChangesAsync(ct);
 
@@ -250,36 +234,14 @@ public static class AuthEndpoints
                 user.UsuarioId);
 
             var token = jwtTokenService.CreateToken(new JwtUser(user.UsuarioId, user.Email, user.Nombre, roles));
-
             var csrfToken = AuthCookies.CreateCsrfToken();
 
-            var cookieSecure = !environment.IsDevelopment();
-
-            var accessCookie = new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = cookieSecure,
-                SameSite = SameSiteMode.Lax,
-                Path = "/",
-            };
-
-            var csrfCookie = new CookieOptions
-            {
-                HttpOnly = false,
-                Secure = cookieSecure,
-                SameSite = SameSiteMode.Lax,
-                Path = "/",
-            };
-
-            // Set cookies
-            var authCookieName = options.Value.Cookie.AccessTokenCookieName;
-            var csrfCookieName = options.Value.Cookie.CsrfCookieName;
-            http.Response.Cookies.Append(authCookieName, token, accessCookie);
-            http.Response.Cookies.Append(csrfCookieName, csrfToken, csrfCookie);
+            // El JWT viaja exclusivamente en una cookie HttpOnly. Nunca se
+            // devuelve en el cuerpo de la respuesta ni queda accesible a JS.
+            SetAuthCookies(http, options.Value, environment, token, csrfToken);
 
             return Results.Ok(new LoginResponse
             {
-                AccessToken = token,
                 User = new UserInfo
                 {
                     Email = user.Email,
@@ -291,18 +253,67 @@ public static class AuthEndpoints
         })
         .AllowAnonymous();
 
+        group.MapPost("/refresh", async (
+            HttpContext http,
+            ClaimsPrincipal principal,
+            [FromServices] ProyectoCafeDbContext db,
+            [FromServices] IOptions<AuthOptions> options,
+            [FromServices] IJwtTokenService jwtTokenService,
+            [FromServices] IHostEnvironment environment,
+            CancellationToken ct) =>
+        {
+            if (principal.Identity?.IsAuthenticated != true)
+            {
+                return Results.Unauthorized();
+            }
+
+            var uid = principal.FindFirst("uid")?.Value;
+            if (!int.TryParse(uid, out var userId))
+            {
+                return Results.Unauthorized();
+            }
+
+            var user = await db.Usuarios
+                .FirstOrDefaultAsync(u => u.UsuarioId == userId && u.Estado == UsuarioEstado.Activo, ct);
+
+            if (user is null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var (roles, permissions) = await LoadUserAccessAsync(db, user.UsuarioId, ct);
+
+            // Renueva el JWT y rota el token CSRF manteniendo la misma sesión.
+            var token = jwtTokenService.CreateToken(new JwtUser(user.UsuarioId, user.Email, user.Nombre, roles));
+            var csrfToken = AuthCookies.CreateCsrfToken();
+
+            SetAuthCookies(http, options.Value, environment, token, csrfToken);
+
+            return Results.Ok(new LoginResponse
+            {
+                User = new UserInfo
+                {
+                    Email = user.Email,
+                    Name = user.Nombre,
+                    Roles = roles,
+                    Permissions = permissions,
+                }
+            });
+        })
+        .RequireAuthorization();
+
         group.MapPost("/logout", (
             HttpContext http,
-            [FromServices] IOptions<AuthOptions> options) =>
+            [FromServices] IOptions<AuthOptions> options,
+            [FromServices] IHostEnvironment environment) =>
         {
-            var authCookieName = options.Value.Cookie.AccessTokenCookieName;
-            var csrfCookieName = options.Value.Cookie.CsrfCookieName;
-
-            http.Response.Cookies.Delete(authCookieName, new CookieOptions { Path = "/" });
-            http.Response.Cookies.Delete(csrfCookieName, new CookieOptions { Path = "/" });
+            // AllowAnonymous: el logout debe poder limpiar cookies caducadas o
+            // inválidas sin depender de que el JWT siga vigente.
+            ClearAuthCookies(http, options.Value, environment);
 
             return Results.NoContent();
-        });
+        })
+        .AllowAnonymous();
 
         group.MapGet("/me", async (
             ClaimsPrincipal principal,
@@ -329,23 +340,78 @@ public static class AuthEndpoints
                 ?? principal.FindFirstValue(ClaimTypes.Name)
                 ?? email;
 
-            var roles = principal.FindAll(ClaimTypes.Role).Select(c => c.Value).Distinct().ToArray();
-
-            var permissions = await db.UsuariosRoles
-                .Where(ur => ur.UsuarioId == userId)
-                .Join(db.Roles, ur => ur.RolId, r => r.RolId, (_, r) => r)
-                .Where(r => r.Estado == RolEstado.Activo)
-                .Join(db.RolesPermisos, r => r.RolId, rp => rp.RolId, (_, rp) => rp)
-                .Select(rp => Permissions.PolicyPrefix + rp.Modulo + ":" + rp.Accion)
-                .Distinct()
-                .OrderBy(x => x)
-                .ToArrayAsync(ct);
+            var (roles, permissions) = await LoadUserAccessAsync(db, userId, ct);
 
             return Results.Ok(new UserInfo { Email = email, Name = name, Roles = roles, Permissions = permissions });
         })
         .RequireAuthorization();
 
         return endpoints;
+    }
+
+    private static CookieOptions CreateCookieOptions(IHostEnvironment environment, bool httpOnly) =>
+        new()
+        {
+            HttpOnly = httpOnly,
+            Secure = !environment.IsDevelopment(),
+            SameSite = SameSiteMode.Lax,
+            Path = "/",
+        };
+
+    private static void SetAuthCookies(
+        HttpContext http,
+        AuthOptions options,
+        IHostEnvironment environment,
+        string token,
+        string csrfToken)
+    {
+        http.Response.Cookies.Append(
+            options.Cookie.AccessTokenCookieName,
+            token,
+            CreateCookieOptions(environment, httpOnly: true));
+
+        http.Response.Cookies.Append(
+            options.Cookie.CsrfCookieName,
+            csrfToken,
+            CreateCookieOptions(environment, httpOnly: false));
+    }
+
+    private static void ClearAuthCookies(HttpContext http, AuthOptions options, IHostEnvironment environment)
+    {
+        http.Response.Cookies.Delete(
+            options.Cookie.AccessTokenCookieName,
+            CreateCookieOptions(environment, httpOnly: true));
+
+        http.Response.Cookies.Delete(
+            options.Cookie.CsrfCookieName,
+            CreateCookieOptions(environment, httpOnly: false));
+    }
+
+    private static async Task<(string[] Roles, string[] Permissions)> LoadUserAccessAsync(
+        ProyectoCafeDbContext db,
+        int userId,
+        CancellationToken ct)
+    {
+        var roles = await db.UsuariosRoles
+            .Where(ur => ur.UsuarioId == userId)
+            .Join(db.Roles, ur => ur.RolId, r => r.RolId, (_, r) => r)
+            .Where(r => r.Estado == RolEstado.Activo)
+            .Select(r => r.Nombre)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToArrayAsync(ct);
+
+        var permissions = await db.UsuariosRoles
+            .Where(ur => ur.UsuarioId == userId)
+            .Join(db.Roles, ur => ur.RolId, r => r.RolId, (_, r) => r)
+            .Where(r => r.Estado == RolEstado.Activo)
+            .Join(db.RolesPermisos, r => r.RolId, rp => rp.RolId, (_, rp) => rp)
+            .Select(rp => Permissions.PolicyPrefix + rp.Modulo + ":" + rp.Accion)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToArrayAsync(ct);
+
+        return (roles, permissions);
     }
 
     private static IResult InvalidCredentials() =>
@@ -393,7 +459,8 @@ public static class AuthEndpoints
 
     public sealed class LoginResponse
     {
-        public required string AccessToken { get; set; }
+        // El JWT solo vive en la cookie HttpOnly; el cuerpo únicamente expone
+        // los datos que el Portal necesita para pintar la sesión.
         public required UserInfo User { get; set; }
     }
 

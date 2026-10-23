@@ -16,13 +16,32 @@ type AuthContextValue = {
   isLoading: boolean;
   isAuthenticated: boolean;
   signInWithPassword: (email: string, password: string) => Promise<void>;
-  signOut: () => void;
+  refreshSession: () => Promise<void>;
+  signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+type UserPayload = {
+  email: string;
+  name: string;
+  roles: string[];
+  permissions?: string[];
+};
+
 function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
+}
+
+function toSession(user: UserPayload): Session {
+  return {
+    user: {
+      email: user.email,
+      name: user.name,
+      roles: normalizeRoleNames(user.roles),
+      permissions: user.permissions ?? [],
+    },
+  };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -36,19 +55,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void (async () => {
       setIsLoading(true);
       try {
-        const me = await apiFetch<{ email: string; name: string; roles: string[]; permissions?: string[] }>(
-          '/api/v1/auth/me'
-        );
-        const next: Session = {
-          accessToken: null,
-          user: {
-            email: me.email,
-            name: me.name,
-            roles: normalizeRoleNames(me.roles),
-            permissions: me.permissions ?? [],
-          },
-        };
-        if (!cancelled) setSession(next);
+        const me = await apiFetch<UserPayload>('/api/v1/auth/me');
+        if (!cancelled) setSession(toSession(me));
       } catch {
         if (!cancelled) setSession(null);
       } finally {
@@ -65,30 +73,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const email = normalizeEmail(emailRaw);
     const password = passwordRaw.trim();
 
-    const result = await apiFetch<{
-      accessToken?: string;
-      user: { email: string; name: string; roles: string[]; permissions?: string[] };
-    }>('/api/v1/auth/login', {
+    // La API responde solo con los datos del usuario; el JWT queda en la
+    // cookie HttpOnly y el navegador la envía automáticamente.
+    const result = await apiFetch<{ user: UserPayload }>('/api/v1/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
 
-    const next: Session = {
-      // Token now lives in HttpOnly cookie; keep null in client state.
-      accessToken: null,
-      user: {
-        email: result.user.email,
-        name: result.user.name,
-        roles: normalizeRoleNames(result.user.roles),
-        permissions: result.user.permissions ?? [],
-      },
-    };
-    setSession(next);
+    setSession(toSession(result.user));
     setIsLoading(false);
   }, []);
 
-  const signOut = useCallback(() => {
-    void apiFetch('/api/v1/auth/logout', { method: 'POST' }).catch(() => {});
+  const refreshSession = useCallback(async () => {
+    // Renueva el JWT y el token CSRF sin exponerlos al JavaScript del cliente.
+    const result = await apiFetch<{ user: UserPayload }>('/api/v1/auth/refresh', {
+      method: 'POST',
+    });
+
+    setSession(toSession(result.user));
+    setIsLoading(false);
+  }, []);
+
+  const signOut = useCallback(async () => {
+    try {
+      await apiFetch('/api/v1/auth/logout', { method: 'POST' });
+    } catch {
+      // La sesión local se limpia igualmente; la API es la autoridad final.
+    }
     setSession(null);
     setIsLoading(false);
   }, []);
@@ -108,9 +119,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       isAuthenticated: Boolean(user),
       signInWithPassword,
+      refreshSession,
       signOut,
     };
-  }, [session, isLoading, signInWithPassword, signOut]);
+  }, [session, isLoading, signInWithPassword, refreshSession, signOut]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

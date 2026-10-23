@@ -67,6 +67,14 @@ Al superarse un límite se responde `429` con un mensaje genérico y cabecera `R
 - `PROYECTOCAFE_AUTH_COOKIE_NAME` - nombre de la cookie HttpOnly de sesión emitida por la API (`pc_at` por defecto).
 - `NEXT_PUBLIC_APP_NAME` - nombre a mostrar.
 
+### Sesión por cookie HttpOnly
+
+- `POST /api/v1/auth/login` responde únicamente la información del usuario (`user`: email, nombre, roles y permisos) y entrega el JWT en la cookie `pc_at` con `HttpOnly`, `Secure` fuera de Development y `SameSite=Lax`.
+- El token CSRF se entrega en la cookie legible `pc_csrf`; el Portal lo reenvía en la cabecera `X-CSRF` en cada petición no idempotente.
+- `POST /api/v1/auth/refresh` renueva el JWT y rota el token CSRF. Requiere sesión válida y `X-CSRF`.
+- `POST /api/v1/auth/logout` elimina ambas cookies, incluso si la sesión ya caducó.
+- El navegador envía la cookie automáticamente (`credentials: 'include'`). El JWT nunca se incluye en el body ni se guarda en `localStorage` o `sessionStorage`.
+
 ### Protección de rutas en el servidor
 
 El Portal incluye `src/middleware.ts` (runtime Node.js de Next.js 15) que valida la cookie de sesión contra `GET /api/v1/auth/me` antes de renderizar cualquier página protegida:

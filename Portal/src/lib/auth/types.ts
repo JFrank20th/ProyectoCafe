@@ -14,7 +14,10 @@ export type SessionUser = {
   permissions: Permission[];
 };
 
+/**
+ * La sesión del cliente no contiene el JWT: vive exclusivamente en la cookie
+ * HttpOnly emitida por la API.
+ */
 export type Session = {
   user: SessionUser;
-  accessToken: string | null;
 };

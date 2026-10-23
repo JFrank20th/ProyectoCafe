@@ -167,6 +167,92 @@ public sealed class AuthSessionEndpointTests
     }
 
     [Fact]
+    public async Task Me_WithOnlyAuthorizationHeader_ReturnsUnauthorized()
+    {
+        await using var factory = new ProyectoCafeApiFactory();
+        await factory.SeedUserAsync("cookie-only@test.local");
+        using var client = factory.CreateClient();
+
+        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new
+        {
+            email = "cookie-only@test.local",
+            password = Password,
+        });
+        login.EnsureSuccessStatusCode();
+
+        var token = ProyectoCafeApiFactory.ReadCookie(login, "pc_at");
+        Assert.False(string.IsNullOrWhiteSpace(token));
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/auth/me");
+        request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {token}");
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Refresh_RotatesSessionCookiesAndKeepsUserInfo()
+    {
+        await using var factory = new ProyectoCafeApiFactory();
+        await factory.SeedUserWithPermissionsAsync(
+            "refresh@test.local",
+            (Permissions.Modulos.AdministracionUsuarios, Permissions.Actions.Ver));
+        using var client = await factory.CreateAuthenticatedClientAsync("refresh@test.local");
+
+        var refresh = await client.PostAsync("/api/v1/auth/refresh", content: null);
+
+        refresh.EnsureSuccessStatusCode();
+        var authCookie = ProyectoCafeApiFactory.ReadCookie(refresh, "pc_at");
+        var csrfCookie = ProyectoCafeApiFactory.ReadCookie(refresh, "pc_csrf");
+        Assert.False(string.IsNullOrWhiteSpace(authCookie));
+        Assert.False(string.IsNullOrWhiteSpace(csrfCookie));
+
+        using var body = JsonDocument.Parse(await refresh.Content.ReadAsStringAsync());
+        Assert.Equal("refresh@test.local", body.RootElement.GetProperty("user").GetProperty("email").GetString());
+        Assert.False(body.RootElement.TryGetProperty("accessToken", out _));
+        Assert.False(body.RootElement.TryGetProperty("token", out _));
+
+        var me = await client.GetAsync("/api/v1/auth/me");
+        Assert.Equal(HttpStatusCode.OK, me.StatusCode);
+
+        client.DefaultRequestHeaders.Remove("X-CSRF");
+        client.DefaultRequestHeaders.TryAddWithoutValidation("X-CSRF", csrfCookie);
+        var adminUsers = await client.GetAsync("/api/v1/admin/users");
+        Assert.Equal(HttpStatusCode.OK, adminUsers.StatusCode);
+    }
+
+    [Fact]
+    public async Task Refresh_WithoutCsrfHeader_IsBlocked()
+    {
+        await using var factory = new ProyectoCafeApiFactory();
+        await factory.SeedUserAsync("refresh-csrf@test.local");
+        using var client = await factory.CreateAuthenticatedClientAsync("refresh-csrf@test.local");
+        client.DefaultRequestHeaders.Remove("X-CSRF");
+
+        var response = await client.PostAsync("/api/v1/auth/refresh", content: null);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("CSRF", body.RootElement.GetProperty("error").GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task Logout_WithoutSession_ClearsCookies()
+    {
+        await using var factory = new ProyectoCafeApiFactory();
+        using var client = factory.CreateClient();
+
+        var logout = await client.PostAsync("/api/v1/auth/logout", content: null);
+
+        Assert.Equal(HttpStatusCode.NoContent, logout.StatusCode);
+        Assert.True(logout.Headers.TryGetValues("Set-Cookie", out var cookies));
+        var joinedCookies = string.Join(';', cookies!);
+        Assert.Contains("pc_at=;", joinedCookies);
+        Assert.Contains("pc_csrf=;", joinedCookies);
+    }
+
+    [Fact]
     public async Task Register_WithValidPayload_CreatesPendingUserWithHashedPassword()
     {
         await using var factory = new ProyectoCafeApiFactory();

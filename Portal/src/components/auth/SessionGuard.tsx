@@ -20,11 +20,12 @@ const WARNING_BEFORE = 1 * 60 * 1000; // 1 min
 const COUNTDOWN_START = 60; // seconds
 
 export function SessionGuard({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading, signOut } = useAuth();
+  const { isAuthenticated, isLoading, refreshSession, signOut } = useAuth();
   const t = useTranslations('session');
 
   const [showWarning, setShowWarning] = useState(false);
   const [timeLeft, setTimeLeft] = useState(COUNTDOWN_START);
+  const [isRenewing, setIsRenewing] = useState(false);
 
   const warningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -56,7 +57,7 @@ export function SessionGuard({ children }: { children: React.ReactNode }) {
           if (prev <= 1) {
             clearTimers();
             setShowWarning(false);
-            signOut();
+            void signOut();
             return COUNTDOWN_START;
           }
           return prev - 1;
@@ -93,14 +94,27 @@ export function SessionGuard({ children }: { children: React.ReactNode }) {
     return () => events.forEach((e) => document.removeEventListener(e, handleActivity));
   }, [isAuthenticated, isLoading, resetTimers, showWarning]);
 
-  function handleContinue() {
-    resetTimers();
+  async function handleContinue() {
+    if (isRenewing) return;
+
+    setIsRenewing(true);
+    try {
+      // Renueva la cookie de sesión y rota el token CSRF en la API.
+      await refreshSession();
+      resetTimers();
+    } catch {
+      clearTimers();
+      setShowWarning(false);
+      await signOut();
+    } finally {
+      setIsRenewing(false);
+    }
   }
 
   function handleLogout() {
     clearTimers();
     setShowWarning(false);
-    signOut();
+    void signOut();
   }
 
   return (
@@ -127,7 +141,9 @@ export function SessionGuard({ children }: { children: React.ReactNode }) {
               <LogOut className="h-4 w-4" />
               {t('logout')}
             </Button>
-            <Button onClick={handleContinue}>{t('continueSession')}</Button>
+            <Button onClick={handleContinue} disabled={isRenewing}>
+              {t('continueSession')}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -50,18 +50,16 @@ public static class ServiceCollectionExtensions
 
             var scheme = new OpenApiSecurityScheme
             {
-                Name = "Authorization",
-                Type = SecuritySchemeType.Http,
-                Scheme = "bearer",
-                BearerFormat = "JWT",
-                In = ParameterLocation.Header,
-                Description = "JWT Authorization header usando el esquema Bearer. Ej: \"Bearer {token}\""
+                Name = "pc_at",
+                Type = SecuritySchemeType.ApiKey,
+                In = ParameterLocation.Cookie,
+                Description = "Cookie HttpOnly emitida por POST /api/v1/auth/login. El JWT no se acepta por cabecera Authorization."
             };
-            c.AddSecurityDefinition("Bearer", scheme);
+            c.AddSecurityDefinition("CookieAuth", scheme);
             c.AddSecurityRequirement(new OpenApiSecurityRequirement
             {
                 {
-                    new OpenApiSecurityScheme { Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" } },
+                    new OpenApiSecurityScheme { Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "CookieAuth" } },
                     Array.Empty<string>()
                 }
             });
@@ -97,12 +95,18 @@ public static class ServiceCollectionExtensions
                 {
                     OnMessageReceived = ctx =>
                     {
-                        // Read JWT from HttpOnly cookie.
+                        // La única fuente aceptada del JWT es la cookie HttpOnly.
+                        // No se permite el fallback a la cabecera Authorization.
                         if (ctx.Request.Cookies.TryGetValue(auth.Cookie.AccessTokenCookieName, out var token) &&
                             !string.IsNullOrWhiteSpace(token))
                         {
                             ctx.Token = token;
                         }
+                        else
+                        {
+                            ctx.NoResult();
+                        }
+
                         return Task.CompletedTask;
                     },
                     OnTokenValidated = async ctx =>

@@ -29,8 +29,16 @@ public sealed class AuthLoginEndpointTests
         Assert.Contains("pc_at=", joinedCookies);
         Assert.Contains("pc_csrf=", joinedCookies);
 
+        var authCookie = cookies!.Single(cookie => cookie.StartsWith("pc_at=", StringComparison.Ordinal));
+        Assert.Contains("httponly", authCookie, StringComparison.OrdinalIgnoreCase);
+
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal("valid@test.local", body.RootElement.GetProperty("user").GetProperty("email").GetString());
+
+        // El JWT no debe exponerse en el cuerpo de la respuesta.
+        Assert.False(body.RootElement.TryGetProperty("accessToken", out _));
+        Assert.False(body.RootElement.TryGetProperty("token", out _));
+        Assert.DoesNotContain("eyJ", body.RootElement.GetRawText(), StringComparison.Ordinal);
     }
 
     [Fact]
