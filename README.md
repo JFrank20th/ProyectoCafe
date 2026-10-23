@@ -31,6 +31,9 @@ dotnet user-secrets set "Auth:Jwt:SigningKey" "$([Convert]::ToBase64String([Syst
 Set-Location -Path "c:\ProyectoCafe\Portal"; npm run dev
 Set-Location -Path "c:\ProyectoCafe\server\api\ProyectoCafe.API"; dotnet run
 
+> Guía detallada de arranque local, credenciales de Development y solución de
+> errores: [`DOCS/ARRANQUE-LOCAL.md`](DOCS/ARRANQUE-LOCAL.md).
+
 # Base de datos (SQL Server)
 # Crea la base ProyectoCafe.Dev con el esquema vigente (Administración).
 sqlcmd -S localhost -E -i "c:\ProyectoCafe\tools\sqlserver-create-current.sql" -b
