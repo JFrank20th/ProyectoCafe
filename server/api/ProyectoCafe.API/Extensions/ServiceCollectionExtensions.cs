@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -128,8 +129,6 @@ public static class ServiceCollectionExtensions
 
         services.AddAuthorization(options =>
         {
-            options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
-
             options.FallbackPolicy = new AuthorizationPolicyBuilder()
                 .RequireAuthenticatedUser()
                 .Build();
@@ -140,6 +139,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<PermissionCatalogService>();
 
         services.AddScoped<IJwtTokenService, JwtTokenService>();
+
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<ILoginRateLimiter, LoginRateLimiter>();
 
         services.AddHostedService<SecurityBootstrapHostedService>();
 

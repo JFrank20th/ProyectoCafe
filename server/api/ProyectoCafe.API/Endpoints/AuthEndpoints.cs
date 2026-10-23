@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -101,14 +102,39 @@ public static class AuthEndpoints
             [FromServices] ProyectoCafeDbContext db,
             [FromServices] IOptions<AuthOptions> options,
             [FromServices] IJwtTokenService jwtTokenService,
+            [FromServices] ILoginRateLimiter rateLimiter,
+            [FromServices] ILoggerFactory loggerFactory,
             CancellationToken ct) =>
         {
+            var logger = loggerFactory.CreateLogger("ProyectoCafe.API.Auth.Login");
             var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
             var password = (request.Password ?? string.Empty).Trim();
+            var clientIp = LoginSecurityLog.GetClientIp(http);
+            var maskedEmail = LoginSecurityLog.MaskEmail(email);
 
             if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
             {
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["request"] = ["Email y password son requeridos."] });
+            }
+
+            // Mismo máximo que el registro y la columna EmailNormalizado.
+            if (email.Length > 100 || password.Length > 100)
+            {
+                return InvalidCredentials();
+            }
+
+            var limit = rateLimiter.Check(clientIp, email);
+            if (!limit.IsAllowed)
+            {
+                logger.LogWarning(
+                    "Login bloqueado por rate limiting. Alcance={Alcance} Ip={Ip} Email={Email} IntentosFallidos={IntentosFallidos} ReintentarEnSegundos={ReintentarEnSegundos}",
+                    limit.Scope,
+                    clientIp,
+                    maskedEmail,
+                    limit.FailedAttempts,
+                    (int)Math.Ceiling(limit.RetryAfter.TotalSeconds));
+
+                return TooManyRequests(http, limit.RetryAfter);
             }
 
             var user = await db.Usuarios
@@ -116,16 +142,28 @@ public static class AuthEndpoints
 
             if (user is null)
             {
-                return Results.Unauthorized();
+                rateLimiter.RecordFailure(clientIp, email);
+                logger.LogWarning(
+                    "Login fallido: usuario inexistente. Ip={Ip} Email={Email}",
+                    clientIp,
+                    maskedEmail);
+
+                return InvalidCredentials();
             }
 
             var now = DateTime.UtcNow;
             if (user.LockoutFin is not null && user.LockoutFin > now)
             {
-                return Results.Json(new
-                {
-                    error = new { code = "LOCKED", message = "Cuenta temporalmente bloqueada. Intenta más tarde." }
-                }, statusCode: StatusCodes.Status429TooManyRequests);
+                var retryAfter = user.LockoutFin.Value - now;
+
+                logger.LogWarning(
+                    "Login bloqueado: cuenta con bloqueo temporal vigente. Ip={Ip} Email={Email} UsuarioId={UsuarioId} BloqueadaHasta={BloqueadaHasta}",
+                    clientIp,
+                    maskedEmail,
+                    user.UsuarioId,
+                    user.LockoutFin);
+
+                return TooManyRequests(http, retryAfter);
             }
 
             if (user.Estado != UsuarioEstado.Activo)
@@ -137,6 +175,13 @@ public static class AuthEndpoints
                     _ => "Tu cuenta no está activa."
                 };
 
+                logger.LogWarning(
+                    "Login rechazado por estado de cuenta. Ip={Ip} Email={Email} UsuarioId={UsuarioId} Estado={Estado}",
+                    clientIp,
+                    maskedEmail,
+                    user.UsuarioId,
+                    user.Estado);
+
                 return Results.Json(new
                 {
                     error = new { code = "USER_NOT_ACTIVE", message }
@@ -146,15 +191,28 @@ public static class AuthEndpoints
             var ok = PasswordHasher.Verify(password, user.PasswordHash);
             if (!ok)
             {
+                rateLimiter.RecordFailure(clientIp, email);
+
                 user.IntentosFallidosLogin += 1;
+                var lockoutTriggered = false;
                 if (user.IntentosFallidosLogin >= 5)
                 {
                     user.LockoutFin = now.AddMinutes(15);
+                    lockoutTriggered = true;
                 }
                 user.ActualizadoEn = now;
                 await db.SaveChangesAsync(ct);
 
-                return Results.Unauthorized();
+                logger.LogWarning(
+                    "Login fallido: credenciales inválidas. Ip={Ip} Email={Email} UsuarioId={UsuarioId} IntentosFallidos={IntentosFallidos} CuentaBloqueada={CuentaBloqueada} BloqueadaHasta={BloqueadaHasta}",
+                    clientIp,
+                    maskedEmail,
+                    user.UsuarioId,
+                    user.IntentosFallidosLogin,
+                    lockoutTriggered,
+                    user.LockoutFin);
+
+                return InvalidCredentials();
             }
 
             user.IntentosFallidosLogin = 0;
@@ -181,6 +239,14 @@ public static class AuthEndpoints
                 .ToArrayAsync(ct);
 
             await db.SaveChangesAsync(ct);
+
+            rateLimiter.RecordSuccess(clientIp, email);
+
+            logger.LogInformation(
+                "Login exitoso. Ip={Ip} Email={Email} UsuarioId={UsuarioId}",
+                clientIp,
+                maskedEmail,
+                user.UsuarioId);
 
             var token = jwtTokenService.CreateToken(new JwtUser(user.UsuarioId, user.Email, user.Nombre, roles));
 
@@ -280,6 +346,31 @@ public static class AuthEndpoints
         .RequireAuthorization();
 
         return endpoints;
+    }
+
+    private static IResult InvalidCredentials() =>
+        Results.Json(new
+        {
+            error = new
+            {
+                code = "INVALID_CREDENTIALS",
+                message = "Email o contraseña incorrectos."
+            }
+        }, statusCode: StatusCodes.Status401Unauthorized);
+
+    private static IResult TooManyRequests(HttpContext http, TimeSpan retryAfter)
+    {
+        var seconds = Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds));
+        http.Response.Headers.RetryAfter = seconds.ToString(CultureInfo.InvariantCulture);
+
+        return Results.Json(new
+        {
+            error = new
+            {
+                code = "TOO_MANY_REQUESTS",
+                message = "Demasiados intentos de inicio de sesión. Intenta nuevamente más tarde."
+            }
+        }, statusCode: StatusCodes.Status429TooManyRequests);
     }
 
     public sealed class RegisterRequest

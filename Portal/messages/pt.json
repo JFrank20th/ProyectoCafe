@@ -4,18 +4,13 @@
     "error": "Erro",
     "success": "Sucesso",
     "cancel": "Cancelar",
-    "confirm": "Confirmar",
     "save": "Salvar",
     "delete": "Excluir",
     "edit": "Editar",
-    "annul": "Anular",
     "search": "Pesquisar",
     "close": "Fechar",
-    "back": "Voltar",
     "next": "Próximo",
-    "previous": "Anterior",
     "refresh": "Atualizar",
-    "addLine": "Adicionar linha",
     "listTitle": "Lista",
     "changeLanguage": "Mudar idioma",
     "toggleSidebar": "Alternar barra lateral",
@@ -23,11 +18,9 @@
     "notifications": "Notificações",
     "noNotifications": "Sem notificações.",
     "viewAll": "Ver tudo",
-    "viewDetails": "Ver detalhes",
     "open": "Abrir",
     "userMenu": "Menu do usuário",
-    "logout": "Sair",
-    "allRightsReserved": "Todos os direitos reservados."
+    "logout": "Sair"
   },
   "auth": {
     "title": "ProyectoCafe",
@@ -81,8 +74,6 @@
     "errorSavingPermissions": "Erro ao salvar permissões."
   },
   "admin": {
-    "yes": "Sim",
-    "no": "Não",
     "activate": "Ativar",
     "deactivate": "Desativar",
     "editRoles": "Editar funções",

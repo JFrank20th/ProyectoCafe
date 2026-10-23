@@ -8,6 +8,8 @@ public sealed class AuthOptions
 
     public AuthCookieOptions Cookie { get; init; } = new();
 
+    public LoginRateLimitOptions RateLimit { get; init; } = new();
+
     public List<DemoUserOptions> Users { get; init; } = [];
 }
 

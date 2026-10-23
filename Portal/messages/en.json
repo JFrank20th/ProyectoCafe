@@ -4,18 +4,13 @@
     "error": "Error",
     "success": "Success",
     "cancel": "Cancel",
-    "confirm": "Confirm",
     "save": "Save",
     "delete": "Delete",
     "edit": "Edit",
-    "annul": "Annul",
     "search": "Search",
     "close": "Close",
-    "back": "Back",
     "next": "Next",
-    "previous": "Previous",
     "refresh": "Refresh",
-    "addLine": "Add line",
     "listTitle": "List",
     "changeLanguage": "Change language",
     "toggleSidebar": "Toggle sidebar",
@@ -23,11 +18,9 @@
     "notifications": "Notifications",
     "noNotifications": "No notifications.",
     "viewAll": "View All",
-    "viewDetails": "View details",
     "open": "Open",
     "userMenu": "User menu",
-    "logout": "Sign out",
-    "allRightsReserved": "All rights reserved."
+    "logout": "Sign out"
   },
   "auth": {
     "title": "ProyectoCafe",
@@ -81,8 +74,6 @@
     "errorSavingPermissions": "Error saving permissions."
   },
   "admin": {
-    "yes": "Yes",
-    "no": "No",
     "activate": "Activate",
     "deactivate": "Deactivate",
     "editRoles": "Edit roles",

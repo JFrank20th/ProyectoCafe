@@ -56,6 +56,18 @@ public sealed class AuthOptionsValidator : IValidateOptions<AuthOptions>
         if (string.IsNullOrWhiteSpace(options.Cookie.CsrfHeaderName))
             failures.Add("Auth:Cookie:CsrfHeaderName es requerido.");
 
+        var rateLimit = options.RateLimit;
+        if (rateLimit.IpMaxFailedAttempts is < 1 or > 10_000)
+            failures.Add("Auth:RateLimit:IpMaxFailedAttempts debe estar entre 1 y 10000.");
+        if (rateLimit.IpWindowMinutes is < 1 or > 24 * 60)
+            failures.Add("Auth:RateLimit:IpWindowMinutes debe estar entre 1 y 1440.");
+        if (rateLimit.UserMaxFailedAttempts is < 1 or > 10_000)
+            failures.Add("Auth:RateLimit:UserMaxFailedAttempts debe estar entre 1 y 10000.");
+        if (rateLimit.UserWindowMinutes is < 1 or > 24 * 60)
+            failures.Add("Auth:RateLimit:UserWindowMinutes debe estar entre 1 y 1440.");
+        if (rateLimit.MaxTrackedKeys is < 100 or > 1_000_000)
+            failures.Add("Auth:RateLimit:MaxTrackedKeys debe estar entre 100 y 1000000.");
+
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
     }
 }
