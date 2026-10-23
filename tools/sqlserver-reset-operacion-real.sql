@@ -1,5 +1,5 @@
 /*
-  Reinicio de ProyectoCafe (alcance actual: Administración + Dashboard).
+  Reinicio de ProyectoCafe (alcance actual: Administración).
 
   Preserva:
   - Seguridad.Usuarios

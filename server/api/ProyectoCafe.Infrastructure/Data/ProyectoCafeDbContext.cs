@@ -4,8 +4,8 @@ using ProyectoCafe.Domain.Entities;
 namespace ProyectoCafe.Infrastructure.Data;
 
 /// <summary>
-/// Contexto de datos del sistema. El alcance actual del proyecto se limita a los
-/// módulos de Administración y Dashboard, por lo que solo persiste seguridad
+/// Contexto de datos del sistema. El alcance actual del proyecto se limita al
+/// módulo de Administración, por lo que solo persiste seguridad
 /// (usuarios, roles y permisos).
 /// </summary>
 public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext> options) : DbContext(options)

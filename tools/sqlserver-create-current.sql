@@ -3,7 +3,6 @@
 
   Alcance actual del proyecto:
   - Administracion (Usuarios, Roles, UsuariosRoles, RolesPermisos)
-  - Dashboard (consulta sobre las mismas tablas)
   - Historial de EF Core alineado a la linea base 20261023012804_InitialAdministration
 
   Este script crea la base desde cero con la misma estructura que genera la
