@@ -6,20 +6,17 @@ namespace ProyectoCafe.Infrastructure.Data;
 
 public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext> options) : DbContext(options)
 {
-    public DbSet<Categoria> Categorias => Set<Categoria>();
     public DbSet<UnidadMedida> UnidadesMedida => Set<UnidadMedida>();
     public DbSet<Producto> Productos => Set<Producto>();
-    public DbSet<Presentacion> Presentaciones => Set<Presentacion>();
     public DbSet<Insumo> Insumos => Set<Insumo>();
     public DbSet<Lote> Lotes => Set<Lote>();
+    public DbSet<ProcesoInventario> ProcesosInventario => Set<ProcesoInventario>();
     public DbSet<LoteMovimiento> LoteMovimientos => Set<LoteMovimiento>();
     public DbSet<Finca> Fincas => Set<Finca>();
-    public DbSet<Parcela> Parcelas => Set<Parcela>();
+    public DbSet<Cultivo> Cultivos => Set<Cultivo>();
+    public DbSet<CultivoConfiguracionCosecha> CultivosConfiguracionesCosecha => Set<CultivoConfiguracionCosecha>();
     public DbSet<OperacionAgricola> OperacionesAgricolas => Set<OperacionAgricola>();
     public DbSet<CosechaCafe> CosechasCafe => Set<CosechaCafe>();
-    public DbSet<TransformacionCafe> TransformacionesCafe => Set<TransformacionCafe>();
-    public DbSet<EmpaqueCafe> EmpaquesCafe => Set<EmpaqueCafe>();
-    public DbSet<EmpaqueCafeDetalle> EmpaquesCafeDetalles => Set<EmpaqueCafeDetalle>();
     public DbSet<Proveedor> Proveedores => Set<Proveedor>();
     public DbSet<RecepcionCafe> RecepcionesCafe => Set<RecepcionCafe>();
     public DbSet<Cliente> Clientes => Set<Cliente>();
@@ -40,25 +37,6 @@ public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Categoria>(entity =>
-        {
-            entity.ToTable("Categorias", schema: "Inventario");
-            entity.HasKey(x => x.CategoriaId);
-
-            entity.Property(x => x.CategoriaId)
-                .ValueGeneratedOnAdd();
-
-            entity.Property(x => x.Nombre)
-                .HasMaxLength(100)
-                .IsRequired();
-
-            entity.Property(x => x.Descripcion)
-                .HasMaxLength(250);
-
-            entity.Property(x => x.Estado)
-                .HasDefaultValue(true);
-        });
-
         modelBuilder.Entity<UnidadMedida>(entity =>
         {
             entity.ToTable("UnidadesMedida", schema: "Inventario");
@@ -129,6 +107,18 @@ public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext
             entity.Property(x => x.Estado)
                 .HasDefaultValue(true);
 
+            entity.Property(x => x.PresentacionCodigo)
+                .HasMaxLength(30);
+
+            entity.Property(x => x.PresentacionNombre)
+                .HasMaxLength(120);
+
+            entity.Property(x => x.PresentacionCantidad)
+                .HasColumnType("decimal(18,3)");
+
+            entity.Property(x => x.PresentacionUnidadMedida)
+                .HasMaxLength(20);
+
             entity.Property(x => x.UnidadMedida)
                 .HasMaxLength(20)
                 .HasDefaultValue("UN")
@@ -137,68 +127,6 @@ public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext
             entity.Property(x => x.PermiteDecimal)
                 .HasDefaultValue(false)
                 .IsRequired();
-
-            entity.HasOne<Categoria>()
-                .WithMany()
-                .HasForeignKey(x => x.CategoriaId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.Property(x => x.PresentacionId)
-                .HasColumnName("PresentacionCafeId");
-
-            entity.HasIndex(x => x.PresentacionId)
-                .HasDatabaseName("IX_Productos_PresentacionCafeId");
-
-            entity.HasOne<Presentacion>()
-                .WithMany()
-                .HasForeignKey(x => x.PresentacionId)
-                .HasConstraintName("FK_Productos_PresentacionesCafe_PresentacionCafeId")
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne<UnidadMedida>()
-                .WithMany()
-                .HasForeignKey(x => x.UnidadMedida)
-                .HasPrincipalKey(x => x.Codigo)
-                .OnDelete(DeleteBehavior.Restrict);
-        });
-
-        modelBuilder.Entity<Presentacion>(entity =>
-        {
-            entity.ToTable("PresentacionesCafe", schema: "Inventario");
-            entity.HasKey(x => x.PresentacionId);
-
-            entity.Property(x => x.PresentacionId)
-                .HasColumnName("PresentacionCafeId")
-                .ValueGeneratedOnAdd();
-
-            entity.Property(x => x.Codigo)
-                .HasMaxLength(30)
-                .IsRequired();
-
-            entity.HasIndex(x => x.Codigo)
-                .IsUnique()
-                .HasDatabaseName("UQ_Inventario_PresentacionesCafe_Codigo");
-
-            entity.Property(x => x.Nombre)
-                .HasMaxLength(120)
-                .IsRequired();
-
-            entity.Property(x => x.Cantidad)
-                .HasColumnType("decimal(18,3)")
-                .IsRequired();
-
-            entity.Property(x => x.PesoGramosLegacy)
-                .HasColumnName("PesoGramos")
-                .HasColumnType("decimal(18,3)")
-                .IsRequired();
-
-            entity.Property(x => x.UnidadMedida)
-                .HasMaxLength(20)
-                .HasDefaultValue("G")
-                .IsRequired();
-
-            entity.Property(x => x.Estado)
-                .HasDefaultValue(true);
 
             entity.HasOne<UnidadMedida>()
                 .WithMany()
@@ -289,6 +217,64 @@ public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
+        modelBuilder.Entity<ProcesoInventario>(entity =>
+        {
+            entity.ToTable("ProcesosInventario", schema: "Inventario");
+            entity.HasKey(x => x.ProcesoInventarioId);
+
+            entity.Property(x => x.ProcesoInventarioId)
+                .ValueGeneratedOnAdd();
+
+            entity.Property(x => x.FechaProceso)
+                .HasColumnType("datetime2(7)")
+                .HasDefaultValueSql("sysdatetime()")
+                .ValueGeneratedOnAdd();
+
+            entity.Property(x => x.CantidadOrigenConsumida)
+                .HasColumnType("decimal(18,3)")
+                .IsRequired();
+
+            entity.Property(x => x.CantidadSalida)
+                .HasColumnType("decimal(18,3)")
+                .IsRequired();
+
+            entity.Property(x => x.CostoProceso)
+                .HasColumnType("decimal(18,2)")
+                .HasDefaultValue(0m)
+                .IsRequired();
+
+            entity.Property(x => x.Observaciones)
+                .HasMaxLength(250);
+
+            entity.Property(x => x.Estado)
+                .HasMaxLength(20)
+                .HasDefaultValue("Registrado")
+                .IsRequired();
+
+            entity.HasIndex(x => new { x.FechaProceso, x.Estado })
+                .HasDatabaseName("IX_Inventario_ProcesosInventario_Fecha_Estado");
+
+            entity.HasOne<RecepcionCafe>()
+                .WithMany()
+                .HasForeignKey(x => x.RecepcionCafeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<Lote>()
+                .WithMany()
+                .HasForeignKey(x => x.LoteOrigenId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<Producto>()
+                .WithMany()
+                .HasForeignKey(x => x.ProductoSalidaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<Lote>()
+                .WithMany()
+                .HasForeignKey(x => x.LoteSalidaId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         modelBuilder.Entity<LoteMovimiento>(entity =>
         {
             entity.ToTable("LoteMovimientos", schema: "Inventario");
@@ -354,12 +340,12 @@ public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext
                 .HasDefaultValue(true);
         });
 
-        modelBuilder.Entity<Parcela>(entity =>
+        modelBuilder.Entity<Cultivo>(entity =>
         {
-            entity.ToTable("Parcelas", schema: "Produccion");
-            entity.HasKey(x => x.ParcelaId);
+            entity.ToTable("Cultivos", schema: "Produccion");
+            entity.HasKey(x => x.CultivoId);
 
-            entity.Property(x => x.ParcelaId)
+            entity.Property(x => x.CultivoId)
                 .ValueGeneratedOnAdd();
 
             entity.Property(x => x.Nombre)
@@ -369,10 +355,6 @@ public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext
             entity.Property(x => x.Descripcion)
                 .HasMaxLength(250);
 
-            entity.Property(x => x.Cultivo)
-                .HasColumnName("VariedadCafe")
-                .HasMaxLength(100);
-
             entity.Property(x => x.AreaHectareas)
                 .HasColumnType("decimal(18,2)");
 
@@ -380,7 +362,7 @@ public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext
                 .HasDefaultValue(true);
 
             entity.HasIndex(x => new { x.FincaId, x.Nombre })
-                .HasDatabaseName("UX_Produccion_Parcelas_Finca_Nombre")
+                .HasDatabaseName("UX_Produccion_Cultivos_Finca_Nombre")
                 .IsUnique();
 
             entity.HasOne<Finca>()
@@ -391,6 +373,43 @@ public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext
             entity.HasOne<Producto>()
                 .WithMany()
                 .HasForeignKey(x => x.ProductoCosechaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasMany(x => x.ConfiguracionesCosecha)
+                .WithOne()
+                .HasForeignKey(x => x.CultivoId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CultivoConfiguracionCosecha>(entity =>
+        {
+            entity.ToTable("CultivosConfiguracionesCosecha", schema: "Produccion");
+            entity.HasKey(x => x.CultivoConfiguracionCosechaId);
+
+            entity.Property(x => x.CultivoConfiguracionCosechaId)
+                .ValueGeneratedOnAdd();
+
+            entity.Property(x => x.NombreTipoCosecha)
+                .HasMaxLength(150)
+                .IsRequired();
+
+            entity.Property(x => x.UnidadMedidaCodigo)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.HasIndex(x => new { x.CultivoId, x.NombreTipoCosecha, x.UnidadMedidaCodigo })
+                .HasDatabaseName("UX_Produccion_CultivosConfiguracionesCosecha_Unica")
+                .IsUnique();
+
+            entity.HasOne<Cultivo>()
+                .WithMany(x => x.ConfiguracionesCosecha)
+                .HasForeignKey(x => x.CultivoId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne<UnidadMedida>()
+                .WithMany()
+                .HasForeignKey(x => x.UnidadMedidaCodigo)
+                .HasPrincipalKey(x => x.Codigo)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -451,15 +470,15 @@ public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext
                 .HasDefaultValue("Registrada")
                 .IsRequired();
 
-            entity.HasIndex(x => new { x.ParcelaId, x.FechaOperacion })
-                .HasDatabaseName("IX_Produccion_OperacionesAgricolas_Parcela_Fecha");
+            entity.HasIndex(x => new { x.CultivoId, x.FechaOperacion })
+                .HasDatabaseName("IX_Produccion_OperacionesAgricolas_Cultivo_Fecha");
 
             entity.HasIndex(x => new { x.FechaOperacion, x.Estado })
                 .HasDatabaseName("IX_Produccion_OperacionesAgricolas_Fecha_Estado");
 
-            entity.HasOne<Parcela>()
+            entity.HasOne<Cultivo>()
                 .WithMany()
-                .HasForeignKey(x => x.ParcelaId)
+                .HasForeignKey(x => x.CultivoId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne<Insumo>()
@@ -475,6 +494,11 @@ public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext
             entity.HasOne<Lote>()
                 .WithMany()
                 .HasForeignKey(x => x.LoteId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<RecepcionCafe>()
+                .WithMany()
+                .HasForeignKey(x => x.RecepcionCafeId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -511,15 +535,15 @@ public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext
                 .HasDefaultValue("Registrada")
                 .IsRequired();
 
-            entity.HasIndex(x => new { x.ParcelaId, x.FechaCosecha })
-                .HasDatabaseName("IX_Produccion_CosechasCafe_Parcela_Fecha");
+            entity.HasIndex(x => new { x.CultivoId, x.FechaCosecha })
+                .HasDatabaseName("IX_Produccion_CosechasCafe_Cultivo_Fecha");
 
             entity.HasIndex(x => new { x.FechaCosecha, x.Estado })
                 .HasDatabaseName("IX_Produccion_CosechasCafe_Fecha_Estado");
 
-            entity.HasOne<Parcela>()
+            entity.HasOne<Cultivo>()
                 .WithMany()
-                .HasForeignKey(x => x.ParcelaId)
+                .HasForeignKey(x => x.CultivoId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne<Producto>()
@@ -530,190 +554,6 @@ public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext
             entity.HasOne<Lote>()
                 .WithMany()
                 .HasForeignKey(x => x.LoteId)
-                .OnDelete(DeleteBehavior.Restrict);
-        });
-
-        modelBuilder.Entity<TransformacionCafe>(entity =>
-        {
-            entity.ToTable("TransformacionesCafe", schema: "Produccion");
-            entity.HasKey(x => x.TransformacionCafeId);
-
-            entity.Property(x => x.TransformacionCafeId)
-                .ValueGeneratedOnAdd();
-
-            entity.Property(x => x.TipoTransformacion)
-                .HasMaxLength(30)
-                .IsRequired();
-
-            entity.Property(x => x.FechaTransformacion)
-                .HasColumnType("datetime2(7)")
-                .HasDefaultValueSql("sysdatetime()")
-                .ValueGeneratedOnAdd();
-
-            entity.Property(x => x.CantidadEntrada)
-                .HasColumnType("decimal(18,3)")
-                .IsRequired();
-
-            entity.Property(x => x.CantidadSalida)
-                .HasColumnType("decimal(18,3)")
-                .IsRequired();
-
-            entity.Property(x => x.CostoProceso)
-                .HasColumnType("decimal(18,2)")
-                .HasDefaultValue(0m)
-                .IsRequired();
-
-            entity.Property(x => x.Merma)
-                .HasColumnType("decimal(18,3)");
-
-            entity.Property(x => x.Rendimiento)
-                .HasColumnType("decimal(9,4)");
-
-            entity.Property(x => x.Observaciones)
-                .HasMaxLength(250);
-
-            entity.Property(x => x.Estado)
-                .HasMaxLength(20)
-                .HasDefaultValue("Registrada")
-                .IsRequired();
-
-            entity.HasIndex(x => new { x.FechaTransformacion, x.Estado })
-                .HasDatabaseName("IX_Produccion_TransformacionesCafe_Fecha_Estado");
-
-            entity.HasOne<Lote>()
-                .WithMany()
-                .HasForeignKey(x => x.LoteOrigenId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne<Producto>()
-                .WithMany()
-                .HasForeignKey(x => x.ProductoSalidaId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne<Lote>()
-                .WithMany()
-                .HasForeignKey(x => x.LoteSalidaId)
-                .OnDelete(DeleteBehavior.Restrict);
-        });
-
-        modelBuilder.Entity<EmpaqueCafe>(entity =>
-        {
-            entity.ToTable("EmpaquesCafe", schema: "Produccion");
-            entity.HasKey(x => x.EmpaqueCafeId);
-
-            entity.Property(x => x.EmpaqueCafeId)
-                .ValueGeneratedOnAdd();
-
-            entity.Property(x => x.FechaEmpaque)
-                .HasColumnType("datetime2(7)")
-                .HasDefaultValueSql("sysdatetime()")
-                .ValueGeneratedOnAdd();
-
-            entity.Property(x => x.CantidadOrigenConsumida)
-                .HasColumnType("decimal(18,3)")
-                .IsRequired();
-
-            entity.Property(x => x.CantidadEmpaques)
-                .HasColumnType("decimal(18,3)")
-                .IsRequired();
-
-            entity.Property(x => x.PesoTotalGramos)
-                .HasColumnType("decimal(18,3)")
-                .IsRequired();
-
-            entity.Property(x => x.CostoEmpaque)
-                .HasColumnType("decimal(18,2)")
-                .HasDefaultValue(0m)
-                .IsRequired();
-
-            entity.Property(x => x.Observaciones)
-                .HasMaxLength(250);
-
-            entity.Property(x => x.Estado)
-                .HasMaxLength(20)
-                .HasDefaultValue("Registrado")
-                .IsRequired();
-
-            entity.HasIndex(x => new { x.FechaEmpaque, x.Estado })
-                .HasDatabaseName("IX_Produccion_EmpaquesCafe_Fecha_Estado");
-
-            entity.HasOne<Lote>()
-                .WithMany()
-                .HasForeignKey(x => x.LoteOrigenId)
-                .OnDelete(DeleteBehavior.Restrict);
-        });
-
-        modelBuilder.Entity<EmpaqueCafeDetalle>(entity =>
-        {
-            entity.ToTable("EmpaquesCafeDetalles", schema: "Produccion");
-            entity.HasKey(x => x.EmpaqueCafeDetalleId);
-
-            entity.Property(x => x.EmpaqueCafeDetalleId)
-                .ValueGeneratedOnAdd();
-
-            entity.Property(x => x.Cantidad)
-                .HasColumnType("decimal(18,3)")
-                .IsRequired();
-
-            entity.Property(x => x.PesoGramosUnitario)
-                .HasColumnType("decimal(18,3)")
-                .IsRequired();
-
-            entity.Property(x => x.PesoTotalGramos)
-                .HasColumnType("decimal(18,3)")
-                .IsRequired();
-
-            entity.Property(x => x.CantidadOrigenAsignada)
-                .HasColumnType("decimal(18,3)")
-                .IsRequired();
-
-            entity.Property(x => x.CostoOrigenAsignado)
-                .HasColumnType("decimal(18,4)")
-                .HasDefaultValue(0m)
-                .IsRequired();
-
-            entity.Property(x => x.CostoEmpaqueAsignado)
-                .HasColumnType("decimal(18,2)")
-                .HasDefaultValue(0m)
-                .IsRequired();
-
-            entity.Property(x => x.Estado)
-                .HasMaxLength(20)
-                .HasDefaultValue("Registrado")
-                .IsRequired();
-
-            entity.HasIndex(x => x.EmpaqueCafeId)
-                .HasDatabaseName("IX_Produccion_EmpaquesCafeDetalles_EmpaqueCafe");
-
-            entity.HasIndex(x => x.LoteSalidaId)
-                .IsUnique()
-                .HasDatabaseName("UQ_Produccion_EmpaquesCafeDetalles_LoteSalida");
-
-            entity.HasOne<EmpaqueCafe>()
-                .WithMany()
-                .HasForeignKey(x => x.EmpaqueCafeId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne<Producto>()
-                .WithMany()
-                .HasForeignKey(x => x.ProductoSalidaId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.Property(x => x.PresentacionId)
-                .HasColumnName("PresentacionCafeId");
-
-            entity.HasIndex(x => x.PresentacionId)
-                .HasDatabaseName("IX_EmpaquesCafeDetalles_PresentacionCafeId");
-
-            entity.HasOne<Presentacion>()
-                .WithMany()
-                .HasForeignKey(x => x.PresentacionId)
-                .HasConstraintName("FK_EmpaquesCafeDetalles_PresentacionesCafe_PresentacionCafeId")
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne<Lote>()
-                .WithMany()
-                .HasForeignKey(x => x.LoteSalidaId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -741,6 +581,9 @@ public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext
             entity.Property(x => x.Direccion)
                 .HasMaxLength(200);
 
+            entity.Property(x => x.EsInterno)
+                .HasDefaultValue(false);
+
             entity.Property(x => x.Estado)
                 .HasDefaultValue(true);
         });
@@ -762,11 +605,20 @@ public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext
                 .HasDefaultValueSql("sysdatetime()")
                 .ValueGeneratedOnAdd();
 
-            entity.Property(x => x.NumeroDocumento)
+            entity.Property(x => x.CodigoLote)
                 .HasMaxLength(50);
+
+            entity.HasIndex(x => x.CodigoLote)
+                .HasDatabaseName("UX_Compras_RecepcionesCafe_CodigoLote")
+                .IsUnique();
 
             entity.Property(x => x.Cantidad)
                 .HasColumnType("decimal(18,3)")
+                .IsRequired();
+
+            entity.Property(x => x.CantidadDisponible)
+                .HasColumnType("decimal(18,3)")
+                .HasDefaultValue(0m)
                 .IsRequired();
 
             entity.Property(x => x.PrecioUnitario)
@@ -787,11 +639,6 @@ public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext
                 .HasMaxLength(20)
                 .HasDefaultValue("Registrada")
                 .IsRequired();
-
-            entity.HasIndex(x => new { x.ProveedorId, x.NumeroDocumento })
-                .HasDatabaseName("UX_Compras_RecepcionesCafe_Proveedor_Documento")
-                .IsUnique()
-                .HasFilter("[NumeroDocumento] IS NOT NULL");
 
             entity.HasIndex(x => new { x.FechaRecepcion, x.Estado })
                 .HasDatabaseName("IX_Compras_RecepcionesCafe_Fecha_Estado");
@@ -1062,8 +909,8 @@ public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext
             entity.HasIndex(x => new { x.FuenteModulo, x.ReferenciaId })
                 .HasDatabaseName("IX_Contabilidad_Costos_Fuente_Referencia");
 
-            entity.HasIndex(x => new { x.ParcelaId, x.Fecha })
-                .HasDatabaseName("IX_Contabilidad_Costos_Parcela_Fecha");
+            entity.HasIndex(x => new { x.CultivoId, x.Fecha })
+                .HasDatabaseName("IX_Contabilidad_Costos_Cultivo_Fecha");
 
             entity.HasIndex(x => new { x.LoteId, x.Fecha })
                 .HasDatabaseName("IX_Contabilidad_Costos_Lote_Fecha");
@@ -1080,9 +927,9 @@ public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext
             entity.Property(x => x.Estado)
                 .HasDefaultValue(true);
 
-            entity.HasOne<Parcela>()
+            entity.HasOne<Cultivo>()
                 .WithMany()
-                .HasForeignKey(x => x.ParcelaId)
+                .HasForeignKey(x => x.CultivoId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne<Lote>()

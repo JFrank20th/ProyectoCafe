@@ -2,8 +2,8 @@ namespace ProyectoCafe.Application.Compras.Proveedores;
 
 public sealed class ProveedoresService(IProveedorRepository repository) : IProveedoresService
 {
-    public Task<IReadOnlyList<ProveedorResponse>> GetAllAsync(CancellationToken cancellationToken) =>
-        repository.GetAllAsync(cancellationToken);
+    public Task<IReadOnlyList<ProveedorResponse>> GetAllAsync(bool soloExternos, CancellationToken cancellationToken) =>
+        repository.GetAllAsync(soloExternos, cancellationToken);
 
     public Task<ProveedorResponse?> GetByIdAsync(int id, CancellationToken cancellationToken) =>
         repository.GetByIdAsync(id, cancellationToken);

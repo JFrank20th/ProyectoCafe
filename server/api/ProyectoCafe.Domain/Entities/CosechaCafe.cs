@@ -4,7 +4,7 @@ public sealed class CosechaCafe
 {
     public int CosechaCafeId { get; set; }
 
-    public int ParcelaId { get; set; }
+    public int CultivoId { get; set; }
 
     public int ProductoId { get; set; }
 

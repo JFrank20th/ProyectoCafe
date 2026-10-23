@@ -2,7 +2,7 @@ namespace ProyectoCafe.Application.Compras.Proveedores;
 
 public interface IProveedoresService
 {
-    Task<IReadOnlyList<ProveedorResponse>> GetAllAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyList<ProveedorResponse>> GetAllAsync(bool soloExternos, CancellationToken cancellationToken);
 
     Task<ProveedorResponse?> GetByIdAsync(int id, CancellationToken cancellationToken);
 

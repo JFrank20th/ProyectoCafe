@@ -5,10 +5,9 @@ public static class TiposCostoContable
     public const string Manual = "Manual";
     public const string OperacionAgricola = "OperacionAgricola";
     public const string CosechaCafe = "CosechaCafe";
-    public const string TransformacionCafe = "TransformacionCafe";
-    public const string EmpaqueCafe = "EmpaqueCafe";
+    public const string ProcesoInventario = "ProcesoInventario";
 
-    public static readonly string[] All = [Manual, OperacionAgricola, CosechaCafe, TransformacionCafe, EmpaqueCafe];
+    public static readonly string[] All = [Manual, OperacionAgricola, CosechaCafe, ProcesoInventario];
 
     public static string Normalize(string? value)
     {
@@ -24,14 +23,9 @@ public static class TiposCostoContable
             return CosechaCafe;
         }
 
-        if (normalized.Equals(TransformacionCafe, StringComparison.OrdinalIgnoreCase))
+        if (normalized.Equals(ProcesoInventario, StringComparison.OrdinalIgnoreCase))
         {
-            return TransformacionCafe;
-        }
-
-        if (normalized.Equals(EmpaqueCafe, StringComparison.OrdinalIgnoreCase))
-        {
-            return EmpaqueCafe;
+            return ProcesoInventario;
         }
 
         return Manual;

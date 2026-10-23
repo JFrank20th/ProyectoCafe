@@ -77,8 +77,15 @@ public static class FincasEndpoints
             [FromServices] IFincasService service,
             CancellationToken ct) =>
         {
-            var deleted = await service.DeleteAsync(id, ct);
-            return deleted ? Results.NoContent() : Results.NotFound();
+            try
+            {
+                var deleted = await service.DeleteAsync(id, ct);
+                return deleted ? Results.NoContent() : Results.NotFound();
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["request"] = [ex.Message] });
+            }
         })
         .RequireAuthorization(Permissions.Policy(Permissions.Modulos.ProduccionFincas, Permissions.Actions.Eliminar));
     }
@@ -92,9 +99,29 @@ public static class FincasEndpoints
             errors[nameof(request.Nombre)] = ["Nombre es requerido."];
         }
 
+        if (string.IsNullOrWhiteSpace(request.Descripcion))
+        {
+            errors[nameof(request.Descripcion)] = ["Descripcion es requerida."];
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Ubicacion))
+        {
+            errors[nameof(request.Ubicacion)] = ["Ubicacion es requerida."];
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Municipio))
+        {
+            errors[nameof(request.Municipio)] = ["Municipio es requerido."];
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Departamento))
+        {
+            errors[nameof(request.Departamento)] = ["Departamento es requerido."];
+        }
+
         if (request.AreaHectareas.HasValue && request.AreaHectareas.Value < 0)
         {
-            errors[nameof(request.AreaHectareas)] = ["AreaHectareas no puede ser negativa."];
+            errors[nameof(request.AreaHectareas)] = ["Area no puede ser negativa."];
         }
 
         return errors;

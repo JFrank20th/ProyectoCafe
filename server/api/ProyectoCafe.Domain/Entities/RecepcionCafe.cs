@@ -12,9 +12,11 @@ public sealed class RecepcionCafe
 
     public DateTime? FechaRecepcion { get; set; }
 
-    public string? NumeroDocumento { get; set; }
+    public required string CodigoLote { get; set; }
 
     public decimal Cantidad { get; set; }
+
+    public decimal CantidadDisponible { get; set; }
 
     public decimal PrecioUnitario { get; set; }
 
@@ -26,5 +28,5 @@ public sealed class RecepcionCafe
 
     public required string Estado { get; set; }
 
-    public int LoteId { get; set; }
+    public int? LoteId { get; set; }
 }

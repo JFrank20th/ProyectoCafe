@@ -68,7 +68,7 @@ ProyectoCafe está organizado en los siguientes módulos:
 | Dashboard | Vista resumida del estado operativo, comercial, financiero y de trazabilidad |
 | Administración | Gestión de usuarios, roles y permisos |
 | Compras | Registro de proveedores y recepciones de café compradas |
-| Producción | Registro de fincas, parcelas, operaciones agrícolas, cosechas, transformaciones y empaques |
+| Producción | Registro de fincas, cultivos, operaciones agrícolas, cosechas, transformaciones y empaques |
 | Inventario | Consulta de lotes, productos, insumos y catálogos maestros |
 | Ventas | Registro de clientes, tipos de venta y ventas con salida por lote |
 | Contabilidad | Consulta de balance y administración de costos, gastos y pasivos |
@@ -89,17 +89,17 @@ Antes de trabajar en cualquier módulo, tenga presentes estas reglas:
 
 Es la unidad productiva principal. Sirve para identificar dónde se desarrolla la actividad agrícola.
 
-### 4.2 Parcela
+### 4.2 Cultivo
 
-Es una subdivisión de la finca. Se usa para registrar operaciones agrícolas y cosechas con mayor precisión.
+Es el registro del cultivo dentro de una finca. Se usa para identificar qué se produce, dónde se produce y relacionar operaciones agrícolas y cosechas con mayor precisión.
 
 ### 4.3 Operación agrícola
 
-Es cualquier actividad realizada sobre la parcela, por ejemplo aplicación de insumos, fertilización, poda, riego, jornal o mantenimiento. Estas operaciones también afectan costos y trazabilidad del lote cuando el lote proviene de una cosecha propia.
+Es cualquier actividad realizada sobre el cultivo, por ejemplo aplicación de insumos, fertilización, poda, riego, jornal o mantenimiento. Estas operaciones también afectan costos y trazabilidad del lote cuando el lote proviene de una cosecha propia.
 
 ### 4.4 Cosecha
 
-Es el registro del café recolectado en una parcela. Al registrarla, el sistema genera un lote inicial.
+Es el registro del café recolectado en un cultivo. Al registrarlo, el sistema genera un lote inicial.
 
 ### 4.5 Recepción de café
 
@@ -306,7 +306,7 @@ Nota operativa: esta pantalla administra cuentas ya registradas. La creación in
 
 ### Ejemplo práctico
 
-Ejemplo: un nuevo operador de producción ya se registró. El administrador lo activa, le asigna el rol de Producción y guarda. A partir de ese momento el usuario podrá ver Fincas, Parcelas, Operaciones, Cosechas, Transformaciones y Empaques.
+Ejemplo: un nuevo operador de producción ya se registró. El administrador lo activa, le asigna el rol de Producción y guarda. A partir de ese momento el usuario podrá ver Fincas, Cultivos, Operaciones, Cosechas, Transformaciones y Empaques.
 
 ## 8.4 Pantalla Roles
 
@@ -438,7 +438,7 @@ Este módulo administra la producción propia: dónde se produce, qué actividad
 
 ## 10.2 Funcionalidades principales
 
-1. Registrar fincas y parcelas.
+1. Registrar fincas y cultivos.
 2. Registrar operaciones agrícolas y costos asociados.
 3. Registrar cosechas y generar lotes de origen.
 4. Procesar transformaciones, incluyendo tostión por bache.
@@ -470,39 +470,43 @@ Crear y mantener el catálogo de fincas donde opera el negocio.
 
 ### Ejemplo práctico
 
-Ejemplo: se crea la finca El Mirador con su municipio, departamento y área, para luego asociarle parcelas y cosechas.
+Ejemplo: se crea la finca El Mirador con su municipio, departamento y área, para luego asociarle cultivos y cosechas.
 
-## 10.4 Pantalla Parcelas
+## 10.4 Pantalla Cultivos
 
 ### Propósito
 
-Organizar la finca en áreas de trabajo y registrar con precisión de dónde proviene cada cosecha.
+Organizar la producción dentro de cada finca y registrar con precisión qué se cultiva y de dónde proviene cada cosecha.
 
 ### Opciones y campos de la pantalla
 
 1. Finca asociada.
-2. Nombre de la parcela.
-3. Estado.
+2. Producto asociado.
+3. Nombre del cultivo.
+4. Descripción.
+5. Cultivo.
+6. Área en hectáreas.
+7. Estado.
 
 ### Flujo de uso paso a paso
 
 1. Abra Producción.
-2. Ingrese a Parcelas.
+2. Ingrese a Cultivos.
 3. Haga clic en Nuevo.
-4. Seleccione la finca.
-5. Asigne el nombre de la parcela.
-6. Active el registro.
+4. Seleccione la finca y el producto.
+5. Ingrese el nombre, la descripción, el cultivo y el área.
+6. Active el registro si corresponde.
 7. Guarde.
 
 ### Ejemplo práctico
 
-Ejemplo: la finca El Mirador se divide en Lote Norte y Lote Sur. Cada parcela se crea por separado para distinguir cosechas y operaciones agrícolas.
+Ejemplo: en la finca El Mirador se crea el cultivo Lote Norte, asociado al producto café en cereza, para distinguir cosechas y operaciones agrícolas.
 
 ## 10.5 Pantalla Operaciones agrícolas
 
 ### Propósito
 
-Registrar las actividades realizadas en la parcela y los costos que estas generan.
+Registrar las actividades realizadas en el cultivo y los costos que estas generan.
 
 ### Funcionalidades principales
 
@@ -514,7 +518,7 @@ Registrar las actividades realizadas en la parcela y los costos que estas genera
 
 ### Opciones y campos de la pantalla
 
-1. Parcela.
+1. Cultivo.
 2. Tipo de operación.
 3. Fecha.
 4. Insumo, cuando aplique.
@@ -529,7 +533,7 @@ Registrar las actividades realizadas en la parcela y los costos que estas genera
 1. Entre a Producción.
 2. Abra Operaciones agrícolas.
 3. Haga clic en Nuevo.
-4. Seleccione la parcela.
+4. Seleccione el cultivo.
 5. Elija el tipo de operación.
 6. Si usó insumos, selecciónelos y capture la cantidad.
 7. Ingrese costos de mano de obra y otros costos.
@@ -538,13 +542,13 @@ Registrar las actividades realizadas en la parcela y los costos que estas genera
 
 ### Ejemplo práctico
 
-Ejemplo: se registra una fertilización en la parcela Lote Norte, con el insumo utilizado, la cantidad aplicada y el costo de mano de obra. Más adelante, este costo podrá verse relacionado al lote cuando esa parcela genere una cosecha.
+Ejemplo: se registra una fertilización en el cultivo Lote Norte, con el insumo utilizado, la cantidad aplicada y el costo de mano de obra. Más adelante, este costo podrá verse relacionado al lote cuando ese cultivo genere una cosecha.
 
 ## 10.6 Pantalla Cosechas de café
 
 ### Propósito
 
-Registrar el café recolectado en una parcela y convertirlo en un lote inicial de producción propia.
+Registrar el café recolectado en un cultivo y convertirlo en un lote inicial de producción propia.
 
 ### Funcionalidades principales
 
@@ -556,7 +560,7 @@ Registrar el café recolectado en una parcela y convertirlo en un lote inicial d
 
 ### Opciones y campos de la pantalla
 
-1. Parcela.
+1. Cultivo.
 2. Producto.
 3. Estado del café.
 4. Fecha de cosecha.
@@ -572,7 +576,7 @@ Registrar el café recolectado en una parcela y convertirlo en un lote inicial d
 1. Abra Producción.
 2. Ingrese a Cosechas de café.
 3. Haga clic en Nuevo.
-4. Seleccione la parcela y el producto.
+4. Seleccione el cultivo y el producto.
 5. Elija el estado del café.
 6. Ingrese fecha, cantidad y costo de cosecha.
 7. Capture humedad si la conoce.
@@ -582,7 +586,7 @@ Registrar el café recolectado en una parcela y convertirlo en un lote inicial d
 
 ### Ejemplo práctico
 
-Ejemplo: en la parcela Lote Norte se cosechan 80 kg de café en cereza. Se registra la fecha, cantidad, humedad y costo. El sistema genera un lote que más adelante puede secarse, trillarse o tostarse.
+Ejemplo: en el cultivo Lote Norte se cosechan 80 kg de café en cereza. Se registra la fecha, cantidad, humedad y costo. El sistema genera un lote que más adelante puede secarse, trillarse o tostarse.
 
 ## 10.7 Pantalla Transformaciones de café
 
@@ -691,94 +695,82 @@ Ejemplo: de un lote de café tostado se empacan 100 bolsas de 250 g, 60 bolsas d
 
 ## 11.1 Descripción general del propósito
 
-Este módulo centraliza la consulta de lotes, productos e insumos, y también la administración de catálogos que permiten mantener un inventario consistente y trazable.
+Este módulo se enfoca en tres tareas diarias: revisar existencias, mantener productos y entrar rápido a recepciones, ventas o transformaciones. La trazabilidad por lote se conserva, pero queda detrás de una experiencia más simple para usuarios operativos.
 
 ## 11.2 Funcionalidades principales
 
-1. Consultar lotes y su trazabilidad completa.
-2. Configurar productos y precios por tipo de venta.
-3. Configurar presentaciones de café.
-4. Administrar insumos y catálogos maestros.
+1. Consultar existencias por producto y bajar al detalle por lote cuando haga falta.
+2. Ir directamente a entradas, salidas o transformaciones desde inventario.
+3. Crear productos sin depender de varias pantallas previas.
+4. Mantener unidades de medida y definir el formato del producto sin salir del flujo principal.
 
-## 11.3 Pantalla Lotes
+## 11.3 Pantalla Existencias
 
 ### Propósito
 
-Consultar existencias por lote y revisar el historial completo del producto.
+Dar una vista rápida de qué productos tienen stock, cuántos lotes activos existen y cuánto hay disponible antes de revisar el detalle de un lote específico.
 
 ### Funcionalidades principales
 
-1. Filtrar por producto.
-2. Ver cantidad inicial y disponible.
-3. Consultar el origen del lote.
-4. Revisar movimientos del lote.
-5. Revisar transformaciones, empaques, costos y operaciones agrícolas relacionadas.
-6. Navegar entre lotes relacionados desde el detalle.
+1. Ver un resumen por producto con cantidad disponible y número de lotes.
+2. Filtrar por producto.
+3. Abrir el detalle de lotes de un producto.
+4. Entrar al historial completo de un lote.
+5. Ir directamente a registrar una salida o una transformación desde el resumen del producto.
 
 ### Explicación de opciones y pantallas
 
-En la lista principal se muestra:
+En la vista principal se muestra:
 
-1. Fecha de creación.
-2. Producto.
-3. Código de lote.
-4. Cantidad inicial.
-5. Cantidad disponible.
-6. Estado.
-7. Botón Ver detalle.
+1. Tarjetas con total de productos, lotes activos y lotes sin stock.
+2. Tabla resumen por producto.
+3. Botones para ver detalle, registrar salida y transformar o empacar.
+4. Debajo, la lista de lotes del producto seleccionado o del conjunto filtrado.
 
-En el detalle de trazabilidad se muestran estas secciones:
+En el historial de un lote se muestran estas secciones:
 
 1. Resumen general del lote.
 2. Origen.
-3. Movimientos del lote.
+3. Historial de movimientos.
 4. Transformaciones relacionadas.
-5. Empaques relacionados.
-6. Costos relacionados.
-7. Operaciones agrícolas relacionadas.
+5. Costos relacionados.
+6. Operaciones agrícolas relacionadas.
 
 ### Flujo de uso paso a paso
 
 1. Abra Inventario.
-2. Ingrese a Lotes.
-3. Si lo desea, filtre por producto.
-4. Identifique el lote por código o producto.
-5. Haga clic en Ver detalle.
-6. Revise primero la sección Origen.
-7. Luego revise movimientos, transformaciones y empaques para entender el recorrido del lote.
-8. Si aparece un lote relacionado, abra su detalle para seguir la cadena completa.
+2. Ingrese a Existencias.
+3. Revise primero el resumen por producto.
+4. Si necesita una acción, use Registrar salida o Transformar o empacar desde la fila del producto.
+5. Si necesita trazabilidad, filtre por producto y abra el lote correspondiente.
+6. Revise origen, movimientos y transformaciones para entender el recorrido completo.
 
 ### Ejemplo práctico
 
-Ejemplo: el área de calidad necesita confirmar de qué bache de tostión salió un paquete vendido. Desde Lotes, abre el lote del producto terminado, entra al detalle y navega por Empaques relacionados y Origen hasta llegar al lote de tostión y, si aplica, a la cosecha o compra original.
+Ejemplo: el área comercial quiere saber si todavía hay stock de Café molido 454 g. Desde Existencias revisa el resumen del producto, confirma cuántos lotes activos tiene y, si necesita detalle, abre el lote para revisar su historial.
 
 ## 11.4 Pantalla Productos
 
 ### Propósito
 
-Definir los productos que se producen, compran, transforman, empacan y venden dentro del sistema.
+Mantener el catálogo comercial de productos con la menor cantidad posible de pasos.
 
 ### Funcionalidades principales
 
 1. Crear y editar productos.
-2. Asociar categoría.
-3. Asociar presentación cuando el producto sea empacado.
-4. Definir unidad de medida.
-5. Configurar precios por tipo de venta.
-6. Definir tipo de lote y si permite decimales.
+2. Definir o reutilizar el formato del producto sin salir del formulario.
+3. Definir unidad de medida.
+4. Configurar precios por tipo de venta.
+5. Activar o inactivar productos.
 
 ### Opciones y campos de la pantalla
 
 1. Nombre.
-2. Categoría.
-3. Presentación.
-4. Descripción.
-5. Unidad de medida.
-6. Stock opcional.
-7. Tabla de precios por tipo de venta.
-8. Tipo de lote opcional.
-9. Permite decimal.
-10. Estado.
+2. Descripción.
+3. Unidad.
+4. Formato.
+5. Tabla de precios por tipo de venta.
+6. Estado.
 
 ### Flujo de uso paso a paso
 
@@ -786,120 +778,60 @@ Definir los productos que se producen, compran, transforman, empacan y venden de
 2. Entre a Productos.
 3. Haga clic en Nuevo.
 4. Ingrese el nombre del producto.
-5. Seleccione categoría y, si aplica, presentación.
-6. Defina la unidad de medida.
+5. Defina la unidad.
+6. Complete el formato si el producto lo necesita, o reutilice uno ya usado.
 7. Ingrese los precios según cada tipo de venta activo.
-8. Complete el tipo de lote si la empresa lo usa.
-9. Defina si el producto permite cantidades decimales.
-10. Guarde.
+8. Guarde.
 
 ### Ejemplo práctico
 
-Ejemplo: se crea el producto Café tostado molido 454 g, se asocia a la presentación de 454 g, se define unidad UN y se cargan sus precios Normal, Mayorista e Internet.
+Ejemplo: se crea el producto Café tostado molido 454 g, se completa el formato 454 g dentro del mismo formulario, se define la unidad UN y se cargan sus precios Normal, Mayorista e Internet.
 
-## 11.5 Pantalla Insumos
-
-### Propósito
-
-Registrar los materiales que se usan en operaciones agrícolas y controlar su disponibilidad básica.
-
-### Opciones y campos de la pantalla
-
-1. Nombre.
-2. Cantidad disponible.
-3. Unidad de medida.
-4. Costo unitario.
-5. Estado.
-
-### Flujo de uso paso a paso
-
-1. Abra Inventario.
-2. Entre a Insumos.
-3. Cree o actualice el insumo.
-4. Defina cantidad, unidad y costo unitario.
-5. Guarde.
-
-### Ejemplo práctico
-
-Ejemplo: se registra un fertilizante con su unidad de medida y costo unitario. Después podrá seleccionarse desde Operaciones agrícolas.
-
-## 11.6 Pantalla Categorías
+## 11.5 Entradas, salidas y transformaciones
 
 ### Propósito
 
-Ordenar los productos por grupos para facilitar su clasificación.
-
-### Opciones y campos de la pantalla
-
-1. Nombre.
-2. Estado.
-
-### Flujo de uso paso a paso
-
-1. Abra Inventario.
-2. Ingrese a Categorías.
-3. Cree la categoría.
-4. Active el registro.
-5. Guarde.
-
-### Ejemplo práctico
-
-Ejemplo: se crea la categoría Café tostado para clasificar varias presentaciones comerciales del mismo producto base.
-
-## 11.7 Pantalla Unidades de medida
-
-### Propósito
-
-Definir las unidades con las que se capturan cantidades en productos e insumos.
-
-### Opciones y campos de la pantalla
-
-1. Código.
-2. Nombre.
-3. Estado.
-
-### Flujo de uso paso a paso
-
-1. Abra Inventario.
-2. Entre a Unidades de medida.
-3. Cree el código y el nombre.
-4. Guarde.
-
-### Ejemplo práctico
-
-Ejemplo: se registra la unidad KG para café a granel y la unidad UN para productos empacados.
-
-## 11.8 Pantalla Presentaciones de café
-
-### Propósito
-
-Definir los tamaños comerciales con los que se empaca el café.
+Ejecutar las operaciones reales del inventario desde su módulo fuente, sin una pantalla intermedia adicional.
 
 ### Funcionalidades principales
 
-1. Crear presentaciones.
-2. Editar código, nombre y peso.
-3. Activar o inactivar presentaciones.
+1. Registrar entrada desde Compras.
+2. Registrar salida desde Ventas.
+3. Transformar o empacar usando un lote existente como origen.
 
-### Opciones y campos de la pantalla
+### Flujo de uso paso a paso
 
-1. Código.
-2. Nombre.
-3. Peso en gramos.
-4. Estado.
+1. Revise Existencias si necesita confirmar stock o trazabilidad.
+2. Entre directamente a Recepciones de café, Ventas o Procesos según la tarea.
+3. Complete el flujo correspondiente.
+
+### Ejemplo práctico
+
+Ejemplo: para empacar café, el usuario revisa Existencias, entra a Procesos, elige el lote a usar, indica el producto resultante y registra el nuevo lote de salida.
+
+## 11.6 Pantalla Unidades de Medida
+
+### Propósito
+
+Mantener el único catálogo auxiliar que sigue siendo compartido por todo el inventario.
+
+### Elementos incluidos
+
+1. Unidades de medida activas e inactivas.
 
 ### Flujo de uso paso a paso
 
 1. Abra Inventario.
-2. Ingrese a Presentaciones de café.
-3. Haga clic en Nuevo.
-4. Registre código, nombre y peso en gramos.
-5. Active la presentación.
-6. Guarde.
+2. Ingrese a Unidades de medida.
+3. Cree, edite o inactive la unidad que necesite.
 
 ### Ejemplo práctico
 
-Ejemplo: cree tres presentaciones: P250, P454 y P500, con pesos de 250, 454 y 500 gramos. Luego esas presentaciones podrán asociarse a productos de salida en Empaques de café.
+Ejemplo: el administrador crea la unidad KG para nuevos productos y la deja disponible para captura en Productos. Los materiales o insumos de trabajo se administran desde Producción.
+
+## 11.7 Recomendación de uso
+
+Para la operación diaria, use primero Existencias, Productos, Recepciones de café, Ventas y Procesos. Entre a Unidades de medida solo cuando haga falta una nueva unidad base. Los materiales se administran desde Producción.
 
 <div style="page-break-after: always;"></div>
 
@@ -1098,7 +1030,7 @@ Consultar todos los costos y registrar aquellos que son manuales.
 1. Ver costos manuales y automáticos.
 2. Identificar el tipo de costo.
 3. Identificar el módulo fuente.
-4. Ver la relación con finca, parcela o lote.
+4. Ver la relación con finca, cultivo o lote.
 5. Crear, editar y eliminar costos manuales.
 
 ### Opciones y campos de la pantalla
@@ -1185,20 +1117,18 @@ Esta es la sección más importante del manual. Resume cómo capturar la operaci
 Antes de iniciar la operación diaria, valide que existan estos registros:
 
 1. Fincas.
-2. Parcelas.
-3. Categorías.
-4. Unidades de medida.
-5. Presentaciones de café.
-6. Productos.
-7. Insumos.
-8. Tipos de venta.
-9. Clientes.
-10. Proveedores, si habrá compras.
+2. Cultivos.
+3. Unidades de medida.
+4. Productos.
+5. Insumos.
+6. Tipos de venta.
+7. Clientes.
+8. Proveedores, si habrá compras.
 
-### Recomendación para presentaciones 250 g, 454 g y 500 g
+### Recomendación para formatos 250 g, 454 g y 500 g
 
-1. Cree o valide las presentaciones de café 250 g, 454 g y 500 g en Inventario, Presentaciones de café.
-2. Cree o valide los productos de salida asociados a esas presentaciones.
+1. Cree o valide los productos de salida de 250 g, 454 g y 500 g desde Inventario, Productos.
+2. Complete el formato correspondiente dentro de cada producto.
 3. Cargue los precios Normal y Mayorista en cada producto.
 
 ## 14.2 Producción del café desde cultivo hasta empaque
@@ -1206,18 +1136,18 @@ Antes de iniciar la operación diaria, valide que existan estos registros:
 ### Paso 1. Registrar la estructura productiva
 
 1. Cree la finca.
-2. Cree las parcelas asociadas.
+2. Cree los cultivos asociados.
 3. Mantenga activas únicamente las ubicaciones vigentes.
 
 ### Paso 2. Registrar operaciones agrícolas
 
-1. Capture cada actividad relevante realizada en la parcela.
+1. Capture cada actividad relevante realizada en el cultivo.
 2. Registre insumos, mano de obra y otros costos.
 3. Anule el registro si hubo error y vuelva a crearlo correctamente.
 
 ### Paso 3. Registrar la cosecha
 
-1. Capture parcela, producto, estado del café, fecha, cantidad y costo de cosecha.
+1. Capture cultivo, producto, estado del café, fecha, cantidad y costo de cosecha.
 2. Guarde.
 3. Verifique el lote generado.
 
@@ -1251,7 +1181,7 @@ Para mantener un inventario confiable:
 
 1. No registre ventas sin seleccionar el lote correcto cuando el producto se maneje por lote.
 2. Use el detalle del lote para verificar origen, transformaciones, empaques y salidas.
-3. Mantenga las presentaciones y productos activos según el portafolio vigente.
+3. Mantenga los productos y sus formatos activos según el portafolio vigente.
 4. Valide stock y cantidad disponible antes de vender o transformar.
 
 ## 14.4 Proceso de tostión por baches
@@ -1269,20 +1199,20 @@ Use esta secuencia como procedimiento estándar:
 9. Consulte el lote de salida en Inventario, Lotes.
 10. Verifique que el origen del nuevo lote apunte al lote tostado de entrada.
 
-## 14.5 Manejo de diferentes presentaciones
+## 14.5 Manejo de diferentes formatos
 
 Para trabajar con 250 g, 454 g y 500 g:
 
-1. Cree cada presentación en gramos en Inventario, Presentaciones de café.
-2. Cree un producto específico para cada presentación si el negocio las vende por separado.
-3. En cada producto, asocie la presentación correcta.
+1. Cree un producto específico para cada formato si el negocio los vende por separado.
+2. En cada producto, complete el formato correcto dentro del formulario.
+3. Valide unidad, cantidad y código antes de guardar.
 4. En Empaques de café, use una línea por cada producto de salida.
 5. Guarde el empaque para que el sistema genere los lotes correspondientes.
 
 ### Ejemplo práctico de empaque múltiple
 
 1. Lote tostado origen: LT-20260420-01.
-2. Presentaciones a producir: 250 g, 454 g y 500 g.
+2. Formatos a producir: 250 g, 454 g y 500 g.
 3. Cantidades: 100, 60 y 40 unidades respectivamente.
 4. Resultado esperado: tres salidas asociadas al mismo empaque, cada una con su lote de salida y su relación con el lote origen.
 
@@ -1383,7 +1313,7 @@ Mientras esa funcionalidad no exista de forma explícita en la interfaz, la orga
 
 ## 14.10 Escenario práctico 1: producción propia hasta venta detal
 
-1. Crear finca y parcela.
+1. Crear finca y cultivo.
 2. Registrar operaciones agrícolas.
 3. Registrar cosecha y generar lote.
 4. Registrar tostión por bache en Transformaciones.
@@ -1407,7 +1337,7 @@ Mientras esa funcionalidad no exista de forma explícita en la interfaz, la orga
 ## 15. Buenas prácticas operativas
 
 1. No deje para después la selección del lote en ventas. Ese dato es la base de la trazabilidad comercial.
-2. Configure primero presentaciones y productos antes de intentar empacar.
+2. Configure primero los productos y sus formatos antes de intentar empacar.
 3. Registre cada bache de tostión por separado, aunque provenga del mismo lote general.
 4. Use la anulación en lugar de editar procesos operativos ya registrados.
 5. Revise el detalle del lote al menos una vez después de cada operación crítica: cosecha, transformación, empaque y venta.
@@ -1434,7 +1364,7 @@ Este punto es importante para que el usuario no espere funciones que aún no est
 | Lote origen | Lote que entra a un proceso |
 | Lote salida | Lote que resulta de una transformación o empaque |
 | Bache | Registro individual de un proceso, por ejemplo una tostión |
-| Presentación | Tamaño comercial del producto, expresado en gramos |
+| Formato | Tamaño comercial del producto, expresado en gramos u otra unidad |
 | Tipo de precio | Regla comercial con la que el sistema calcula el precio de venta |
 | Movimiento de lote | Entrada o salida registrada sobre un lote |
 | Anulación | Reversión operativa de un registro ya creado |
@@ -1447,7 +1377,7 @@ Si el usuario sigue este manual en el orden propuesto, podrá:
 
 1. Registrar la producción o compra del café.
 2. Convertir esa materia prima en lotes trazables.
-3. Transformar y empacar el producto en diferentes presentaciones.
+3. Transformar y empacar el producto en diferentes formatos.
 4. Aplicar precio mayorista o detal según el caso.
 5. Registrar la venta vinculada al lote correcto.
 6. Consultar la trazabilidad completa desde el origen hasta la salida final.

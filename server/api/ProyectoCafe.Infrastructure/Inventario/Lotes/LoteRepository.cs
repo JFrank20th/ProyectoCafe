@@ -9,6 +9,49 @@ namespace ProyectoCafe.Infrastructure.Inventario.Lotes;
 
 public sealed class LoteRepository(ProyectoCafeDbContext dbContext) : ILoteRepository
 {
+    public async Task<IReadOnlyList<LoteExistenciaResumenResponse>> GetSummaryAsync(int? productoId, bool soloActivos, bool soloConStock, CancellationToken cancellationToken)
+    {
+        var query = dbContext.Lotes.AsNoTracking().AsQueryable();
+
+        if (productoId.HasValue)
+        {
+            query = query.Where(x => x.ProductoId == productoId.Value);
+        }
+
+        if (soloActivos)
+        {
+            query = query.Where(x => x.Estado == "Activo");
+        }
+
+        if (soloConStock)
+        {
+            query = query.Where(x => x.CantidadDisponible > 0);
+        }
+
+        return await query
+            .Join(
+                dbContext.Productos.AsNoTracking(),
+                lote => lote.ProductoId,
+                producto => producto.ProductoId,
+                (lote, producto) => new { lote, producto })
+            .GroupBy(x => new { x.lote.ProductoId, x.producto.Nombre, x.producto.UnidadMedida })
+            .Select(group => new LoteExistenciaResumenResponse
+            {
+                ProductoId = group.Key.ProductoId,
+                ProductoNombre = group.Key.Nombre,
+                UnidadMedida = group.Key.UnidadMedida,
+                Lotes = group.Count(),
+                LotesActivos = group.Count(x => x.lote.Estado == "Activo"),
+                LotesSinStock = group.Count(x => x.lote.Estado == "Activo" && x.lote.CantidadDisponible <= 0),
+                CantidadInicial = group.Sum(x => x.lote.CantidadInicial),
+                CantidadDisponible = group.Sum(x => x.lote.CantidadDisponible),
+                UltimaFechaCreacion = group.Max(x => x.lote.FechaCreacion),
+            })
+            .OrderByDescending(x => x.CantidadDisponible)
+            .ThenBy(x => x.ProductoNombre)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<LoteResponse>> GetAllAsync(int? productoId, bool soloActivos, bool soloConStock, CancellationToken cancellationToken)
     {
         var query = dbContext.Lotes.AsNoTracking().AsQueryable();
@@ -107,8 +150,8 @@ public sealed class LoteRepository(ProyectoCafeDbContext dbContext) : ILoteRepos
 
         var cosechaOrigen = await (
             from cosecha in dbContext.CosechasCafe.AsNoTracking()
-            join parcela in dbContext.Parcelas.AsNoTracking() on cosecha.ParcelaId equals parcela.ParcelaId
-            join finca in dbContext.Fincas.AsNoTracking() on parcela.FincaId equals finca.FincaId
+            join cultivo in dbContext.Cultivos.AsNoTracking() on cosecha.CultivoId equals cultivo.CultivoId
+            join finca in dbContext.Fincas.AsNoTracking() on cultivo.FincaId equals finca.FincaId
             where cosecha.LoteId == id
             select new LoteTraceabilityOriginResponse
             {
@@ -116,9 +159,9 @@ public sealed class LoteRepository(ProyectoCafeDbContext dbContext) : ILoteRepos
                 ReferenciaId = cosecha.CosechaCafeId,
                 Fecha = cosecha.FechaCosecha,
                 Titulo = $"Cosecha #{cosecha.CosechaCafeId}",
-                Descripcion = $"Lote originado en {finca.Nombre} / {parcela.Nombre}",
-                ParcelaId = parcela.ParcelaId,
-                ParcelaNombre = parcela.Nombre,
+                Descripcion = $"Lote originado en {finca.Nombre} / {cultivo.Nombre}",
+                CultivoId = cultivo.CultivoId,
+                CultivoNombre = cultivo.Nombre,
                 FincaNombre = finca.Nombre,
             })
             .SingleOrDefaultAsync(cancellationToken);
@@ -127,8 +170,8 @@ public sealed class LoteRepository(ProyectoCafeDbContext dbContext) : ILoteRepos
             ? null
             : await (
                 from operacion in dbContext.OperacionesAgricolas.AsNoTracking()
-                join parcela in dbContext.Parcelas.AsNoTracking() on operacion.ParcelaId equals parcela.ParcelaId
-                join finca in dbContext.Fincas.AsNoTracking() on parcela.FincaId equals finca.FincaId
+                join cultivo in dbContext.Cultivos.AsNoTracking() on operacion.CultivoId equals cultivo.CultivoId
+                join finca in dbContext.Fincas.AsNoTracking() on cultivo.FincaId equals finca.FincaId
                 where operacion.LoteId == id && operacion.TipoOperacion == TiposOperacionAgricola.Cosecha
                 select new LoteTraceabilityOriginResponse
                 {
@@ -136,9 +179,9 @@ public sealed class LoteRepository(ProyectoCafeDbContext dbContext) : ILoteRepos
                     ReferenciaId = operacion.OperacionAgricolaId,
                     Fecha = operacion.FechaOperacion,
                     Titulo = $"Cosecha #{operacion.OperacionAgricolaId}",
-                    Descripcion = $"Lote originado en {finca.Nombre} / {parcela.Nombre}",
-                    ParcelaId = parcela.ParcelaId,
-                    ParcelaNombre = parcela.Nombre,
+                    Descripcion = $"Lote originado en {finca.Nombre} / {cultivo.Nombre}",
+                    CultivoId = cultivo.CultivoId,
+                    CultivoNombre = cultivo.Nombre,
                     FincaNombre = finca.Nombre,
                 })
                 .SingleOrDefaultAsync(cancellationToken);
@@ -159,40 +202,20 @@ public sealed class LoteRepository(ProyectoCafeDbContext dbContext) : ILoteRepos
                 })
                 .SingleOrDefaultAsync(cancellationToken);
 
-        var transformacionOrigen = cosechaOrigen is null && cosechaOperacionOrigen is null && recepcionOrigen is null
+        var procesoOrigen = cosechaOrigen is null && cosechaOperacionOrigen is null && recepcionOrigen is null
             ? await (
-                from transformacion in dbContext.TransformacionesCafe.AsNoTracking()
-                join loteOrigen in dbContext.Lotes.AsNoTracking() on transformacion.LoteOrigenId equals loteOrigen.LoteId
-                where transformacion.LoteSalidaId == id
+                from proceso in dbContext.ProcesosInventario.AsNoTracking()
+                join recepcion in dbContext.RecepcionesCafe.AsNoTracking() on proceso.RecepcionCafeId equals recepcion.RecepcionCafeId
+                where proceso.LoteSalidaId == id
                 select new LoteTraceabilityOriginResponse
                 {
-                    Tipo = "TransformacionCafe",
-                    ReferenciaId = transformacion.TransformacionCafeId,
-                    Fecha = transformacion.FechaTransformacion,
-                    Titulo = $"Transformación #{transformacion.TransformacionCafeId}",
-                    Descripcion = $"Lote generado por {transformacion.TipoTransformacion}",
-                    LoteOrigenId = loteOrigen.LoteId,
-                    CodigoLoteOrigen = loteOrigen.CodigoLote,
-                })
-                .SingleOrDefaultAsync(cancellationToken)
-            : null;
-
-        var empaqueOrigen = cosechaOrigen is null && cosechaOperacionOrigen is null && recepcionOrigen is null && transformacionOrigen is null
-            ? await (
-                from detalle in dbContext.EmpaquesCafeDetalles.AsNoTracking()
-                join empaque in dbContext.EmpaquesCafe.AsNoTracking() on detalle.EmpaqueCafeId equals empaque.EmpaqueCafeId
-                join loteOrigen in dbContext.Lotes.AsNoTracking() on empaque.LoteOrigenId equals loteOrigen.LoteId
-                join presentacion in dbContext.Presentaciones.AsNoTracking() on detalle.PresentacionId equals presentacion.PresentacionId
-                where detalle.LoteSalidaId == id
-                select new LoteTraceabilityOriginResponse
-                {
-                    Tipo = "EmpaqueCafe",
-                    ReferenciaId = empaque.EmpaqueCafeId,
-                    Fecha = empaque.FechaEmpaque,
-                    Titulo = $"Empaque #{empaque.EmpaqueCafeId}",
-                    Descripcion = $"Lote generado por empaque desde {loteOrigen.CodigoLote} en presentación {presentacion.Nombre} ({presentacion.Cantidad} {presentacion.UnidadMedida})",
-                    LoteOrigenId = loteOrigen.LoteId,
-                    CodigoLoteOrigen = loteOrigen.CodigoLote,
+                    Tipo = "ProcesoInventario",
+                    ReferenciaId = proceso.ProcesoInventarioId,
+                    Fecha = proceso.FechaProceso,
+                    Titulo = $"Proceso #{proceso.ProcesoInventarioId}",
+                    Descripcion = $"Lote generado desde la recepción {recepcion.CodigoLote}",
+                    LoteOrigenId = recepcion.LoteId,
+                    CodigoLoteOrigen = recepcion.CodigoLote,
                 })
                 .SingleOrDefaultAsync(cancellationToken)
             : null;
@@ -200,8 +223,7 @@ public sealed class LoteRepository(ProyectoCafeDbContext dbContext) : ILoteRepos
         lote.Origen = cosechaOrigen
             ?? cosechaOperacionOrigen
             ?? recepcionOrigen
-            ?? transformacionOrigen
-            ?? empaqueOrigen
+            ?? procesoOrigen
             ?? new LoteTraceabilityOriginResponse
             {
                 Tipo = "Manual",
@@ -232,56 +254,30 @@ public sealed class LoteRepository(ProyectoCafeDbContext dbContext) : ILoteRepos
             })
             .ToListAsync(cancellationToken);
 
-        lote.TransformacionesRelacionadas = await (
-            from transformacion in dbContext.TransformacionesCafe.AsNoTracking()
-            join loteSalida in dbContext.Lotes.AsNoTracking() on transformacion.LoteSalidaId equals loteSalida.LoteId
-            join productoSalida in dbContext.Productos.AsNoTracking() on transformacion.ProductoSalidaId equals productoSalida.ProductoId
-            where transformacion.LoteOrigenId == id
-            orderby transformacion.FechaTransformacion, transformacion.TransformacionCafeId
-            select new LoteTraceabilityTransformationResponse
+        lote.ProcesosRelacionados = await (
+            from proceso in dbContext.ProcesosInventario.AsNoTracking()
+            join recepcion in dbContext.RecepcionesCafe.AsNoTracking() on proceso.RecepcionCafeId equals recepcion.RecepcionCafeId
+            join productoOrigen in dbContext.Productos.AsNoTracking() on recepcion.ProductoId equals productoOrigen.ProductoId
+            join loteSalida in dbContext.Lotes.AsNoTracking() on proceso.LoteSalidaId equals loteSalida.LoteId
+            join productoSalida in dbContext.Productos.AsNoTracking() on proceso.ProductoSalidaId equals productoSalida.ProductoId
+            where proceso.LoteSalidaId == id || proceso.LoteOrigenId == id
+            orderby proceso.FechaProceso, proceso.ProcesoInventarioId
+            select new LoteTraceabilityProcessResponse
             {
-                TransformacionCafeId = transformacion.TransformacionCafeId,
-                TipoTransformacion = transformacion.TipoTransformacion,
-                FechaTransformacion = transformacion.FechaTransformacion,
-                LoteSalidaId = loteSalida.LoteId,
-                CodigoLoteSalida = loteSalida.CodigoLote,
-                ProductoSalidaNombre = productoSalida.Nombre,
-                CantidadEntrada = transformacion.CantidadEntrada,
-                CantidadSalida = transformacion.CantidadSalida,
-                CostoProceso = transformacion.CostoProceso,
-                Estado = transformacion.Estado,
-            })
-            .ToListAsync(cancellationToken);
-
-        lote.EmpaquesRelacionados = await (
-            from detalle in dbContext.EmpaquesCafeDetalles.AsNoTracking()
-            join empaque in dbContext.EmpaquesCafe.AsNoTracking() on detalle.EmpaqueCafeId equals empaque.EmpaqueCafeId
-            join loteOrigen in dbContext.Lotes.AsNoTracking() on empaque.LoteOrigenId equals loteOrigen.LoteId
-            join productoOrigen in dbContext.Productos.AsNoTracking() on loteOrigen.ProductoId equals productoOrigen.ProductoId
-            join loteSalida in dbContext.Lotes.AsNoTracking() on detalle.LoteSalidaId equals loteSalida.LoteId
-            join productoSalida in dbContext.Productos.AsNoTracking() on detalle.ProductoSalidaId equals productoSalida.ProductoId
-            join presentacion in dbContext.Presentaciones.AsNoTracking() on detalle.PresentacionId equals presentacion.PresentacionId
-            where empaque.LoteOrigenId == id || detalle.LoteSalidaId == id
-            orderby empaque.FechaEmpaque, empaque.EmpaqueCafeId, detalle.EmpaqueCafeDetalleId
-            select new LoteTraceabilityPackagingResponse
-            {
-                EmpaqueCafeId = empaque.EmpaqueCafeId,
-                Rol = empaque.LoteOrigenId == id ? "Origen" : "Salida",
-                FechaEmpaque = empaque.FechaEmpaque,
-                LoteOrigenId = loteOrigen.LoteId,
-                CodigoLoteOrigen = loteOrigen.CodigoLote,
+                ProcesoInventarioId = proceso.ProcesoInventarioId,
+                Rol = proceso.LoteOrigenId == id ? "Origen" : "Salida",
+                FechaProceso = proceso.FechaProceso,
+                LoteOrigenId = recepcion.LoteId ?? 0,
+                CodigoLoteOrigen = recepcion.CodigoLote,
                 ProductoOrigenNombre = productoOrigen.Nombre,
                 LoteSalidaId = loteSalida.LoteId,
                 CodigoLoteSalida = loteSalida.CodigoLote,
                 ProductoSalidaNombre = productoSalida.Nombre,
-                PresentacionNombre = presentacion.Nombre,
-                PresentacionCantidad = presentacion.Cantidad,
-                PresentacionUnidadMedida = presentacion.UnidadMedida,
-                Cantidad = detalle.Cantidad,
-                PesoTotalGramos = detalle.PesoTotalGramos,
-                CantidadOrigenAsignada = detalle.CantidadOrigenAsignada,
-                CostoTotalAsignado = detalle.CostoOrigenAsignado + detalle.CostoEmpaqueAsignado,
-                Estado = detalle.Estado,
+                UsaLoteCompleto = proceso.UsaLoteCompleto,
+                CantidadOrigenConsumida = proceso.CantidadOrigenConsumida,
+                CantidadSalida = proceso.CantidadSalida,
+                CostoProceso = proceso.CostoProceso,
+                Estado = proceso.Estado,
             })
             .ToListAsync(cancellationToken);
 
@@ -303,14 +299,14 @@ public sealed class LoteRepository(ProyectoCafeDbContext dbContext) : ILoteRepos
             })
             .ToListAsync(cancellationToken);
 
-        if ((cosechaOrigen?.ParcelaId ?? cosechaOperacionOrigen?.ParcelaId) is int parcelaId)
+        if ((cosechaOrigen?.CultivoId ?? cosechaOperacionOrigen?.CultivoId) is int cultivoId)
         {
             var fechaLimite = cosechaOrigen?.Fecha ?? cosechaOperacionOrigen?.Fecha ?? lote.FechaCreacion;
             lote.OperacionesAgricolasRelacionadas = await (
                 from operacion in dbContext.OperacionesAgricolas.AsNoTracking()
                 join insumoRef in dbContext.Insumos.AsNoTracking() on operacion.InsumoId equals insumoRef.InsumoId into insumos
                 from insumo in insumos.DefaultIfEmpty()
-                where operacion.ParcelaId == parcelaId
+                where operacion.CultivoId == cultivoId
                     && operacion.TipoOperacion != TiposOperacionAgricola.Cosecha
                     && (operacion.FechaOperacion ?? fechaLimite) <= fechaLimite
                 orderby operacion.FechaOperacion, operacion.OperacionAgricolaId

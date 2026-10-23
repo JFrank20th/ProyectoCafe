@@ -29,11 +29,16 @@ public sealed class ProductoRequest
 
     public bool Estado { get; set; } = true;
 
-    [Required]
-    public int CategoriaId { get; set; }
+    [MaxLength(30)]
+    public string? PresentacionCodigo { get; set; }
 
-    [Required]
-    public int? PresentacionId { get; set; }
+    [MaxLength(120)]
+    public string? PresentacionNombre { get; set; }
+
+    public decimal? PresentacionCantidad { get; set; }
+
+    [MaxLength(20)]
+    public string? PresentacionUnidadMedida { get; set; }
 
     [MaxLength(20)]
     public string? UnidadMedida { get; set; }

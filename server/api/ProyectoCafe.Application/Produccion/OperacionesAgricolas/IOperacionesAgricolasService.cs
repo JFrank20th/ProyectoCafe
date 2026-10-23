@@ -8,5 +8,7 @@ public interface IOperacionesAgricolasService
 
     Task<OperacionAgricolaCreateResult> CreateAsync(OperacionAgricolaCreateRequest request, CancellationToken cancellationToken);
 
+    Task<bool> UpdateAsync(int id, OperacionAgricolaCreateRequest request, CancellationToken cancellationToken);
+
     Task<bool> CancelAsync(int id, CancellationToken cancellationToken);
 }

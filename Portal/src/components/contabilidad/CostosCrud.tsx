@@ -34,8 +34,8 @@ type Costo = {
   tipoCosto: string;
   fuenteModulo?: string | null;
   referenciaId?: number | null;
-  parcelaId?: number | null;
-  parcelaNombre?: string | null;
+  cultivoId?: number | null;
+  cultivoNombre?: string | null;
   fincaId?: number | null;
   fincaNombre?: string | null;
   loteId?: number | null;
@@ -67,10 +67,8 @@ function mapCostTypeLabel(value: string, tproduction: (key: string) => string) {
       return tproduction('costTypeOperacionAgricola');
     case 'CosechaCafe':
       return tproduction('costTypeCosechaCafe');
-    case 'TransformacionCafe':
-      return tproduction('costTypeTransformacionCafe');
-    case 'EmpaqueCafe':
-      return tproduction('costTypeEmpaqueCafe');
+    case 'ProcesoInventario':
+      return tproduction('costTypeProcesoInventario');
     default:
       return tproduction('costTypeManual');
   }
@@ -82,10 +80,8 @@ function mapSourceModuleLabel(value: string | null | undefined, tproduction: (ke
       return tproduction('sourceModuleOperacionesAgricolas');
     case 'Produccion.CosechasCafe':
       return tproduction('sourceModuleCosechasCafe');
-    case 'Produccion.TransformacionesCafe':
-      return tproduction('sourceModuleTransformacionesCafe');
-    case 'Produccion.EmpaquesCafe':
-      return tproduction('sourceModuleEmpaquesCafe');
+    case 'Inventario.ProcesosInventario':
+      return tproduction('sourceModuleProcesosInventario');
     default:
       return '—';
   }
@@ -94,8 +90,8 @@ function mapSourceModuleLabel(value: string | null | undefined, tproduction: (ke
 function buildRelationLabel(item: Costo) {
   const parts: string[] = [];
 
-  if (item.fincaNombre || item.parcelaNombre) {
-    parts.push([item.fincaNombre, item.parcelaNombre].filter(Boolean).join(' / '));
+  if (item.fincaNombre || item.cultivoNombre) {
+    parts.push([item.fincaNombre, item.cultivoNombre].filter(Boolean).join(' / '));
   }
 
   if (item.codigoLote) {

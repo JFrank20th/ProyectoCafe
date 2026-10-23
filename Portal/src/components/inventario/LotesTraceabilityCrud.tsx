@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 import { useEffect, useState } from 'react';
 
 import Alert from '@mui/material/Alert';
@@ -45,6 +47,18 @@ type Lote = {
   fechaCreacion: string;
 };
 
+type ExistenciaResumen = {
+  productoId: number;
+  productoNombre: string;
+  unidadMedida: string;
+  lotes: number;
+  lotesActivos: number;
+  lotesSinStock: number;
+  cantidadInicial: number;
+  cantidadDisponible: number;
+  ultimaFechaCreacion: string;
+};
+
 type LoteTraceability = {
   loteId: number;
   productoId: number;
@@ -61,8 +75,8 @@ type LoteTraceability = {
     fecha?: string | null;
     titulo: string;
     descripcion: string;
-    parcelaId?: number | null;
-    parcelaNombre?: string | null;
+    cultivoId?: number | null;
+    cultivoNombre?: string | null;
     fincaNombre?: string | null;
     loteOrigenId?: number | null;
     codigoLoteOrigen?: string | null;
@@ -77,34 +91,20 @@ type LoteTraceability = {
     cantidad: number;
     observacion?: string | null;
   }>;
-  transformacionesRelacionadas: Array<{
-    transformacionCafeId: number;
-    tipoTransformacion: string;
-    fechaTransformacion?: string | null;
-    loteSalidaId: number;
-    codigoLoteSalida: string;
-    productoSalidaNombre: string;
-    cantidadEntrada: number;
-    cantidadSalida: number;
-    estado: string;
-  }>;
-  empaquesRelacionados: Array<{
-    empaqueCafeId: number;
+  procesosRelacionados: Array<{
+    procesoInventarioId: number;
     rol: string;
-    fechaEmpaque?: string | null;
+    fechaProceso?: string | null;
     loteOrigenId: number;
     codigoLoteOrigen: string;
     productoOrigenNombre: string;
     loteSalidaId: number;
     codigoLoteSalida: string;
     productoSalidaNombre: string;
-    presentacionNombre: string;
-    presentacionCantidad: number;
-    presentacionUnidadMedida: string;
-    cantidad: number;
-    pesoTotalGramos: number;
-    cantidadOrigenAsignada: number;
-    costoTotalAsignado: number;
+    usaLoteCompleto: boolean;
+    cantidadOrigenConsumida: number;
+    cantidadSalida: number;
+    costoProceso: number;
     estado: string;
   }>;
   costosRelacionados: Array<{
@@ -139,10 +139,8 @@ function mapOriginTypeLabel(value: string, tproduction: (key: string) => string)
       return tproduction('originHarvest');
     case 'RecepcionCafe':
       return tproduction('originReception');
-    case 'TransformacionCafe':
-      return tproduction('originTransformation');
-    case 'EmpaqueCafe':
-      return tproduction('originPackaging');
+    case 'ProcesoInventario':
+      return tproduction('originInventoryProcess');
     default:
       return tproduction('originManual');
   }
@@ -154,10 +152,8 @@ function mapCostTypeLabel(value: string, tproduction: (key: string) => string) {
       return tproduction('costTypeOperacionAgricola');
     case 'CosechaCafe':
       return tproduction('costTypeCosechaCafe');
-    case 'TransformacionCafe':
-      return tproduction('costTypeTransformacionCafe');
-    case 'EmpaqueCafe':
-      return tproduction('costTypeEmpaqueCafe');
+    case 'ProcesoInventario':
+      return tproduction('costTypeProcesoInventario');
     default:
       return tproduction('costTypeManual');
   }
@@ -180,32 +176,13 @@ function mapOperationTypeLabel(value: string, tproduction: (key: string) => stri
   }
 }
 
-function mapTransformationTypeLabel(value: string, tproduction: (key: string) => string) {
-  switch (value) {
-    case 'Despulpado':
-      return tproduction('typeDespulpado');
-    case 'Secado':
-      return tproduction('typeSecado');
-    case 'Trillado':
-      return tproduction('typeTrillado');
-    case 'Tostion':
-      return tproduction('typeTostion');
-    default:
-      return value;
-  }
-}
-
-function mapPackagingRoleLabel(value: string, tproduction: (key: string) => string) {
+function mapProcessRoleLabel(value: string, tproduction: (key: string) => string) {
   switch (value) {
     case 'Salida':
       return tproduction('packagingRoleOutput');
     default:
       return tproduction('packagingRoleSource');
   }
-}
-
-function formatPresentationLabel(nombre: string, cantidad: number, unidadMedida: string) {
-  return `${nombre} · ${cantidad} ${unidadMedida}`;
 }
 
 export function LotesTraceabilityCrud() {
@@ -215,15 +192,21 @@ export function LotesTraceabilityCrud() {
   const tp = useTranslations('pages');
   const tcrud = useTranslations('crud');
   const tproduction = useTranslations('production');
+  const thub = useTranslations('inventoryWorkbench');
 
   const { has } = useAuth();
   const canView = has('Inventario.Lotes', 'Ver');
+  const canCreateProcess = has('Inventario.Procesos', 'Crear') || has('Inventario.Procesos', 'Ver');
+  const canCreateOutput = has('Ventas.Ventas', 'Crear') || has('Ventas.Ventas', 'Ver');
 
   const [items, setItems] = useState<Lote[]>([]);
+  const [summaryItems, setSummaryItems] = useState<ExistenciaResumen[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lotsLoading, setLotsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [productoFiltro, setProductoFiltro] = useState('');
+  const [lotsReloadToken, setLotsReloadToken] = useState(0);
 
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -234,16 +217,15 @@ export function LotesTraceabilityCrud() {
     setLoading(true);
     setError(null);
     try {
-      const [lotesRes, productosRes] = await Promise.allSettled([
-        apiFetch<Lote[]>('/api/v1/lotes'),
+      const [summaryRes, productosRes] = await Promise.allSettled([
+        apiFetch<ExistenciaResumen[]>('/api/v1/lotes/resumen?soloActivos=true'),
         apiFetch<Producto[]>('/api/v1/productos'),
       ]);
 
-      if (lotesRes.status === 'fulfilled') {
-        setItems(lotesRes.value);
+      if (summaryRes.status === 'fulfilled') {
+        setSummaryItems(summaryRes.value);
       } else {
-        setItems([]);
-        setError(lotesRes.reason instanceof Error ? lotesRes.reason.message : tcrud('errorLoadingData'));
+        setSummaryItems([]);
       }
 
       setProductos(productosRes.status === 'fulfilled' ? productosRes.value.filter((item) => item.estado) : []);
@@ -251,6 +233,9 @@ export function LotesTraceabilityCrud() {
       setError(e instanceof Error ? e.message : tcrud('errorLoadingData'));
     } finally {
       setLoading(false);
+      if (productoFiltro) {
+        setLotsReloadToken((current) => current + 1);
+      }
     }
   }
 
@@ -258,6 +243,40 @@ export function LotesTraceabilityCrud() {
     void reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!productoFiltro) {
+      setItems([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadLotsForProduct() {
+      setLotsLoading(true);
+      try {
+        const list = await apiFetch<Lote[]>(`/api/v1/lotes?soloActivos=true&productoId=${productoFiltro}`);
+        if (!cancelled) {
+          setItems(list);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setItems([]);
+          setError(e instanceof Error ? e.message : tcrud('errorLoadingData'));
+        }
+      } finally {
+        if (!cancelled) {
+          setLotsLoading(false);
+        }
+      }
+    }
+
+    void loadLotsForProduct();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [lotsReloadToken, productoFiltro, tcrud]);
 
   async function loadTraceability(loteId: number) {
     setDetailLoading(true);
@@ -284,6 +303,13 @@ export function LotesTraceabilityCrud() {
   const filteredItems = productoFiltro
     ? items.filter((item) => item.productoId === Number(productoFiltro))
     : items;
+  const filteredSummaries = productoFiltro
+    ? summaryItems.filter((item) => item.productoId === Number(productoFiltro))
+    : summaryItems;
+  const totalProducts = filteredSummaries.length;
+  const totalLots = filteredSummaries.reduce((sum, item) => sum + item.lotes, 0);
+  const activeLots = filteredSummaries.reduce((sum, item) => sum + item.lotesActivos, 0);
+  const exhaustedLots = filteredSummaries.reduce((sum, item) => sum + item.lotesSinStock, 0);
 
   if (!canView) {
     return (
@@ -299,22 +325,54 @@ export function LotesTraceabilityCrud() {
       <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
         <Typography variant="h4">{nav('lotes')}</Typography>
         <Stack direction="row" spacing={1}>
-          <TextField select size="small" label={tf('product')} value={productoFiltro} onChange={(e) => setProductoFiltro(e.target.value)} sx={{ minWidth: 220 }}>
-            <MenuItem value="">{tproduction('allProducts')}</MenuItem>
-            {productos.map((item) => (
-              <MenuItem key={item.productoId} value={String(item.productoId)}>{item.nombre}</MenuItem>
-            ))}
-          </TextField>
           <Button variant="outlined" onClick={() => void reload()} disabled={loading}>{tc('refresh')}</Button>
         </Stack>
       </Stack>
 
       {error ? <Alert severity="error">{error}</Alert> : null}
 
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} useFlexGap flexWrap="wrap">
+        <Card variant="outlined" sx={{ flex: '1 1 200px' }}>
+          <CardContent>
+            <Stack spacing={0.5}>
+              <Typography variant="overline" color="text.secondary">{tf('product')}</Typography>
+              <Typography variant="h4">{totalProducts}</Typography>
+            </Stack>
+          </CardContent>
+        </Card>
+        <Card variant="outlined" sx={{ flex: '1 1 200px' }}>
+          <CardContent>
+            <Stack spacing={0.5}>
+              <Typography variant="overline" color="text.secondary">{nav('lotes')}</Typography>
+              <Typography variant="h4">{totalLots}</Typography>
+            </Stack>
+          </CardContent>
+        </Card>
+        <Card variant="outlined" sx={{ flex: '1 1 200px' }}>
+          <CardContent>
+            <Stack spacing={0.5}>
+              <Typography variant="overline" color="text.secondary">{tf('active')}</Typography>
+              <Typography variant="h4">{activeLots}</Typography>
+            </Stack>
+          </CardContent>
+        </Card>
+        <Card variant="outlined" sx={{ flex: '1 1 200px' }}>
+          <CardContent>
+            <Stack spacing={0.5}>
+              <Typography variant="overline" color="text.secondary">{tf('inactive')}</Typography>
+              <Typography variant="h4">{exhaustedLots}</Typography>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Stack>
+
       <Card variant="outlined">
-        <CardHeader title={tc('listTitle')} />
+        <CardHeader
+          title={tc('listTitle')}
+          subheader={nav('lotes')}
+        />
         <CardContent sx={{ pt: 0 }}>
-          {loading ? (
+          {lotsLoading ? (
             <Typography variant="body2" color="text.secondary">{tc('loading')}</Typography>
           ) : (
             <TableContainer>
@@ -332,7 +390,7 @@ export function LotesTraceabilityCrud() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredItems.map((item) => (
+                  {(productoFiltro ? filteredItems : items).map((item) => (
                     <TableRow key={item.loteId} hover>
                       <TableCell>{item.loteId}</TableCell>
                       <TableCell>{toInputDate(item.fechaCreacion)}</TableCell>
@@ -432,50 +490,10 @@ export function LotesTraceabilityCrud() {
                 </Card>
 
                 <Card variant="outlined">
-                  <CardHeader title={tproduction('relatedTransformationsTitle')} />
+                  <CardHeader title={tproduction('relatedProcessesTitle')} />
                   <CardContent sx={{ pt: 0 }}>
-                    {detail.transformacionesRelacionadas.length === 0 ? (
-                      <Typography variant="body2" color="text.secondary">{tproduction('noRelatedTransformations')}</Typography>
-                    ) : (
-                      <TableContainer>
-                        <Table size="small">
-                          <TableHead>
-                            <TableRow>
-                              <TableCell>{tf('id')}</TableCell>
-                              <TableCell>{tf('transformationType')}</TableCell>
-                              <TableCell>{tf('date')}</TableCell>
-                              <TableCell>{tf('batchCode')}</TableCell>
-                              <TableCell>{tf('outputProduct')}</TableCell>
-                              <TableCell>{tf('outputQuantity')}</TableCell>
-                              <TableCell align="right">{tf('actions')}</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {detail.transformacionesRelacionadas.map((item) => (
-                              <TableRow key={item.transformacionCafeId} hover>
-                                <TableCell>{item.transformacionCafeId}</TableCell>
-                                <TableCell>{mapTransformationTypeLabel(item.tipoTransformacion, tproduction)}</TableCell>
-                                <TableCell>{toInputDate(item.fechaTransformacion) || '—'}</TableCell>
-                                <TableCell>{item.codigoLoteSalida}</TableCell>
-                                <TableCell>{item.productoSalidaNombre}</TableCell>
-                                <TableCell>{item.cantidadSalida}</TableCell>
-                                <TableCell align="right">
-                                  <Button size="small" variant="outlined" onClick={() => void loadTraceability(item.loteSalidaId)}>{tc('viewDetails')}</Button>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card variant="outlined">
-                  <CardHeader title={tproduction('relatedPackagingTitle')} />
-                  <CardContent sx={{ pt: 0 }}>
-                    {detail.empaquesRelacionados.length === 0 ? (
-                      <Typography variant="body2" color="text.secondary">{tproduction('noRelatedPackaging')}</Typography>
+                    {detail.procesosRelacionados.length === 0 ? (
+                      <Typography variant="body2" color="text.secondary">{tproduction('noRelatedProcesses')}</Typography>
                     ) : (
                       <TableContainer>
                         <Table size="small">
@@ -487,35 +505,35 @@ export function LotesTraceabilityCrud() {
                               <TableCell>{tf('sourceBatch')}</TableCell>
                               <TableCell>{tf('batchCode')}</TableCell>
                               <TableCell>{tf('outputProduct')}</TableCell>
-                              <TableCell>{tf('presentation')}</TableCell>
-                              <TableCell>{tf('quantity')}</TableCell>
+                              <TableCell>{tf('sourceQuantity')}</TableCell>
+                              <TableCell>{tf('outputQuantity')}</TableCell>
                               <TableCell>{tf('totalCost')}</TableCell>
                               <TableCell>{tf('status')}</TableCell>
                               <TableCell align="right">{tf('actions')}</TableCell>
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {detail.empaquesRelacionados.map((item) => {
+                            {detail.procesosRelacionados.map((item) => {
                               const relatedLoteId = item.rol === 'Origen' ? item.loteSalidaId : item.loteOrigenId;
                               const relatedCodigo = item.rol === 'Origen' ? item.codigoLoteSalida : item.codigoLoteOrigen;
 
                               return (
-                                <TableRow key={`${item.empaqueCafeId}-${item.loteSalidaId}-${item.rol}`} hover>
-                                  <TableCell>{item.empaqueCafeId}</TableCell>
-                                  <TableCell>{toInputDate(item.fechaEmpaque) || '—'}</TableCell>
+                                <TableRow key={`${item.procesoInventarioId}-${item.rol}`} hover>
+                                  <TableCell>{item.procesoInventarioId}</TableCell>
+                                  <TableCell>{toInputDate(item.fechaProceso) || '—'}</TableCell>
                                   <TableCell>
                                     <Chip
                                       size="small"
                                       color={item.rol === 'Origen' ? 'secondary' : 'info'}
-                                      label={mapPackagingRoleLabel(item.rol, tproduction)}
+                                      label={mapProcessRoleLabel(item.rol, tproduction)}
                                     />
                                   </TableCell>
                                   <TableCell>{item.codigoLoteOrigen}</TableCell>
                                   <TableCell>{item.codigoLoteSalida}</TableCell>
                                   <TableCell>{item.productoSalidaNombre}</TableCell>
-                                  <TableCell>{formatPresentationLabel(item.presentacionNombre, item.presentacionCantidad, item.presentacionUnidadMedida)}</TableCell>
-                                  <TableCell>{item.cantidad}</TableCell>
-                                  <TableCell>{item.costoTotalAsignado}</TableCell>
+                                  <TableCell>{item.cantidadOrigenConsumida}</TableCell>
+                                  <TableCell>{item.cantidadSalida}</TableCell>
+                                  <TableCell>{item.costoProceso}</TableCell>
                                   <TableCell>
                                     <Chip size="small" color={item.estado === 'Registrado' ? 'success' : 'default'} label={item.estado} />
                                   </TableCell>

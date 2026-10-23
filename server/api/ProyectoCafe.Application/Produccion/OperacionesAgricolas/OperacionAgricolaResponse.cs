@@ -4,9 +4,9 @@ public sealed class OperacionAgricolaResponse
 {
     public int OperacionAgricolaId { get; set; }
 
-    public int ParcelaId { get; set; }
+    public int CultivoId { get; set; }
 
-    public required string ParcelaNombre { get; set; }
+    public required string CultivoNombre { get; set; }
 
     public int FincaId { get; set; }
 

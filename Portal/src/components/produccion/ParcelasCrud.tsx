@@ -42,8 +42,8 @@ type Producto = {
   estado: boolean;
 };
 
-type Parcela = {
-  parcelaId: number;
+type Cultivo = {
+  cultivoId: number;
   fincaId: number;
   productoCosechaId?: number | null;
   productoCosechaNombre?: string | null;
@@ -55,7 +55,7 @@ type Parcela = {
   estado: boolean;
 };
 
-type ParcelaRequest = {
+type CultivoRequest = {
   fincaId: number;
   productoCosechaId: number;
   nombre: string;
@@ -71,7 +71,7 @@ function parseOptionalNumber(value: string) {
   return Number(trimmed);
 }
 
-export function ParcelasCrud() {
+export function CultivosCrud() {
   const nav = useTranslations('navigation');
   const tc = useTranslations('common');
   const tf = useTranslations('fields');
@@ -80,12 +80,12 @@ export function ParcelasCrud() {
   const tproduction = useTranslations('production');
 
   const { has } = useAuth();
-  const canView = has('Produccion.Parcelas', 'Ver');
-  const canCreate = has('Produccion.Parcelas', 'Crear');
-  const canEdit = has('Produccion.Parcelas', 'Editar');
-  const canDelete = has('Produccion.Parcelas', 'Eliminar');
+  const canView = has('Produccion.Cultivos', 'Ver');
+  const canCreate = has('Produccion.Cultivos', 'Crear');
+  const canEdit = has('Produccion.Cultivos', 'Editar');
+  const canDelete = has('Produccion.Cultivos', 'Eliminar');
 
-  const [items, setItems] = useState<Parcela[]>([]);
+  const [items, setItems] = useState<Cultivo[]>([]);
   const [fincas, setFincas] = useState<Finca[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,7 +94,7 @@ export function ParcelasCrud() {
   const [editOpen, setEditOpen] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [editSaving, setEditSaving] = useState(false);
-  const [editing, setEditing] = useState<Parcela | null>(null);
+  const [editing, setEditing] = useState<Cultivo | null>(null);
 
   const [fincaId, setFincaId] = useState('');
   const [productoCosechaId, setProductoCosechaId] = useState('');
@@ -107,7 +107,7 @@ export function ParcelasCrud() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteSaving, setDeleteSaving] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<Parcela | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Cultivo | null>(null);
 
   const activeFincas = fincas.filter((item) => item.estado);
   const activeProductos = productos.filter((item) => item.estado);
@@ -117,7 +117,7 @@ export function ParcelasCrud() {
     setError(null);
     try {
       const [parcelasRes, fincasRes, productosRes] = await Promise.allSettled([
-        apiFetch<Parcela[]>('/api/v1/produccion/parcelas'),
+        apiFetch<Cultivo[]>('/api/v1/produccion/cultivos'),
         apiFetch<Finca[]>('/api/v1/produccion/fincas'),
         apiFetch<Producto[]>('/api/v1/productos'),
       ]);
@@ -133,14 +133,6 @@ export function ParcelasCrud() {
       const productosData = productosRes.status === 'fulfilled' ? productosRes.value : [];
       setFincas(fincasData);
       setProductos(productosData);
-
-      if (!fincaId && fincasData.some((item) => item.estado)) {
-        setFincaId(String(fincasData.find((item) => item.estado)?.fincaId ?? ''));
-      }
-
-      if (!productoCosechaId && productosData.some((item) => item.estado)) {
-        setProductoCosechaId(String(productosData.find((item) => item.estado)?.productoId ?? ''));
-      }
     } catch (e) {
       setError(e instanceof Error ? e.message : tcrud('errorLoadingData'));
     } finally {
@@ -154,8 +146,8 @@ export function ParcelasCrud() {
   }, []);
 
   function resetForm() {
-    setFincaId(String(activeFincas[0]?.fincaId ?? ''));
-    setProductoCosechaId(String(activeProductos[0]?.productoId ?? ''));
+    setFincaId('');
+    setProductoCosechaId('');
     setNombre('');
     setDescripcion('');
     setCultivo('');
@@ -164,14 +156,14 @@ export function ParcelasCrud() {
   }
 
   function openCreate() {
-    if (!canCreate || activeFincas.length === 0) return;
+    if (!canCreateRecord) return;
     setEditing(null);
     resetForm();
     setEditError(null);
     setEditOpen(true);
   }
 
-  function openEdit(item: Parcela) {
+  function openEdit(item: Cultivo) {
     if (!canEdit) return;
     setEditing(item);
     setFincaId(String(item.fincaId));
@@ -203,28 +195,34 @@ export function ParcelasCrud() {
       return;
     }
 
+    const area = parseOptionalNumber(areaHectareas);
+    const hasAllRequiredFields = Boolean(nombre.trim()) && Boolean(descripcion.trim()) && Boolean(cultivo.trim()) && area !== undefined && !Number.isNaN(area);
+    if (!hasAllRequiredFields) {
+      setEditError(tproduction('plotRequiredFields'));
+      return;
+    }
+
     setEditSaving(true);
     setEditError(null);
 
-    const area = parseOptionalNumber(areaHectareas);
-    const payload: ParcelaRequest = {
+    const payload: CultivoRequest = {
       fincaId: Number(fincaId),
       productoCosechaId: Number(productoCosechaId),
       nombre: nombre.trim(),
+      descripcion: descripcion.trim(),
+      cultivo: cultivo.trim(),
+      areaHectareas: area,
       estado,
-      ...(descripcion.trim() ? { descripcion: descripcion.trim() } : {}),
-      ...(cultivo.trim() ? { cultivo: cultivo.trim() } : {}),
-      ...(area !== undefined ? { areaHectareas: area } : {}),
     };
 
     try {
       if (editing) {
-        await apiFetch<void>(`/api/v1/produccion/parcelas/${editing.parcelaId}`, {
+        await apiFetch<void>(`/api/v1/produccion/cultivos/${editing.cultivoId}`, {
           method: 'PUT',
           body: JSON.stringify(payload),
         });
       } else {
-        await apiFetch<{ id: number }>('/api/v1/produccion/parcelas', {
+        await apiFetch<{ id: number }>('/api/v1/produccion/cultivos', {
           method: 'POST',
           body: JSON.stringify(payload),
         });
@@ -240,7 +238,7 @@ export function ParcelasCrud() {
     }
   }
 
-  function openDelete(item: Parcela) {
+  function openDelete(item: Cultivo) {
     if (!canDelete) return;
     setDeleteTarget(item);
     setDeleteError(null);
@@ -259,7 +257,7 @@ export function ParcelasCrud() {
     setDeleteSaving(true);
     setDeleteError(null);
     try {
-      await apiFetch<void>(`/api/v1/produccion/parcelas/${deleteTarget.parcelaId}`, { method: 'DELETE' });
+      await apiFetch<void>(`/api/v1/produccion/cultivos/${deleteTarget.cultivoId}`, { method: 'DELETE' });
       setDeleteOpen(false);
       setDeleteTarget(null);
       await reload();
@@ -271,7 +269,16 @@ export function ParcelasCrud() {
   }
 
   const canCreateRecord = canCreate && activeFincas.length > 0 && activeProductos.length > 0;
-  const canSave = Boolean(fincaId) && Boolean(productoCosechaId) && Boolean(nombre.trim());
+  const parsedArea = parseOptionalNumber(areaHectareas);
+  const canSave =
+    Boolean(fincaId) &&
+    Boolean(productoCosechaId) &&
+    Boolean(nombre.trim()) &&
+    Boolean(descripcion.trim()) &&
+    Boolean(cultivo.trim()) &&
+    parsedArea !== undefined &&
+    !Number.isNaN(parsedArea) &&
+    parsedArea >= 0;
 
   if (!canView) {
     return (
@@ -326,8 +333,8 @@ export function ParcelasCrud() {
                 </TableHead>
                 <TableBody>
                   {items.map((item) => (
-                    <TableRow key={item.parcelaId} hover>
-                      <TableCell>{item.parcelaId}</TableCell>
+                    <TableRow key={item.cultivoId} hover>
+                      <TableCell>{item.cultivoId}</TableCell>
                       <TableCell>{item.nombre}</TableCell>
                       <TableCell>{item.fincaNombre}</TableCell>
                       <TableCell>{item.productoCosechaNombre || '-'}</TableCell>
@@ -364,14 +371,30 @@ export function ParcelasCrud() {
         <DialogContent sx={{ display: 'grid', gap: 2, pt: '12px !important' }}>
           {editError ? <Alert severity="error">{editError}</Alert> : null}
           {activeProductos.length === 0 ? <Alert severity="warning">{tproduction('missingActiveProductsForPlots')}</Alert> : null}
-          <TextField select label={tf('farm')} value={fincaId} onChange={(e) => setFincaId(e.target.value)} required>
+          <TextField
+            select
+            label={tf('farm')}
+            value={fincaId}
+            onChange={(e) => setFincaId(e.target.value)}
+            required
+            SelectProps={{ displayEmpty: true }}
+          >
+            <MenuItem value="">{tproduction('selectFarmForPlot')}</MenuItem>
             {activeFincas.map((item) => (
               <MenuItem key={item.fincaId} value={String(item.fincaId)}>
                 {item.nombre}
               </MenuItem>
             ))}
           </TextField>
-          <TextField select label={tf('product')} value={productoCosechaId} onChange={(e) => setProductoCosechaId(e.target.value)} required>
+          <TextField
+            select
+            label={tf('product')}
+            value={productoCosechaId}
+            onChange={(e) => setProductoCosechaId(e.target.value)}
+            required
+            SelectProps={{ displayEmpty: true }}
+          >
+            <MenuItem value="">{tproduction('selectProductForPlot')}</MenuItem>
             {activeProductos.map((item) => (
               <MenuItem key={item.productoId} value={String(item.productoId)}>
                 {item.nombre} ({item.unidadMedida})
@@ -379,15 +402,16 @@ export function ParcelasCrud() {
             ))}
           </TextField>
           <TextField label={tf('name')} value={nombre} onChange={(e) => setNombre(e.target.value)} required autoFocus />
-          <TextField label={tf('description')} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} multiline minRows={2} />
+          <TextField label={tf('description')} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} multiline minRows={2} required />
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField fullWidth label={tf('crop')} value={cultivo} onChange={(e) => setCultivo(e.target.value)} />
+            <TextField fullWidth label={tf('crop')} value={cultivo} onChange={(e) => setCultivo(e.target.value)} required />
             <TextField
               fullWidth
               label={tf('areaHectares')}
               value={areaHectareas}
               onChange={(e) => setAreaHectareas(e.target.value)}
               type="number"
+              required
               slotProps={{ htmlInput: { min: 0, step: '0.01' } }}
             />
           </Stack>

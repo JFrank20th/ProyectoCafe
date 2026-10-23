@@ -118,16 +118,15 @@ const navIconByKey: Record<string, ComponentType<{ size?: number; stroke?: numbe
   gastos: IconReceipt,
   pasivos: IconCreditCard,
 
-  categorias: IconTags,
   unidadesMedida: IconRuler,
   productos: IconBox,
   lotes: IconPackage,
+  procesosInventario: IconPackage,
   insumos: IconPackage,
   fincas: IconBuildingStore,
   parcelas: IconTags,
   operacionesProduccion: IconReceipt,
   operacionesAgricolas: IconReceipt,
-  transformacionesCafe: IconPackage,
   proveedores: IconUsers,
   recepcionesCafe: IconReceipt,
 
@@ -136,9 +135,6 @@ const navIconByKey: Record<string, ComponentType<{ size?: number; stroke?: numbe
   proceso: IconPackage,
 
   tiposVenta: IconReceipt,
-  presentaciones: IconBox,
-  empaquesCafe: IconPackage,
-
   usuarios: IconUsers,
   roles: IconShield,
   seguridad: IconShield,

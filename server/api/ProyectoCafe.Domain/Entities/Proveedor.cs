@@ -14,5 +14,7 @@ public sealed class Proveedor
 
     public string? Direccion { get; set; }
 
+    public bool? EsInterno { get; set; }
+
     public bool? Estado { get; set; }
 }

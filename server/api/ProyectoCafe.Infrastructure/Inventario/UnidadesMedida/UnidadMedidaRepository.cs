@@ -40,7 +40,8 @@ public sealed class UnidadMedidaRepository(ProyectoCafeDbContext dbContext) : IU
     public async Task<string> CreateAsync(UnidadMedidaRequest request, CancellationToken cancellationToken)
     {
         var codigo = NormalizeCodigo(request.Codigo);
-        var nombre = NormalizeNombre(request.Nombre);
+        var nombre = NormalizeNombre(request.Nombre)
+            ?? throw new ArgumentException("Nombre es requerido.", nameof(request));
 
         var entity = new UnidadMedida
         {

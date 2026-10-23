@@ -20,13 +20,13 @@ public sealed class CostoRepository(ProyectoCafeDbContext dbContext) : ICostoRep
                 TipoCosto = x.TipoCosto,
                 FuenteModulo = x.FuenteModulo,
                 ReferenciaId = x.ReferenciaId,
-                ParcelaId = x.ParcelaId,
-                ParcelaNombre = dbContext.Parcelas.Where(p => p.ParcelaId == x.ParcelaId).Select(p => p.Nombre).FirstOrDefault(),
-                FincaId = dbContext.Parcelas.Where(p => p.ParcelaId == x.ParcelaId).Select(p => (int?)p.FincaId).FirstOrDefault(),
+                CultivoId = x.CultivoId,
+                CultivoNombre = dbContext.Cultivos.Where(c => c.CultivoId == x.CultivoId).Select(c => c.Nombre).FirstOrDefault(),
+                FincaId = dbContext.Cultivos.Where(c => c.CultivoId == x.CultivoId).Select(c => (int?)c.FincaId).FirstOrDefault(),
                 FincaNombre = (
-                    from parcela in dbContext.Parcelas
-                    join finca in dbContext.Fincas on parcela.FincaId equals finca.FincaId
-                    where parcela.ParcelaId == x.ParcelaId
+                    from cultivo in dbContext.Cultivos
+                    join finca in dbContext.Fincas on cultivo.FincaId equals finca.FincaId
+                    where cultivo.CultivoId == x.CultivoId
                     select finca.Nombre).FirstOrDefault(),
                 LoteId = x.LoteId,
                 CodigoLote = dbContext.Lotes.Where(l => l.LoteId == x.LoteId).Select(l => l.CodigoLote).FirstOrDefault(),
@@ -49,13 +49,13 @@ public sealed class CostoRepository(ProyectoCafeDbContext dbContext) : ICostoRep
                 TipoCosto = x.TipoCosto,
                 FuenteModulo = x.FuenteModulo,
                 ReferenciaId = x.ReferenciaId,
-                ParcelaId = x.ParcelaId,
-                ParcelaNombre = dbContext.Parcelas.Where(p => p.ParcelaId == x.ParcelaId).Select(p => p.Nombre).FirstOrDefault(),
-                FincaId = dbContext.Parcelas.Where(p => p.ParcelaId == x.ParcelaId).Select(p => (int?)p.FincaId).FirstOrDefault(),
+                CultivoId = x.CultivoId,
+                CultivoNombre = dbContext.Cultivos.Where(c => c.CultivoId == x.CultivoId).Select(c => c.Nombre).FirstOrDefault(),
+                FincaId = dbContext.Cultivos.Where(c => c.CultivoId == x.CultivoId).Select(c => (int?)c.FincaId).FirstOrDefault(),
                 FincaNombre = (
-                    from parcela in dbContext.Parcelas
-                    join finca in dbContext.Fincas on parcela.FincaId equals finca.FincaId
-                    where parcela.ParcelaId == x.ParcelaId
+                    from cultivo in dbContext.Cultivos
+                    join finca in dbContext.Fincas on cultivo.FincaId equals finca.FincaId
+                    where cultivo.CultivoId == x.CultivoId
                     select finca.Nombre).FirstOrDefault(),
                 LoteId = x.LoteId,
                 CodigoLote = dbContext.Lotes.Where(l => l.LoteId == x.LoteId).Select(l => l.CodigoLote).FirstOrDefault(),
@@ -76,7 +76,7 @@ public sealed class CostoRepository(ProyectoCafeDbContext dbContext) : ICostoRep
             TipoCosto = TiposCostoContable.Normalize(request.TipoCosto),
             FuenteModulo = NormalizeOptional(request.FuenteModulo),
             ReferenciaId = NormalizeOptionalId(request.ReferenciaId),
-            ParcelaId = NormalizeOptionalId(request.ParcelaId),
+            CultivoId = NormalizeOptionalId(request.CultivoId),
             LoteId = NormalizeOptionalId(request.LoteId),
             Monto = request.Monto,
             Estado = request.Estado,
@@ -111,7 +111,7 @@ public sealed class CostoRepository(ProyectoCafeDbContext dbContext) : ICostoRep
         entity.TipoCosto = TiposCostoContable.Normalize(request.TipoCosto);
         entity.FuenteModulo = NormalizeOptional(request.FuenteModulo);
         entity.ReferenciaId = NormalizeOptionalId(request.ReferenciaId);
-        entity.ParcelaId = NormalizeOptionalId(request.ParcelaId);
+        entity.CultivoId = NormalizeOptionalId(request.CultivoId);
         entity.LoteId = NormalizeOptionalId(request.LoteId);
         entity.Monto = request.Monto;
         entity.Estado = request.Estado;

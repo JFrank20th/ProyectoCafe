@@ -1,7 +1,7 @@
 /*
-  Limpieza operativa de ProyectoCafe para inicio de operacion real.
+  Limpieza operativa de ProyectoCafe para iniciar operacion de prueba.
 
-  Preserva:
+  Preserva por defecto:
   - Seguridad.Usuarios
   - Seguridad.Roles
   - Seguridad.UsuariosRoles
@@ -11,24 +11,34 @@
   - Negocio.MetodosPago
   - dbo.__EFMigrationsHistory
 
-  Elimina el resto de tablas de negocio, inventario, compras, produccion y contabilidad.
+  Vacia el resto de tablas operativas de negocio, inventario, compras,
+  produccion y contabilidad.
 
-  Uso recomendado:
-  1. Ejecuta primero con @ApplyChanges = 0 para ver el impacto sin confirmar cambios.
-  2. Revisa los conteos de tablas preservadas y vaciadas.
-  3. Cambia @ApplyChanges = 1 y ejecuta de nuevo para confirmar.
-  4. Toma backup antes de usar este script.
+  Mejoras incluidas:
+  - Un solo plan (#ResetPlan) como fuente de verdad para contar, borrar y reseed.
+  - Falla en modo seguro si aparece una tabla de dominio no contemplada.
+  - Solo ejecuta DBCC CHECKIDENT cuando la tabla realmente tiene identity.
+  - Mantiene modo vista previa con rollback para revisar impacto antes de confirmar.
 
-  Nota importante:
-  - La API puede volver a asegurar usuarios bootstrap definidos en configuracion al arrancar.
-  - Este script deja el sistema tecnicamente funcional, pero sin catalogos maestros de negocio.
+  Personalizacion rapida:
+  - Para preservar catalogos adicionales, cambia ActionName de VACIAR a PRESERVAR
+    en la seccion INSERT INTO #ResetPlan.
 */
 
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
+SET ANSI_NULLS ON;
+SET ANSI_PADDING ON;
+SET ANSI_WARNINGS ON;
+SET ARITHABORT ON;
+SET CONCAT_NULL_YIELDS_NULL ON;
+SET QUOTED_IDENTIFIER ON;
+SET NUMERIC_ROUNDABORT OFF;
 
 DECLARE @ExpectedDatabase sysname = N'ProyectoCafe.Dev';
-DECLARE @ApplyChanges bit = 0; -- colocar a 1 para confirmar cambios, dejar en 0 para vista previa sin cambios
+DECLARE @ApplyChanges bit = 1; -- colocar a 1 para confirmar cambios, dejar en 0 para vista previa sin cambios
+DECLARE @FailOnUnlistedTables bit = 1; -- colocar a 0 si solo quieres advertencia ante tablas nuevas no listadas
+DECLARE @ReseedIdentities bit = 1; -- colocar a 0 si no quieres reseed despues de limpiar
 
 IF DB_NAME() <> @ExpectedDatabase
 BEGIN
@@ -40,16 +50,27 @@ BEGIN
     THROW 50002, N'Abortado: no se encontro dbo.__EFMigrationsHistory. La base no parece ser la correcta.', 1;
 END;
 
-DECLARE @Tables TABLE
+IF OBJECT_ID(N'tempdb..#ResetPlan', N'U') IS NOT NULL
+BEGIN
+    DROP TABLE #ResetPlan;
+END;
+
+CREATE TABLE #ResetPlan
 (
     SchemaName sysname NOT NULL,
     TableName sysname NOT NULL,
     ActionName nvarchar(15) NOT NULL,
     DeleteOrder int NOT NULL,
-    ReseedIdentity bit NOT NULL
+    ReseedIdentity bit NOT NULL,
+    ObjectId int NULL,
+    TableExists bit NULL,
+    HasIdentity bit NULL,
+    QualifiedName AS (QUOTENAME(SchemaName) + N'.' + QUOTENAME(TableName)),
+    SortOrder AS (CASE WHEN ActionName = N'PRESERVAR' THEN 0 ELSE 1000 END + DeleteOrder),
+    CONSTRAINT CK_ResetPlan_Action CHECK (ActionName IN (N'PRESERVAR', N'VACIAR'))
 );
 
-INSERT INTO @Tables (SchemaName, TableName, ActionName, DeleteOrder, ReseedIdentity)
+INSERT INTO #ResetPlan (SchemaName, TableName, ActionName, DeleteOrder, ReseedIdentity)
 VALUES
     (N'Seguridad', N'Usuarios', N'PRESERVAR', 0, 0),
     (N'Seguridad', N'Roles', N'PRESERVAR', 0, 0),
@@ -65,173 +86,197 @@ VALUES
     (N'Contabilidad', N'Costos', N'VACIAR', 40, 1),
     (N'Contabilidad', N'Gastos', N'VACIAR', 50, 1),
     (N'Contabilidad', N'Pasivos', N'VACIAR', 60, 1),
-    (N'Produccion', N'EmpaquesCafeDetalles', N'VACIAR', 70, 1),
-    (N'Produccion', N'EmpaquesCafe', N'VACIAR', 80, 1),
-    (N'Produccion', N'TransformacionesCafe', N'VACIAR', 90, 1),
-    (N'Produccion', N'CosechasCafe', N'VACIAR', 100, 1),
-    (N'Produccion', N'OperacionesAgricolas', N'VACIAR', 110, 1),
-    (N'Compras', N'RecepcionesCafe', N'VACIAR', 120, 1),
-    (N'Inventario', N'LoteMovimientos', N'VACIAR', 130, 1),
-    (N'Inventario', N'Lotes', N'VACIAR', 140, 1),
-    (N'Negocio', N'ProductosPreciosTipoVenta', N'VACIAR', 150, 1),
-    (N'Inventario', N'Productos', N'VACIAR', 160, 1),
-    (N'Inventario', N'Insumos', N'VACIAR', 170, 1),
-    (N'Inventario', N'PresentacionesCafe', N'VACIAR', 180, 1),
-    (N'Inventario', N'Categorias', N'VACIAR', 190, 1),
-    (N'Negocio', N'Clientes', N'VACIAR', 200, 1),
-    (N'Compras', N'Proveedores', N'VACIAR', 210, 1),
-    (N'Produccion', N'Parcelas', N'VACIAR', 220, 1),
-    (N'Produccion', N'Fincas', N'VACIAR', 230, 1);
+    (N'Inventario', N'ProcesosInventario', N'VACIAR', 70, 1),
+    (N'Produccion', N'CosechasCafe', N'VACIAR', 80, 1),
+    (N'Produccion', N'OperacionesAgricolas', N'VACIAR', 90, 1),
+    (N'Compras', N'RecepcionesCafe', N'VACIAR', 100, 1),
+    (N'Inventario', N'LoteMovimientos', N'VACIAR', 110, 1),
+    (N'Inventario', N'Lotes', N'VACIAR', 120, 1),
+    (N'Negocio', N'ProductosPreciosTipoVenta', N'VACIAR', 130, 1),
+    (N'Produccion', N'CultivosConfiguracionesCosecha', N'VACIAR', 133, 1),
+    (N'Produccion', N'Cultivos', N'VACIAR', 135, 1),
+    (N'Inventario', N'Productos', N'VACIAR', 140, 1),
+    (N'Inventario', N'Insumos', N'VACIAR', 150, 1),
+    (N'Negocio', N'Clientes', N'VACIAR', 180, 1),
+    (N'Compras', N'Proveedores', N'VACIAR', 190, 1),
+    (N'Produccion', N'Fincas', N'VACIAR', 210, 1);
 
-DECLARE @Phase nvarchar(40);
-DECLARE @CountsUnion nvarchar(max);
-DECLARE @CountsSql nvarchar(max);
-DECLARE @SchemaName sysname;
-DECLARE @TableName sysname;
-DECLARE @ActionName nvarchar(15);
-DECLARE @SortOrder int;
-DECLARE @QualifiedName nvarchar(300);
-
-SET @Phase = N'ANTES';
-SET @CountsUnion = N'';
-
-DECLARE counts_cursor CURSOR LOCAL FAST_FORWARD FOR
-    SELECT
-        SchemaName,
-        TableName,
-        ActionName,
-        CASE WHEN ActionName = N'PRESERVAR' THEN 0 ELSE 1000 END + DeleteOrder AS SortOrder
-    FROM @Tables
-    ORDER BY
-        CASE WHEN ActionName = N'PRESERVAR' THEN 0 ELSE 1 END,
-        DeleteOrder,
-        SchemaName,
-        TableName;
-
-OPEN counts_cursor;
-
-FETCH NEXT FROM counts_cursor INTO @SchemaName, @TableName, @ActionName, @SortOrder;
-
-WHILE @@FETCH_STATUS = 0
+IF EXISTS
+(
+    SELECT 1
+    FROM #ResetPlan
+    GROUP BY SchemaName, TableName
+    HAVING COUNT(*) > 1
+)
 BEGIN
-    SET @QualifiedName = QUOTENAME(@SchemaName) + N'.' + QUOTENAME(@TableName);
-
-    SET @CountsUnion = @CountsUnion
-        + CASE WHEN LEN(@CountsUnion) = 0 THEN N'' ELSE N' UNION ALL ' END
-        + N'SELECT '
-        + N'N''' + REPLACE(@Phase, N'''', N'''''') + N''' AS Fase, '
-        + CAST(@SortOrder AS nvarchar(20)) + N' AS Orden, '
-        + N'N''' + REPLACE(@ActionName, N'''', N'''''') + N''' AS Accion, '
-        + N'N''' + REPLACE(@QualifiedName, N'''', N'''''') + N''' AS Tabla, '
-        + N'COUNT_BIG(*) AS Registros '
-        + N'FROM ' + @QualifiedName;
-
-    FETCH NEXT FROM counts_cursor INTO @SchemaName, @TableName, @ActionName, @SortOrder;
+    THROW 50003, N'Abortado: hay tablas duplicadas en #ResetPlan.', 1;
 END;
 
-CLOSE counts_cursor;
-DEALLOCATE counts_cursor;
+UPDATE rp
+SET
+    ObjectId = tbl.object_id,
+    TableExists = CASE WHEN tbl.object_id IS NULL THEN 0 ELSE 1 END,
+    HasIdentity = CASE
+        WHEN tbl.object_id IS NOT NULL
+         AND EXISTS (SELECT 1 FROM sys.identity_columns AS ic WHERE ic.object_id = tbl.object_id)
+            THEN 1
+        ELSE 0
+    END
+FROM #ResetPlan AS rp
+LEFT JOIN sys.schemas AS sch
+    ON sch.name = rp.SchemaName
+LEFT JOIN sys.tables AS tbl
+    ON tbl.schema_id = sch.schema_id
+   AND tbl.name = rp.TableName;
+
+IF EXISTS (SELECT 1 FROM #ResetPlan WHERE TableExists = 0)
+BEGIN
+    PRINT N'Tablas configuradas que no existen en la base actual:';
+    SELECT
+        ActionName AS Accion,
+        QualifiedName AS Tabla
+    FROM #ResetPlan
+    WHERE TableExists = 0
+    ORDER BY SortOrder, QualifiedName;
+
+    THROW 50004, N'Abortado: #ResetPlan contiene tablas que no existen en la base actual.', 1;
+END;
+
+IF OBJECT_ID(N'tempdb..#UnlistedTables', N'U') IS NOT NULL
+BEGIN
+    DROP TABLE #UnlistedTables;
+END;
+
+SELECT
+    sch.name AS SchemaName,
+    tbl.name AS TableName,
+    QUOTENAME(sch.name) + N'.' + QUOTENAME(tbl.name) AS QualifiedName
+INTO #UnlistedTables
+FROM sys.tables AS tbl
+INNER JOIN sys.schemas AS sch
+    ON sch.schema_id = tbl.schema_id
+WHERE tbl.is_ms_shipped = 0
+  AND sch.name IN (N'Seguridad', N'Inventario', N'Negocio', N'Compras', N'Produccion', N'Contabilidad')
+  AND NOT EXISTS
+  (
+      SELECT 1
+    FROM #ResetPlan AS rp
+    WHERE rp.SchemaName = sch.name
+      AND rp.TableName = tbl.name
+  );
+
+IF EXISTS (SELECT 1 FROM #UnlistedTables)
+BEGIN
+    PRINT N'Advertencia: hay tablas de dominio no contempladas por el plan de limpieza.';
+    SELECT QualifiedName AS TablaNoContemplada
+    FROM #UnlistedTables
+    ORDER BY QualifiedName;
+
+    IF @FailOnUnlistedTables = 1
+    BEGIN
+        THROW 50005, N'Abortado: existen tablas de dominio no contempladas por el plan de limpieza.', 1;
+    END;
+END;
+
+PRINT N'Resumen del plan de limpieza:';
+SELECT
+    ActionName AS Accion,
+    QualifiedName AS Tabla,
+    CASE WHEN ActionName = N'VACIAR' THEN DeleteOrder END AS OrdenBorrado,
+    CASE WHEN HasIdentity = 1 THEN N'SI' ELSE N'NO' END AS TieneIdentity,
+    CASE WHEN ReseedIdentity = 1 THEN N'SI' ELSE N'NO' END AS ConsiderarReseed
+FROM #ResetPlan
+ORDER BY SortOrder, QualifiedName;
+
+IF OBJECT_ID(N'tempdb..#Counts', N'U') IS NOT NULL
+BEGIN
+    DROP TABLE #Counts;
+END;
+
+CREATE TABLE #Counts
+(
+    Fase nvarchar(40) NOT NULL,
+    Orden int NOT NULL,
+    Accion nvarchar(15) NOT NULL,
+    Tabla nvarchar(300) NOT NULL,
+    Registros bigint NOT NULL
+);
+
+DECLARE @Phase nvarchar(40) = N'ANTES';
+DECLARE @CountsSql nvarchar(max);
+DECLARE @DeleteSql nvarchar(max);
+DECLARE @ReseedSql nvarchar(max);
+
+SELECT @CountsSql =
+(
+    SELECT
+        N'INSERT INTO #Counts (Fase, Orden, Accion, Tabla, Registros) '
+        + N'SELECT @Phase, '
+        + CAST(SortOrder AS nvarchar(20))
+        + N', N''' + REPLACE(ActionName, N'''', N'''''') + N''' '
+        + N', N''' + REPLACE(QualifiedName, N'''', N'''''') + N''' '
+        + N', COUNT_BIG(*) FROM ' + QualifiedName + N';' + CHAR(10)
+    FROM #ResetPlan
+    ORDER BY SortOrder, QualifiedName
+    FOR XML PATH(N''), TYPE
+).value(N'.', N'nvarchar(max)');
+
+SELECT @DeleteSql =
+(
+    SELECT
+        N'DELETE FROM ' + QualifiedName + N';' + CHAR(10)
+    FROM #ResetPlan
+    WHERE ActionName = N'VACIAR'
+    ORDER BY DeleteOrder, QualifiedName
+    FOR XML PATH(N''), TYPE
+).value(N'.', N'nvarchar(max)');
+
+SELECT @ReseedSql =
+(
+    SELECT
+        N'DBCC CHECKIDENT (N''' + REPLACE(QualifiedName, N'''', N'''''') + N''', RESEED, 0) WITH NO_INFOMSGS;' + CHAR(10)
+    FROM #ResetPlan
+    WHERE ActionName = N'VACIAR'
+      AND ReseedIdentity = 1
+      AND HasIdentity = 1
+    ORDER BY DeleteOrder, QualifiedName
+    FOR XML PATH(N''), TYPE
+).value(N'.', N'nvarchar(max)');
+
+IF ISNULL(@CountsSql, N'') = N'' OR ISNULL(@DeleteSql, N'') = N''
+BEGIN
+    THROW 50006, N'Abortado: no fue posible construir el SQL dinamico del plan de limpieza.', 1;
+END;
 
 PRINT N'Conteos iniciales por tabla:';
-SET @CountsSql = N'SELECT Fase, Accion, Tabla, Registros FROM (' + @CountsUnion + N') AS Conteos ORDER BY Orden, Tabla;';
-EXEC sys.sp_executesql @CountsSql;
+EXEC sys.sp_executesql @CountsSql, N'@Phase nvarchar(40)', @Phase = @Phase;
+
+SELECT Fase, Accion, Tabla, Registros
+FROM #Counts
+WHERE Fase = @Phase
+ORDER BY Orden, Tabla;
 
 BEGIN TRY
     BEGIN TRANSACTION;
 
-    DELETE FROM [Negocio].[VentaPagos];
-    DELETE FROM [Negocio].[VentaDetalles];
-    DELETE FROM [Negocio].[Ventas];
-    DELETE FROM [Contabilidad].[Costos];
-    DELETE FROM [Contabilidad].[Gastos];
-    DELETE FROM [Contabilidad].[Pasivos];
-    DELETE FROM [Produccion].[EmpaquesCafeDetalles];
-    DELETE FROM [Produccion].[EmpaquesCafe];
-    DELETE FROM [Produccion].[TransformacionesCafe];
-    DELETE FROM [Produccion].[CosechasCafe];
-    DELETE FROM [Produccion].[OperacionesAgricolas];
-    DELETE FROM [Compras].[RecepcionesCafe];
-    DELETE FROM [Inventario].[LoteMovimientos];
-    DELETE FROM [Inventario].[Lotes];
-    DELETE FROM [Negocio].[ProductosPreciosTipoVenta];
-    DELETE FROM [Inventario].[Productos];
-    DELETE FROM [Inventario].[Insumos];
-    DELETE FROM [Inventario].[PresentacionesCafe];
-    DELETE FROM [Inventario].[Categorias];
-    DELETE FROM [Negocio].[Clientes];
-    DELETE FROM [Compras].[Proveedores];
-    DELETE FROM [Produccion].[Parcelas];
-    DELETE FROM [Produccion].[Fincas];
+    EXEC sys.sp_executesql @DeleteSql;
 
     SET @Phase = N'DESPUES_EN_TRANSACCION';
-    SET @CountsUnion = N'';
 
-    DECLARE counts_cursor_after CURSOR LOCAL FAST_FORWARD FOR
-        SELECT
-            SchemaName,
-            TableName,
-            ActionName,
-            CASE WHEN ActionName = N'PRESERVAR' THEN 0 ELSE 1000 END + DeleteOrder AS SortOrder
-        FROM @Tables
-        ORDER BY
-            CASE WHEN ActionName = N'PRESERVAR' THEN 0 ELSE 1 END,
-            DeleteOrder,
-            SchemaName,
-            TableName;
-
-    OPEN counts_cursor_after;
-
-    FETCH NEXT FROM counts_cursor_after INTO @SchemaName, @TableName, @ActionName, @SortOrder;
-
-    WHILE @@FETCH_STATUS = 0
-    BEGIN
-        SET @QualifiedName = QUOTENAME(@SchemaName) + N'.' + QUOTENAME(@TableName);
-
-        SET @CountsUnion = @CountsUnion
-            + CASE WHEN LEN(@CountsUnion) = 0 THEN N'' ELSE N' UNION ALL ' END
-            + N'SELECT '
-            + N'N''' + REPLACE(@Phase, N'''', N'''''') + N''' AS Fase, '
-            + CAST(@SortOrder AS nvarchar(20)) + N' AS Orden, '
-            + N'N''' + REPLACE(@ActionName, N'''', N'''''') + N''' AS Accion, '
-            + N'N''' + REPLACE(@QualifiedName, N'''', N'''''') + N''' AS Tabla, '
-            + N'COUNT_BIG(*) AS Registros '
-            + N'FROM ' + @QualifiedName;
-
-        FETCH NEXT FROM counts_cursor_after INTO @SchemaName, @TableName, @ActionName, @SortOrder;
-    END;
-
-    CLOSE counts_cursor_after;
-    DEALLOCATE counts_cursor_after;
+    EXEC sys.sp_executesql @CountsSql, N'@Phase nvarchar(40)', @Phase = @Phase;
 
     PRINT N'Conteos despues del borrado, aun dentro de la transaccion:';
-    SET @CountsSql = N'SELECT Fase, Accion, Tabla, Registros FROM (' + @CountsUnion + N') AS Conteos ORDER BY Orden, Tabla;';
-    EXEC sys.sp_executesql @CountsSql;
+    SELECT Fase, Accion, Tabla, Registros
+    FROM #Counts
+    WHERE Fase = @Phase
+    ORDER BY Orden, Tabla;
 
     IF @ApplyChanges = 1
     BEGIN
-        DBCC CHECKIDENT (N'[Negocio].[VentaPagos]', RESEED, 0) WITH NO_INFOMSGS;
-        DBCC CHECKIDENT (N'[Negocio].[VentaDetalles]', RESEED, 0) WITH NO_INFOMSGS;
-        DBCC CHECKIDENT (N'[Negocio].[Ventas]', RESEED, 0) WITH NO_INFOMSGS;
-        DBCC CHECKIDENT (N'[Contabilidad].[Costos]', RESEED, 0) WITH NO_INFOMSGS;
-        DBCC CHECKIDENT (N'[Contabilidad].[Gastos]', RESEED, 0) WITH NO_INFOMSGS;
-        DBCC CHECKIDENT (N'[Contabilidad].[Pasivos]', RESEED, 0) WITH NO_INFOMSGS;
-        DBCC CHECKIDENT (N'[Produccion].[EmpaquesCafeDetalles]', RESEED, 0) WITH NO_INFOMSGS;
-        DBCC CHECKIDENT (N'[Produccion].[EmpaquesCafe]', RESEED, 0) WITH NO_INFOMSGS;
-        DBCC CHECKIDENT (N'[Produccion].[TransformacionesCafe]', RESEED, 0) WITH NO_INFOMSGS;
-        DBCC CHECKIDENT (N'[Produccion].[CosechasCafe]', RESEED, 0) WITH NO_INFOMSGS;
-        DBCC CHECKIDENT (N'[Produccion].[OperacionesAgricolas]', RESEED, 0) WITH NO_INFOMSGS;
-        DBCC CHECKIDENT (N'[Compras].[RecepcionesCafe]', RESEED, 0) WITH NO_INFOMSGS;
-        DBCC CHECKIDENT (N'[Inventario].[LoteMovimientos]', RESEED, 0) WITH NO_INFOMSGS;
-        DBCC CHECKIDENT (N'[Inventario].[Lotes]', RESEED, 0) WITH NO_INFOMSGS;
-        DBCC CHECKIDENT (N'[Negocio].[ProductosPreciosTipoVenta]', RESEED, 0) WITH NO_INFOMSGS;
-        DBCC CHECKIDENT (N'[Inventario].[Productos]', RESEED, 0) WITH NO_INFOMSGS;
-        DBCC CHECKIDENT (N'[Inventario].[Insumos]', RESEED, 0) WITH NO_INFOMSGS;
-        DBCC CHECKIDENT (N'[Inventario].[PresentacionesCafe]', RESEED, 0) WITH NO_INFOMSGS;
-        DBCC CHECKIDENT (N'[Inventario].[Categorias]', RESEED, 0) WITH NO_INFOMSGS;
-        DBCC CHECKIDENT (N'[Negocio].[Clientes]', RESEED, 0) WITH NO_INFOMSGS;
-        DBCC CHECKIDENT (N'[Compras].[Proveedores]', RESEED, 0) WITH NO_INFOMSGS;
-        DBCC CHECKIDENT (N'[Produccion].[Parcelas]', RESEED, 0) WITH NO_INFOMSGS;
-        DBCC CHECKIDENT (N'[Produccion].[Fincas]', RESEED, 0) WITH NO_INFOMSGS;
+        IF @ReseedIdentities = 1 AND ISNULL(@ReseedSql, N'') <> N''
+        BEGIN
+            EXEC sys.sp_executesql @ReseedSql;
+        END;
 
         COMMIT TRANSACTION;
         PRINT N'Limpieza confirmada.';

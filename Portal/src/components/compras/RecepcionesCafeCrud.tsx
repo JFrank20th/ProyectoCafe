@@ -47,16 +47,16 @@ type RecepcionCafe = {
   proveedorNombre: string;
   productoId: number;
   productoNombre: string;
+  unidadMedida: string;
   tipoCafe: string;
   fechaRecepcion?: string | null;
-  numeroDocumento?: string | null;
   cantidad: number;
+  cantidadDisponible: number;
   precioUnitario: number;
   total: number;
   humedad?: number | null;
   observaciones?: string | null;
   estado: string;
-  loteId: number;
   codigoLote: string;
 };
 
@@ -65,21 +65,18 @@ type RecepcionCafeCreateRequest = {
   productoId: number;
   tipoCafe: string;
   fechaRecepcion?: string;
-  numeroDocumento?: string;
   cantidad: number;
   precioUnitario: number;
   humedad?: number;
-  codigoLote?: string;
   observaciones?: string;
 };
 
 type RecepcionCafeCreateResult = {
   recepcionCafeId: number;
-  loteId: number;
   codigoLote: string;
 };
 
-const COFFEE_TYPES = ['Cereza', 'RecienLavado', 'Seco'] as const;
+const COFFEE_TYPES = ['Cereza', 'Oreado', 'RecienLavado', 'Seco'] as const;
 
 function toInputDate(value?: string | null) {
   if (!value) return '';
@@ -100,6 +97,8 @@ function mapCoffeeTypeLabel(value: string, tpurchases: (key: string) => string) 
   switch (value) {
     case 'Cereza':
       return tpurchases('coffeeTypeCereza');
+    case 'Oreado':
+      return tpurchases('coffeeTypeOreado');
     case 'RecienLavado':
       return tpurchases('coffeeTypeRecienLavado');
     default:
@@ -142,11 +141,9 @@ export function RecepcionesCafeCrud() {
   const [productoId, setProductoId] = useState('');
   const [tipoCafe, setTipoCafe] = useState<(typeof COFFEE_TYPES)[number]>('Cereza');
   const [fechaRecepcion, setFechaRecepcion] = useState(todayInputDate());
-  const [numeroDocumento, setNumeroDocumento] = useState('');
   const [cantidad, setCantidad] = useState('0');
   const [precioUnitario, setPrecioUnitario] = useState('0');
   const [humedad, setHumedad] = useState('');
-  const [codigoLote, setCodigoLote] = useState('');
   const [observaciones, setObservaciones] = useState('');
 
   const [annulOpen, setAnnulOpen] = useState(false);
@@ -163,7 +160,7 @@ export function RecepcionesCafeCrud() {
     try {
       const [recepcionesRes, proveedoresRes, productosRes] = await Promise.allSettled([
         apiFetch<RecepcionCafe[]>('/api/v1/compras/recepciones-cafe'),
-        apiFetch<Proveedor[]>('/api/v1/compras/proveedores'),
+        apiFetch<Proveedor[]>('/api/v1/compras/proveedores?soloExternos=true'),
         apiFetch<Producto[]>('/api/v1/productos'),
       ]);
 
@@ -203,11 +200,9 @@ export function RecepcionesCafeCrud() {
     setProductoId(String(activeProductos[0]?.productoId ?? ''));
     setTipoCafe('Cereza');
     setFechaRecepcion(todayInputDate());
-    setNumeroDocumento('');
     setCantidad('0');
     setPrecioUnitario('0');
     setHumedad('');
-    setCodigoLote('');
     setObservaciones('');
   }
 
@@ -243,9 +238,7 @@ export function RecepcionesCafeCrud() {
       cantidad: cantidadValue,
       precioUnitario: Number(precioUnitario),
       ...(fechaRecepcion ? { fechaRecepcion: new Date(fechaRecepcion).toISOString() } : {}),
-      ...(numeroDocumento.trim() ? { numeroDocumento: numeroDocumento.trim() } : {}),
       ...(humedadValue !== undefined ? { humedad: humedadValue } : {}),
-      ...(codigoLote.trim() ? { codigoLote: codigoLote.trim() } : {}),
       ...(observaciones.trim() ? { observaciones: observaciones.trim() } : {}),
     };
 
@@ -348,6 +341,7 @@ export function RecepcionesCafeCrud() {
                     <TableCell>{tf('product')}</TableCell>
                     <TableCell>{tf('coffeeState')}</TableCell>
                     <TableCell>{tf('quantity')}</TableCell>
+                    <TableCell>{tf('availableQuantity')}</TableCell>
                     <TableCell>{tf('unitPrice')}</TableCell>
                     <TableCell>{tf('total')}</TableCell>
                     <TableCell>{tf('batchCode')}</TableCell>
@@ -361,9 +355,10 @@ export function RecepcionesCafeCrud() {
                       <TableCell>{item.recepcionCafeId}</TableCell>
                       <TableCell>{toInputDate(item.fechaRecepcion) || '-'}</TableCell>
                       <TableCell>{item.proveedorNombre}</TableCell>
-                      <TableCell>{item.productoNombre}</TableCell>
+                      <TableCell>{item.productoNombre} ({item.unidadMedida})</TableCell>
                       <TableCell>{mapCoffeeTypeLabel(item.tipoCafe, tpurchases)}</TableCell>
                       <TableCell>{item.cantidad}</TableCell>
+                      <TableCell>{item.cantidadDisponible}</TableCell>
                       <TableCell>{item.precioUnitario}</TableCell>
                       <TableCell>{item.total}</TableCell>
                       <TableCell>{item.codigoLote}</TableCell>
@@ -413,7 +408,7 @@ export function RecepcionesCafeCrud() {
               <TextField select fullWidth label={tf('product')} value={productoId} onChange={(e) => setProductoId(e.target.value)}>
                 {activeProductos.map((item) => (
                   <MenuItem key={item.productoId} value={String(item.productoId)}>
-                    {item.nombre} ({item.unidadMedida})
+                    {item.nombre} (KG)
                   </MenuItem>
                 ))}
               </TextField>
@@ -440,7 +435,7 @@ export function RecepcionesCafeCrud() {
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
               <TextField
                 fullWidth
-                label={tf('quantity')}
+                label={`${tf('quantity')} (KG)`}
                 value={cantidad}
                 onChange={(e) => setCantidad(e.target.value)}
                 type="number"
@@ -458,7 +453,6 @@ export function RecepcionesCafeCrud() {
             </Stack>
 
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-              <TextField fullWidth label={tf('documentOptional')} value={numeroDocumento} onChange={(e) => setNumeroDocumento(e.target.value)} />
               <TextField
                 fullWidth
                 label={tf('moistureOptional')}
@@ -469,7 +463,6 @@ export function RecepcionesCafeCrud() {
               />
             </Stack>
 
-            <TextField fullWidth label={tf('batchCodeOptional')} value={codigoLote} onChange={(e) => setCodigoLote(e.target.value)} />
             <TextField fullWidth label={tf('notes')} value={observaciones} onChange={(e) => setObservaciones(e.target.value)} multiline minRows={3} />
           </Stack>
         </DialogContent>

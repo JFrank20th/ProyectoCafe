@@ -45,7 +45,11 @@ type UnidadMedidaUpdateRequest = {
   estado: boolean;
 };
 
-export function UnidadesMedidaCrud() {
+type UnidadesMedidaCrudProps = {
+  embedded?: boolean;
+};
+
+export function UnidadesMedidaCrud({ embedded = false }: UnidadesMedidaCrudProps) {
   const nav = useTranslations('navigation');
   const tc = useTranslations('common');
   const tf = useTranslations('fields');
@@ -191,10 +195,10 @@ export function UnidadesMedidaCrud() {
   }
 
   return (
-    <Stack spacing={2}>
-      <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
-        <Typography variant="h4">{nav('unidadesMedida')}</Typography>
-        <Stack direction="row" spacing={1}>
+    <Stack spacing={embedded ? 1.5 : 2}>
+      <Stack direction="row" alignItems="center" justifyContent={embedded ? 'flex-end' : 'space-between'} spacing={2}>
+        {embedded ? null : <Typography variant="h4">{nav('unidadesMedida')}</Typography>}
+        <Stack direction="row" spacing={1} sx={embedded ? { ml: 'auto' } : undefined}>
           <Button variant="outlined" onClick={() => void reload()} disabled={loading}>
             {tc('refresh')}
           </Button>
@@ -207,8 +211,8 @@ export function UnidadesMedidaCrud() {
       {error ? <Alert severity="error">{error}</Alert> : null}
 
       <Card variant="outlined">
-        <CardHeader title={tc('listTitle')} />
-        <CardContent sx={{ pt: 0 }}>
+        {embedded ? null : <CardHeader title={tc('listTitle')} />}
+        <CardContent sx={{ pt: embedded ? 2 : 0 }}>
           {loading ? (
             <Typography variant="body2" color="text.secondary">
               {tc('loading')}
@@ -268,16 +272,16 @@ export function UnidadesMedidaCrud() {
         <DialogContent dividers>
           <Stack spacing={2} sx={{ pt: 1 }}>
             {editError ? <Alert severity="error">{editError}</Alert> : null}
+            <TextField label={tf('name')} value={nombre} onChange={(e) => setNombre(e.target.value)} helperText={tf('unitNameHelper')} fullWidth autoFocus />
             <TextField
               label={tf('code')}
               value={codigo}
-              onChange={(e) => setCodigo(e.target.value)}
+              onChange={(e) => setCodigo(e.target.value.toUpperCase())}
+              helperText={editing ? tf('unitCodeLockedHelper') : tf('unitCodeHelper')}
               fullWidth
               disabled={Boolean(editing)}
               placeholder="UN"
-              autoFocus
             />
-            <TextField label={tf('name')} value={nombre} onChange={(e) => setNombre(e.target.value)} fullWidth />
             <FormControlLabel
               control={<Checkbox checked={estado} onChange={(e) => setEstado(e.target.checked)} />}
               label={tf('active')}

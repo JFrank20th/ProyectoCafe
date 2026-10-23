@@ -10,12 +10,10 @@ public sealed class ProductoRepository(ProyectoCafeDbContext dbContext) : IProdu
 {
     public async Task<IReadOnlyList<ProductoResponse>> GetAllAsync(CancellationToken cancellationToken)
     {
-        var productos = await (
-            from producto in dbContext.Productos.AsNoTracking()
-            join presentacionRef in dbContext.Presentaciones.AsNoTracking() on producto.PresentacionId equals presentacionRef.PresentacionId into presentaciones
-            from presentacion in presentaciones.DefaultIfEmpty()
-            orderby producto.ProductoId
-            select new ProductoResponse
+        var productos = await dbContext.Productos
+            .AsNoTracking()
+            .OrderBy(producto => producto.ProductoId)
+            .Select(producto => new ProductoResponse
             {
                 ProductoId = producto.ProductoId,
                 Nombre = producto.Nombre,
@@ -27,12 +25,10 @@ public sealed class ProductoRepository(ProyectoCafeDbContext dbContext) : IProdu
                 ManejaLotes = producto.ManejaLotes,
                 TipoLote = producto.TipoLote,
                 Estado = producto.Estado ?? true,
-                CategoriaId = producto.CategoriaId,
-                PresentacionId = producto.PresentacionId,
-                PresentacionCodigo = presentacion != null ? presentacion.Codigo : null,
-                PresentacionNombre = presentacion != null ? presentacion.Nombre : null,
-                PresentacionCantidad = presentacion != null ? presentacion.Cantidad : null,
-                PresentacionUnidadMedida = presentacion != null ? presentacion.UnidadMedida : null,
+                PresentacionCodigo = producto.PresentacionCodigo,
+                PresentacionNombre = producto.PresentacionNombre,
+                PresentacionCantidad = producto.PresentacionCantidad,
+                PresentacionUnidadMedida = producto.PresentacionUnidadMedida,
                 UnidadMedida = producto.UnidadMedida,
                 PermiteDecimal = producto.PermiteDecimal,
             })
@@ -44,12 +40,10 @@ public sealed class ProductoRepository(ProyectoCafeDbContext dbContext) : IProdu
 
     public async Task<ProductoResponse?> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
-        var producto = await (
-            from entity in dbContext.Productos.AsNoTracking()
-            join presentacionRef in dbContext.Presentaciones.AsNoTracking() on entity.PresentacionId equals presentacionRef.PresentacionId into presentaciones
-            from presentacion in presentaciones.DefaultIfEmpty()
-            where entity.ProductoId == id
-            select new ProductoResponse
+        var producto = await dbContext.Productos
+            .AsNoTracking()
+            .Where(entity => entity.ProductoId == id)
+            .Select(entity => new ProductoResponse
             {
                 ProductoId = entity.ProductoId,
                 Nombre = entity.Nombre,
@@ -61,12 +55,10 @@ public sealed class ProductoRepository(ProyectoCafeDbContext dbContext) : IProdu
                 ManejaLotes = entity.ManejaLotes,
                 TipoLote = entity.TipoLote,
                 Estado = entity.Estado ?? true,
-                CategoriaId = entity.CategoriaId,
-                PresentacionId = entity.PresentacionId,
-                PresentacionCodigo = presentacion != null ? presentacion.Codigo : null,
-                PresentacionNombre = presentacion != null ? presentacion.Nombre : null,
-                PresentacionCantidad = presentacion != null ? presentacion.Cantidad : null,
-                PresentacionUnidadMedida = presentacion != null ? presentacion.UnidadMedida : null,
+                PresentacionCodigo = entity.PresentacionCodigo,
+                PresentacionNombre = entity.PresentacionNombre,
+                PresentacionCantidad = entity.PresentacionCantidad,
+                PresentacionUnidadMedida = entity.PresentacionUnidadMedida,
                 UnidadMedida = entity.UnidadMedida,
                 PermiteDecimal = entity.PermiteDecimal,
             })
@@ -89,8 +81,13 @@ public sealed class ProductoRepository(ProyectoCafeDbContext dbContext) : IProdu
             throw new ArgumentException("Nombre es requerido.", nameof(request));
         }
 
-        await EnsureCategoriaExistsAsync(request.CategoriaId, cancellationToken);
-        await EnsurePresentacionExistsAsync(request.PresentacionId, cancellationToken);
+        var unidadMedida = NormalizeUnidadMedida(request.UnidadMedida);
+        if (unidadMedida is null)
+        {
+            throw new ArgumentException("La unidad de medida es requerida.", nameof(request));
+        }
+
+        await EnsureUnidadMedidaExistsAsync(unidadMedida, nameof(request.UnidadMedida), cancellationToken);
 
         var entity = new Producto
         {
@@ -101,12 +98,14 @@ public sealed class ProductoRepository(ProyectoCafeDbContext dbContext) : IProdu
             PrecioMayorista = request.PrecioMayorista,
             Stock = request.Stock,
             ManejaLotes = true,
-            TipoLote = NormalizeTipoLote(request.TipoLote) ?? "Manual",
+            TipoLote = "Manual",
             Estado = request.Estado,
-            CategoriaId = request.CategoriaId,
-            PresentacionId = NormalizePresentacionId(request.PresentacionId),
-            UnidadMedida = NormalizeUnidadMedida(request.UnidadMedida) ?? "UN",
-            PermiteDecimal = request.PermiteDecimal,
+            PresentacionCodigo = null,
+            PresentacionNombre = null,
+            PresentacionCantidad = null,
+            PresentacionUnidadMedida = null,
+            UnidadMedida = unidadMedida,
+            PermiteDecimal = true,
         };
 
         await SyncLegacyPricesFromDynamicAsync(entity, request, cancellationToken);
@@ -127,8 +126,13 @@ public sealed class ProductoRepository(ProyectoCafeDbContext dbContext) : IProdu
             return false;
         }
 
-        await EnsureCategoriaExistsAsync(request.CategoriaId, cancellationToken);
-        await EnsurePresentacionExistsAsync(request.PresentacionId, cancellationToken);
+        var unidadMedida = NormalizeUnidadMedida(request.UnidadMedida);
+        if (unidadMedida is null)
+        {
+            throw new ArgumentException("La unidad de medida es requerida.", nameof(request));
+        }
+
+        await EnsureUnidadMedidaExistsAsync(unidadMedida, nameof(request.UnidadMedida), cancellationToken);
 
         var normalizedNombre = NormalizeNombre(request.Nombre);
         if (normalizedNombre is not null)
@@ -142,29 +146,20 @@ public sealed class ProductoRepository(ProyectoCafeDbContext dbContext) : IProdu
         entity.PrecioMayorista = request.PrecioMayorista;
         entity.Stock = request.Stock;
         entity.ManejaLotes = true;
-        entity.TipoLote = NormalizeTipoLote(request.TipoLote) ?? entity.TipoLote;
+        entity.TipoLote = "Manual";
         entity.Estado = request.Estado;
-        entity.CategoriaId = request.CategoriaId;
-        entity.PresentacionId = NormalizePresentacionId(request.PresentacionId);
-        entity.UnidadMedida = NormalizeUnidadMedida(request.UnidadMedida) ?? entity.UnidadMedida;
-        entity.PermiteDecimal = request.PermiteDecimal;
+        entity.PresentacionCodigo = null;
+        entity.PresentacionNombre = null;
+        entity.PresentacionCantidad = null;
+        entity.PresentacionUnidadMedida = null;
+        entity.UnidadMedida = unidadMedida;
+        entity.PermiteDecimal = true;
 
         await SyncLegacyPricesFromDynamicAsync(entity, request, cancellationToken);
 
         await dbContext.SaveChangesAsync(cancellationToken);
         await SyncPreciosTipoVentaAsync(entity.ProductoId, request, cancellationToken);
         return true;
-    }
-
-    private async Task EnsureCategoriaExistsAsync(int categoriaId, CancellationToken cancellationToken)
-    {
-        var exists = await dbContext.Categorias
-            .AnyAsync(x => x.CategoriaId == categoriaId && x.Estado != false, cancellationToken);
-
-        if (!exists)
-        {
-            throw new ArgumentException("CategoriaId inválido o inactivo.", nameof(categoriaId));
-        }
     }
 
     public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken)
@@ -176,6 +171,8 @@ public sealed class ProductoRepository(ProyectoCafeDbContext dbContext) : IProdu
         {
             return false;
         }
+
+        await EnsureProductCanBeDeletedAsync(id, cancellationToken);
 
         var precios = await dbContext.ProductosPreciosTipoVenta
             .Where(x => x.ProductoId == id)
@@ -189,6 +186,19 @@ public sealed class ProductoRepository(ProyectoCafeDbContext dbContext) : IProdu
         dbContext.Productos.Remove(entity);
         await dbContext.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    private async Task EnsureProductCanBeDeletedAsync(int productoId, CancellationToken cancellationToken)
+    {
+        if (await dbContext.Lotes.AnyAsync(x => x.ProductoId == productoId, cancellationToken)
+            || await dbContext.Cultivos.AnyAsync(x => x.ProductoCosechaId == productoId, cancellationToken)
+            || await dbContext.OperacionesAgricolas.AnyAsync(x => x.ProductoId == productoId, cancellationToken)
+            || await dbContext.CosechasCafe.AnyAsync(x => x.ProductoId == productoId, cancellationToken)
+            || await dbContext.ProcesosInventario.AnyAsync(x => x.ProductoSalidaId == productoId, cancellationToken)
+            || await dbContext.VentaDetalles.AnyAsync(x => x.ProductoId == productoId, cancellationToken))
+        {
+            throw new ArgumentException("No se puede eliminar el producto porque ya tiene uso operacional. Inactivalo en su lugar.", nameof(productoId));
+        }
     }
 
     private async Task AttachPreciosTipoVentaAsync(IReadOnlyList<ProductoResponse> productos, CancellationToken cancellationToken)
@@ -233,20 +243,19 @@ public sealed class ProductoRepository(ProyectoCafeDbContext dbContext) : IProdu
         }
     }
 
-    private async Task EnsurePresentacionExistsAsync(int? presentacionId, CancellationToken cancellationToken)
+    private async Task EnsureUnidadMedidaExistsAsync(string? unidadMedida, string parameterName, CancellationToken cancellationToken)
     {
-        var normalizedId = NormalizePresentacionId(presentacionId);
-        if (!normalizedId.HasValue)
+        if (string.IsNullOrWhiteSpace(unidadMedida))
         {
             return;
         }
 
-        var exists = await dbContext.Presentaciones
-            .AnyAsync(x => x.PresentacionId == normalizedId.Value && x.Estado != false, cancellationToken);
+        var exists = await dbContext.UnidadesMedida
+            .AnyAsync(x => x.Codigo == unidadMedida && x.Estado != false, cancellationToken);
 
         if (!exists)
         {
-            throw new ArgumentException("PresentacionId inválido o inactivo.", nameof(presentacionId));
+            throw new ArgumentException("La unidad de medida seleccionada es inválida o está inactiva.", parameterName);
         }
     }
 
@@ -407,8 +416,11 @@ public sealed class ProductoRepository(ProyectoCafeDbContext dbContext) : IProdu
         return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 
-    private static int? NormalizePresentacionId(int? presentacionId)
-        => presentacionId is > 0 ? presentacionId : null;
+    private static string? NormalizePresentacionCodigo(string? presentacionCodigo)
+    {
+        var value = (presentacionCodigo ?? string.Empty).Trim().ToUpperInvariant();
+        return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
 
     private static decimal ResolveLegacyPrice(ProductoRequest request, string tipoVentaCodigo)
     {

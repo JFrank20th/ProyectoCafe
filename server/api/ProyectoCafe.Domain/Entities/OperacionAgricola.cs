@@ -4,7 +4,7 @@ public sealed class OperacionAgricola
 {
     public int OperacionAgricolaId { get; set; }
 
-    public int ParcelaId { get; set; }
+    public int CultivoId { get; set; }
 
     public required string TipoOperacion { get; set; }
 
@@ -23,6 +23,8 @@ public sealed class OperacionAgricola
     public decimal? Humedad { get; set; }
 
     public int? LoteId { get; set; }
+
+    public int? RecepcionCafeId { get; set; }
 
     public decimal CostoInsumo { get; set; }
 

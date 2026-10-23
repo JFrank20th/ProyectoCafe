@@ -16,9 +16,6 @@ public sealed class RecepcionCafeCreateRequest
 
     public DateTime? FechaRecepcion { get; set; }
 
-    [MaxLength(50)]
-    public string? NumeroDocumento { get; set; }
-
     [Range(0.001, double.MaxValue)]
     public decimal Cantidad { get; set; }
 
@@ -27,9 +24,6 @@ public sealed class RecepcionCafeCreateRequest
 
     [Range(0, 100)]
     public decimal? Humedad { get; set; }
-
-    [MaxLength(50)]
-    public string? CodigoLote { get; set; }
 
     [MaxLength(250)]
     public string? Observaciones { get; set; }

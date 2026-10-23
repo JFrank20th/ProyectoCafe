@@ -12,6 +12,20 @@ public static class TiposOperacionAgricola
 
     public static readonly string[] All = [AplicacionInsumo, Fertilizacion, Poda, Riego, Jornal, Mantenimiento, Cosecha];
 
+    public static bool IsHarvest(string? value)
+    {
+        var normalized = Normalize(value);
+        return string.Equals(normalized, Cosecha, StringComparison.Ordinal);
+    }
+
+    public static bool UsesSupply(string? value)
+    {
+        var normalized = Normalize(value);
+
+        return string.Equals(normalized, AplicacionInsumo, StringComparison.Ordinal)
+            || string.Equals(normalized, Fertilizacion, StringComparison.Ordinal);
+    }
+
     public static string? Normalize(string? value)
     {
         var normalized = (value ?? string.Empty).Trim();

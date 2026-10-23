@@ -89,8 +89,6 @@ public sealed class VentaRepository(ProyectoCafeDbContext dbContext) : IVentaRep
         var detalles = await (
             from detalle in dbContext.VentaDetalles.AsNoTracking()
             join producto in dbContext.Productos.AsNoTracking() on detalle.ProductoId equals producto.ProductoId
-            join presentacionRef in dbContext.Presentaciones.AsNoTracking() on producto.PresentacionId equals presentacionRef.PresentacionId into presentaciones
-            from presentacion in presentaciones.DefaultIfEmpty()
             join loteRef in dbContext.Lotes.AsNoTracking() on detalle.LoteId equals loteRef.LoteId into lotes
             from lote in lotes.DefaultIfEmpty()
             where detalle.VentaId == ventaId
@@ -101,11 +99,11 @@ public sealed class VentaRepository(ProyectoCafeDbContext dbContext) : IVentaRep
                 VentaId = detalle.VentaId,
                 ProductoId = detalle.ProductoId,
                 ProductoNombre = producto.Nombre,
-                PresentacionId = producto.PresentacionId,
-                PresentacionCodigo = presentacion != null ? presentacion.Codigo : null,
-                PresentacionNombre = presentacion != null ? presentacion.Nombre : null,
-                PresentacionCantidad = presentacion != null ? presentacion.Cantidad : null,
-                PresentacionUnidadMedida = presentacion != null ? presentacion.UnidadMedida : null,
+                PresentacionId = null,
+                PresentacionCodigo = producto.PresentacionCodigo,
+                PresentacionNombre = producto.PresentacionNombre,
+                PresentacionCantidad = producto.PresentacionCantidad,
+                PresentacionUnidadMedida = producto.PresentacionUnidadMedida,
                 UnidadMedida = producto.UnidadMedida,
                 LoteId = detalle.LoteId,
                 CodigoLote = lote != null ? lote.CodigoLote : null,

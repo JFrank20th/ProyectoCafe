@@ -3,10 +3,11 @@ namespace ProyectoCafe.Application.Compras.RecepcionesCafe;
 public static class TiposCafeCompra
 {
     public const string Cereza = "Cereza";
+    public const string Oreado = "Oreado";
     public const string RecienLavado = "RecienLavado";
     public const string Seco = "Seco";
 
-    public static readonly string[] All = [Cereza, RecienLavado, Seco];
+    public static readonly string[] All = [Cereza, Oreado, RecienLavado, Seco];
 
     public static string? Normalize(string? value)
     {
@@ -19,6 +20,11 @@ public static class TiposCafeCompra
         if (normalized.Equals(Cereza, StringComparison.OrdinalIgnoreCase))
         {
             return Cereza;
+        }
+
+        if (normalized.Equals(Oreado, StringComparison.OrdinalIgnoreCase))
+        {
+            return Oreado;
         }
 
         if (normalized.Equals(RecienLavado, StringComparison.OrdinalIgnoreCase))

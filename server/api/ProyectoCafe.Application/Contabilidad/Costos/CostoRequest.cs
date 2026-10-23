@@ -16,7 +16,7 @@ public sealed class CostoRequest
 
     public int? ReferenciaId { get; set; }
 
-    public int? ParcelaId { get; set; }
+    public int? CultivoId { get; set; }
 
     public int? LoteId { get; set; }
 

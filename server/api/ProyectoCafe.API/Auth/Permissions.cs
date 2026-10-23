@@ -16,19 +16,16 @@ public static class Permissions
 
     public static class Modulos
     {
-        public const string InventarioCategorias = "Inventario.Categorias";
         public const string InventarioUnidadesMedida = "Inventario.UnidadesMedida";
         public const string InventarioProductos = "Inventario.Productos";
-        public const string InventarioPresentaciones = "Inventario.Presentaciones";
-        public const string InventarioPresentacionesLegacy = "Inventario.PresentacionesCafe";
         public const string InventarioInsumos = "Inventario.Insumos";
         public const string InventarioLotes = "Inventario.Lotes";
+        public const string InventarioProcesos = "Inventario.Procesos";
 
         public const string ProduccionFincas = "Produccion.Fincas";
-        public const string ProduccionParcelas = "Produccion.Parcelas";
+        public const string ProduccionCultivos = "Produccion.Cultivos";
+        public const string ProduccionParcelasLegacy = "Produccion.Parcelas";
         public const string ProduccionOperacionesAgricolas = "Produccion.OperacionesAgricolas";
-        public const string ProduccionTransformacionesCafe = "Produccion.TransformacionesCafe";
-        public const string ProduccionEmpaquesCafe = "Produccion.EmpaquesCafe";
 
         public const string ComprasProveedores = "Compras.Proveedores";
         public const string ComprasRecepcionesCafe = "Compras.RecepcionesCafe";
@@ -47,17 +44,14 @@ public static class Permissions
         public const string AdministracionPermisos = "Administracion.Permisos";
 
         public static readonly string[] All = [
-            InventarioCategorias,
             InventarioUnidadesMedida,
             InventarioProductos,
-            InventarioPresentaciones,
             InventarioInsumos,
             InventarioLotes,
+            InventarioProcesos,
             ProduccionFincas,
-            ProduccionParcelas,
+            ProduccionCultivos,
             ProduccionOperacionesAgricolas,
-            ProduccionTransformacionesCafe,
-            ProduccionEmpaquesCafe,
             ComprasProveedores,
             ComprasRecepcionesCafe,
             VentasClientes,

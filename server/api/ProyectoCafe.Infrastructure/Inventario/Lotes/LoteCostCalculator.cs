@@ -44,41 +44,28 @@ internal sealed class LoteCostCalculator(ProyectoCafeDbContext dbContext)
 
             decimal costoOrigen = 0m;
 
-            var costoEmpaqueOrigen = await dbContext.EmpaquesCafeDetalles
+            var proceso = await dbContext.ProcesosInventario
                 .AsNoTracking()
-                .Where(x => x.LoteSalidaId == loteId && x.Estado != "Anulada")
-                .Select(x => (decimal?)x.CostoOrigenAsignado)
+                .Where(x => x.LoteSalidaId == loteId && x.Estado != "Anulado")
+                .Select(x => new { x.LoteOrigenId, x.CantidadOrigenConsumida })
                 .SingleOrDefaultAsync(cancellationToken);
 
-            if (costoEmpaqueOrigen.HasValue)
+            if (proceso?.LoteOrigenId is int loteOrigenId)
             {
-                costoOrigen = costoEmpaqueOrigen.Value;
+                var origen = await CalculateAsync(loteOrigenId, stack, cancellationToken);
+                costoOrigen = Math.Round(origen.CostoUnitario * proceso.CantidadOrigenConsumida, 4, MidpointRounding.AwayFromZero);
             }
             else
             {
-                var transformacion = await dbContext.TransformacionesCafe
+                var recepcionTotal = await dbContext.RecepcionesCafe
                     .AsNoTracking()
-                    .Where(x => x.LoteSalidaId == loteId && x.Estado != "Anulada")
-                    .Select(x => new { x.LoteOrigenId, x.CantidadEntrada })
+                    .Where(x => x.LoteId == loteId && x.Estado != "Anulada")
+                    .Select(x => (decimal?)x.Total)
                     .SingleOrDefaultAsync(cancellationToken);
 
-                if (transformacion is not null)
+                if (recepcionTotal.HasValue)
                 {
-                    var origen = await CalculateAsync(transformacion.LoteOrigenId, stack, cancellationToken);
-                    costoOrigen = Math.Round(origen.CostoUnitario * transformacion.CantidadEntrada, 4, MidpointRounding.AwayFromZero);
-                }
-                else
-                {
-                    var recepcionTotal = await dbContext.RecepcionesCafe
-                        .AsNoTracking()
-                        .Where(x => x.LoteId == loteId && x.Estado != "Anulada")
-                        .Select(x => (decimal?)x.Total)
-                        .SingleOrDefaultAsync(cancellationToken);
-
-                    if (recepcionTotal.HasValue)
-                    {
-                        costoOrigen = recepcionTotal.Value;
-                    }
+                    costoOrigen = recepcionTotal.Value;
                 }
             }
 

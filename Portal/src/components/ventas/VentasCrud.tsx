@@ -1,5 +1,7 @@
 'use client';
 
+import { useSearchParams } from 'next/navigation';
+
 import { useEffect, useState } from 'react';
 
 import Alert from '@mui/material/Alert';
@@ -12,7 +14,6 @@ import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
-import Divider from '@mui/material/Divider';
 import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
@@ -195,17 +196,18 @@ function resolveLegacyPrice(producto: Producto, selectedPriceType: string) {
 }
 
 function formatProductLabel(producto: Producto) {
-  const presentation = formatPresentationLabel(producto.presentacionNombre, producto.presentacionCantidad, producto.presentacionUnidadMedida);
-  return presentation ? `${producto.nombre} · ${presentation}` : producto.nombre;
+  return producto.nombre;
 }
 
 function formatPresentationLabel(nombre?: string | null, cantidad?: number | null, unidadMedida?: string | null) {
-  if (!nombre) {
-    return null;
+  const normalizedNombre = nombre?.trim() ?? null;
+  const detail = cantidad && unidadMedida ? `${cantidad} ${unidadMedida}` : null;
+
+  if (detail && normalizedNombre && normalizedNombre.localeCompare(detail, 'es', { sensitivity: 'base' }) !== 0) {
+    return `${normalizedNombre} · ${detail}`;
   }
 
-  const detail = cantidad && unidadMedida ? `${cantidad} ${unidadMedida}` : null;
-  return detail ? `${nombre} · ${detail}` : nombre;
+  return detail ?? normalizedNombre;
 }
 
 function mapPriceTypeLabel(value: string, tiposVenta: TipoVenta[], tsales: (key: string) => string) {
@@ -246,6 +248,7 @@ export function VentasCrud() {
   const tp = useTranslations('pages');
   const tcrud = useTranslations('crud');
   const tsales = useTranslations('sales');
+  const searchParams = useSearchParams();
 
   const { has } = useAuth();
   const canView = has('Ventas.Ventas', 'Ver');
@@ -281,6 +284,7 @@ export function VentasCrud() {
   const [annulError, setAnnulError] = useState<string | null>(null);
   const [annulSaving, setAnnulSaving] = useState(false);
   const [annulTarget, setAnnulTarget] = useState<Venta | null>(null);
+  const [queryHandled, setQueryHandled] = useState(false);
 
   const activeClientes = clientes.filter((item) => item.estado);
   const activeMetodosPago = metodosPago.filter((item) => item.estado);
@@ -335,10 +339,10 @@ export function VentasCrud() {
     };
   }
 
-  function allocateLine() {
+  function allocateLine(preferredProductId?: number) {
     const sequence = lineSequence;
     setLineSequence((current) => current + 1);
-    return buildLine(sequence);
+    return buildLine(sequence, preferredProductId);
   }
 
   function getReservedLotQuantity(lineKey: number, loteId: number) {
@@ -402,6 +406,11 @@ export function VentasCrud() {
   }
 
   const totalPreview = roundMoney(detalles.reduce((sum, item) => sum + getLineSubtotal(item), 0));
+  const selectedCliente = activeClientes.find((item) => String(item.clienteId) === clienteId);
+  const selectedMetodoPago = activeMetodosPago.find((item) => String(item.metodoPagoId) === metodoPagoId);
+  const selectedTipoVenta = activeTiposVenta.find((item) => item.codigo === tipoPrecio);
+  const invalidLineCount = detalles.filter((item) => !isLineValid(item)).length;
+  const linesUsingLots = detalles.filter((item) => findProduct(item.productoId)?.manejaLotes).length;
   const canCreateRecord = canCreate && activeClientes.length > 0 && activeTiposVenta.length > 0 && sellableProducts.length > 0;
   const canSave = Boolean(clienteId) && Boolean(tipoPrecio) && detalles.length > 0 && detalles.every(isLineValid);
 
@@ -461,17 +470,35 @@ export function VentasCrud() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function resetForm() {
+  useEffect(() => {
+    if (loading || queryHandled) {
+      return;
+    }
+
+    const requestedProductId = searchParams.get('productoId');
+    const shouldOpen = searchParams.get('open') === '1';
+    const validRequestedProductId = requestedProductId && sellableProducts.some((item) => String(item.productoId) === requestedProductId)
+      ? Number(requestedProductId)
+      : undefined;
+
+    if (shouldOpen && validRequestedProductId && canCreateRecord) {
+      openCreate(validRequestedProductId);
+    }
+
+    setQueryHandled(true);
+  }, [canCreateRecord, loading, queryHandled, searchParams, sellableProducts]);
+
+  function resetForm(preferredProductId?: number) {
     setClienteId(String(activeClientes[0]?.clienteId ?? ''));
     setMetodoPagoId('');
     setEstadoPago('Pagado');
     setTipoPrecio(activeTiposVenta[0]?.codigo ?? 'Normal');
-    setDetalles([allocateLine()]);
+    setDetalles([allocateLine(preferredProductId)]);
   }
 
-  function openCreate() {
+  function openCreate(preferredProductId?: number) {
     if (!canCreateRecord) return;
-    resetForm();
+    resetForm(preferredProductId);
     setCreateError(null);
     setCreateOpen(true);
   }
@@ -621,7 +648,7 @@ export function VentasCrud() {
         <Typography variant="h4">{nav('ventas')}</Typography>
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" onClick={() => void reload()} disabled={loading}>{tc('refresh')}</Button>
-          <Button variant="contained" onClick={openCreate} disabled={!canCreateRecord}>{tcrud('new')}</Button>
+          <Button variant="contained" onClick={() => openCreate()} disabled={!canCreateRecord}>{tcrud('new')}</Button>
         </Stack>
       </Stack>
 
@@ -684,50 +711,59 @@ export function VentasCrud() {
         </CardContent>
       </Card>
 
-      <Dialog open={createOpen} onClose={closeCreate} fullWidth maxWidth="lg">
+      <Dialog open={createOpen} onClose={closeCreate} fullWidth maxWidth="md">
         <DialogTitle>{`${tcrud('new')} — ${nav('ventas')}`}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} sx={{ pt: 1 }}>
             {createError ? <Alert severity="error">{createError}</Alert> : null}
 
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-              <TextField select fullWidth label={tf('customer')} value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
-                {activeClientes.map((item) => (
-                  <MenuItem key={item.clienteId} value={String(item.clienteId)}>{item.nombre}</MenuItem>
-                ))}
-              </TextField>
-              <TextField select fullWidth label={tf('paymentMethod')} value={metodoPagoId} onChange={(e) => setMetodoPagoId(e.target.value)}>
-                <MenuItem value="">—</MenuItem>
-                {activeMetodosPago.map((item) => (
-                  <MenuItem key={item.metodoPagoId} value={String(item.metodoPagoId)}>{item.nombre}</MenuItem>
-                ))}
-              </TextField>
-            </Stack>
+            <Card variant="outlined">
+              <CardHeader title={`1. ${tf('customer')}`} />
+              <CardContent sx={{ pt: 0 }}>
+                <Stack spacing={2}>
+                  <TextField select fullWidth label={tf('customer')} value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
+                    {activeClientes.map((item) => (
+                      <MenuItem key={item.clienteId} value={String(item.clienteId)}>{item.nombre}</MenuItem>
+                    ))}
+                  </TextField>
 
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-              <TextField select fullWidth label={tf('paymentStatus')} value={estadoPago} onChange={(e) => setEstadoPago(e.target.value as (typeof PAYMENT_STATUSES)[number])}>
-                {PAYMENT_STATUSES.map((item) => (
-                  <MenuItem key={item} value={item}>{mapPaymentStatusLabel(item, tsales)}</MenuItem>
-                ))}
-              </TextField>
-              <TextField select fullWidth label={tf('priceType')} value={tipoPrecio} onChange={(e) => setTipoPrecio(e.target.value)}>
-                {activeTiposVenta.map((item) => (
-                  <MenuItem key={item.tipoVentaId} value={item.codigo}>{mapPriceTypeLabel(item.codigo, activeTiposVenta, tsales)}</MenuItem>
-                ))}
-              </TextField>
-            </Stack>
+                  <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                    <TextField select fullWidth label={tf('priceType')} value={tipoPrecio} onChange={(e) => setTipoPrecio(e.target.value)}>
+                      {activeTiposVenta.map((item) => (
+                        <MenuItem key={item.tipoVentaId} value={item.codigo}>{mapPriceTypeLabel(item.codigo, activeTiposVenta, tsales)}</MenuItem>
+                      ))}
+                    </TextField>
+                    <TextField select fullWidth label={tf('paymentStatus')} value={estadoPago} onChange={(e) => setEstadoPago(e.target.value as (typeof PAYMENT_STATUSES)[number])}>
+                      {PAYMENT_STATUSES.map((item) => (
+                        <MenuItem key={item} value={item}>{mapPaymentStatusLabel(item, tsales)}</MenuItem>
+                      ))}
+                    </TextField>
+                  </Stack>
+
+                  <TextField select fullWidth label={tf('paymentMethod')} value={metodoPagoId} onChange={(e) => setMetodoPagoId(e.target.value)}>
+                    <MenuItem value="">—</MenuItem>
+                    {activeMetodosPago.map((item) => (
+                      <MenuItem key={item.metodoPagoId} value={String(item.metodoPagoId)}>{item.nombre}</MenuItem>
+                    ))}
+                  </TextField>
+
+                  <Alert severity="info">
+                    {selectedCliente?.nombre ?? '—'} · {selectedTipoVenta ? mapPriceTypeLabel(selectedTipoVenta.codigo, activeTiposVenta, tsales) : '—'} · {mapPaymentStatusLabel(estadoPago, tsales)} · {selectedMetodoPago?.nombre ?? '—'}
+                  </Alert>
+                </Stack>
+              </CardContent>
+            </Card>
 
             <Card variant="outlined">
-              <CardHeader
-                title={tsales('saleLinesTitle')}
-                action={<Button onClick={addLine} disabled={sellableProducts.length === 0}>{tsales('addLine')}</Button>}
-              />
+              <CardHeader title={`2. ${tsales('saleLinesTitle')}`} action={<Button onClick={addLine} disabled={sellableProducts.length === 0}>{tsales('addLine')}</Button>} />
               <CardContent sx={{ pt: 0 }}>
                 <Stack spacing={2}>
                   {detalles.map((line, index) => {
                     const producto = findProduct(line.productoId);
                     const lote = findLot(line.loteId);
                     const available = getAvailableForLine(line);
+                    const lineValid = isLineValid(line);
+                    const presentation = formatPresentationLabel(producto?.presentacionNombre, producto?.presentacionCantidad, producto?.presentacionUnidadMedida);
 
                     return (
                       <Card key={line.key} variant="outlined">
@@ -751,12 +787,24 @@ export function VentasCrud() {
                                 ))}
                               </TextField>
                               <TextField
+                                fullWidth
+                                label={tf('quantity')}
+                                value={line.cantidad}
+                                onChange={(e) => updateLine(line.key, { cantidad: e.target.value })}
+                                type="number"
+                                inputProps={{ min: 0.001, step: producto?.permiteDecimal ? 0.001 : 1 }}
+                                error={!lineValid}
+                                helperText={producto ? `${tf('availableQuantity')}: ${Math.max(available, 0)} ${producto.unidadMedida}` : '—'}
+                              />
+                            </Stack>
+
+                            {producto?.manejaLotes ? (
+                              <TextField
                                 select
                                 fullWidth
                                 label={tf('lot')}
                                 value={line.loteId}
                                 onChange={(e) => updateLine(line.key, { loteId: e.target.value })}
-                                disabled={!producto?.manejaLotes}
                               >
                                 {availableLots
                                   .filter((item) => item.productoId === Number(line.productoId))
@@ -766,30 +814,18 @@ export function VentasCrud() {
                                     </MenuItem>
                                   ))}
                               </TextField>
-                            </Stack>
+                            ) : null}
 
-                            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                              <TextField
-                                fullWidth
-                                label={tf('quantity')}
-                                value={line.cantidad}
-                                onChange={(e) => updateLine(line.key, { cantidad: e.target.value })}
-                                type="number"
-                                inputProps={{ min: 0.001, step: producto?.permiteDecimal ? 0.001 : 1 }}
-                                error={!isLineValid(line)}
-                                helperText={producto ? `${tf('availableQuantity')}: ${Math.max(available, 0)} ${producto.unidadMedida}` : '—'}
-                              />
-                              <TextField fullWidth label={tf('unitPrice')} value={producto ? resolveDynamicPrice(producto, tipoPrecio) : ''} InputProps={{ readOnly: true }} />
-                              <TextField fullWidth label={tf('subtotal')} value={producto ? getLineSubtotal(line) : ''} InputProps={{ readOnly: true }} />
-                            </Stack>
-
-                            <Typography variant="caption" color="text.secondary">
-                              {formatPresentationLabel(producto?.presentacionNombre, producto?.presentacionCantidad, producto?.presentacionUnidadMedida)
-                                ? `${tf('presentation')}: ${formatPresentationLabel(producto?.presentacionNombre, producto?.presentacionCantidad, producto?.presentacionUnidadMedida)}`
-                                : ''}
-                              {producto?.manejaLotes && lote ? ` · ${tf('batchCode')}: ${lote.codigoLote}` : ''}
-                              {producto?.manejaLotes && !lote ? ` · ${tsales('selectLotHint')}` : ''}
-                            </Typography>
+                            <Alert severity={!producto ? 'info' : lineValid ? 'success' : 'warning'}>
+                              <Stack spacing={0.5}>
+                                <Typography variant="body2">
+                                  {producto ? `${producto.nombre} · ${tf('unitPrice')}: ${resolveDynamicPrice(producto, tipoPrecio)} · ${tf('subtotal')}: ${getLineSubtotal(line)}` : tf('product')}
+                                </Typography>
+                                {presentation ? <Typography variant="caption">{tf('presentation')}: {presentation}</Typography> : null}
+                                {producto?.manejaLotes && lote ? <Typography variant="caption">{tf('batchCode')}: {lote.codigoLote}</Typography> : null}
+                                {producto?.manejaLotes && !lote ? <Typography variant="caption">{tsales('selectLotHint')}</Typography> : null}
+                              </Stack>
+                            </Alert>
                           </Stack>
                         </CardContent>
                       </Card>
@@ -799,12 +835,25 @@ export function VentasCrud() {
               </CardContent>
             </Card>
 
-            <Divider />
+            <Card variant="outlined">
+              <CardHeader title={`3. ${tc('confirm')}`} />
+              <CardContent sx={{ pt: 0 }}>
+                <Stack spacing={2}>
+                  <Alert severity={invalidLineCount === 0 ? 'success' : 'warning'}>
+                    <Stack spacing={0.5}>
+                      <Typography variant="body2">{tf('customer')}: {selectedCliente?.nombre ?? '—'} · {tf('total')}: {totalPreview}</Typography>
+                      <Typography variant="caption">{tsales('lineLabel')}: {detalles.length} · {tf('lot')}: {linesUsingLots} · {tf('paymentStatus')}: {mapPaymentStatusLabel(estadoPago, tsales)}</Typography>
+                      <Typography variant="caption">{invalidLineCount === 0 ? tsales('draftReady') : tsales('draftNeedsReview')}</Typography>
+                    </Stack>
+                  </Alert>
 
-            <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
-              <Typography variant="subtitle1">{tf('total')}</Typography>
-              <Typography variant="h6">{totalPreview}</Typography>
-            </Stack>
+                  <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
+                    <Typography variant="subtitle1">{tf('total')}</Typography>
+                    <Typography variant="h5">{totalPreview}</Typography>
+                  </Stack>
+                </Stack>
+              </CardContent>
+            </Card>
           </Stack>
         </DialogContent>
         <DialogActions>

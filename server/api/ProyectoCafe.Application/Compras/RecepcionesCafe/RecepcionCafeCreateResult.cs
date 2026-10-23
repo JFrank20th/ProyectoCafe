@@ -4,7 +4,5 @@ public sealed class RecepcionCafeCreateResult
 {
     public int RecepcionCafeId { get; set; }
 
-    public int LoteId { get; set; }
-
     public required string CodigoLote { get; set; }
 }

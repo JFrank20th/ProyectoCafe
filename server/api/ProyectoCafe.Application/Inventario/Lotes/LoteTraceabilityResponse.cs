@@ -24,9 +24,7 @@ public sealed class LoteTraceabilityResponse
 
     public IReadOnlyList<LoteTraceabilityMovementResponse> Movimientos { get; set; } = [];
 
-    public IReadOnlyList<LoteTraceabilityTransformationResponse> TransformacionesRelacionadas { get; set; } = [];
-
-    public IReadOnlyList<LoteTraceabilityPackagingResponse> EmpaquesRelacionados { get; set; } = [];
+    public IReadOnlyList<LoteTraceabilityProcessResponse> ProcesosRelacionados { get; set; } = [];
 
     public IReadOnlyList<LoteTraceabilityCostResponse> CostosRelacionados { get; set; } = [];
 
@@ -45,9 +43,9 @@ public sealed class LoteTraceabilityOriginResponse
 
     public required string Descripcion { get; set; }
 
-    public int? ParcelaId { get; set; }
+    public int? CultivoId { get; set; }
 
-    public string? ParcelaNombre { get; set; }
+    public string? CultivoNombre { get; set; }
 
     public string? FincaNombre { get; set; }
 
@@ -75,36 +73,13 @@ public sealed class LoteTraceabilityMovementResponse
     public string? Observacion { get; set; }
 }
 
-public sealed class LoteTraceabilityTransformationResponse
+public sealed class LoteTraceabilityProcessResponse
 {
-    public int TransformacionCafeId { get; set; }
-
-    public required string TipoTransformacion { get; set; }
-
-    public DateTime? FechaTransformacion { get; set; }
-
-    public int LoteSalidaId { get; set; }
-
-    public required string CodigoLoteSalida { get; set; }
-
-    public required string ProductoSalidaNombre { get; set; }
-
-    public decimal CantidadEntrada { get; set; }
-
-    public decimal CantidadSalida { get; set; }
-
-    public decimal CostoProceso { get; set; }
-
-    public required string Estado { get; set; }
-}
-
-public sealed class LoteTraceabilityPackagingResponse
-{
-    public int EmpaqueCafeId { get; set; }
+    public int ProcesoInventarioId { get; set; }
 
     public required string Rol { get; set; }
 
-    public DateTime? FechaEmpaque { get; set; }
+    public DateTime? FechaProceso { get; set; }
 
     public int LoteOrigenId { get; set; }
 
@@ -118,19 +93,13 @@ public sealed class LoteTraceabilityPackagingResponse
 
     public required string ProductoSalidaNombre { get; set; }
 
-    public required string PresentacionNombre { get; set; }
+    public bool UsaLoteCompleto { get; set; }
 
-    public decimal PresentacionCantidad { get; set; }
+    public decimal CantidadOrigenConsumida { get; set; }
 
-    public required string PresentacionUnidadMedida { get; set; }
+    public decimal CantidadSalida { get; set; }
 
-    public decimal Cantidad { get; set; }
-
-    public decimal PesoTotalGramos { get; set; }
-
-    public decimal CantidadOrigenAsignada { get; set; }
-
-    public decimal CostoTotalAsignado { get; set; }
+    public decimal CostoProceso { get; set; }
 
     public required string Estado { get; set; }
 }

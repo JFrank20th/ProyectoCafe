@@ -12,13 +12,17 @@ public sealed class RecepcionCafeResponse
 
     public required string ProductoNombre { get; set; }
 
+    public required string UnidadMedida { get; set; }
+
     public required string TipoCafe { get; set; }
 
     public DateTime? FechaRecepcion { get; set; }
 
-    public string? NumeroDocumento { get; set; }
+    public required string CodigoLote { get; set; }
 
     public decimal Cantidad { get; set; }
+
+    public decimal CantidadDisponible { get; set; }
 
     public decimal PrecioUnitario { get; set; }
 
@@ -29,8 +33,4 @@ public sealed class RecepcionCafeResponse
     public string? Observaciones { get; set; }
 
     public required string Estado { get; set; }
-
-    public int LoteId { get; set; }
-
-    public required string CodigoLote { get; set; }
 }

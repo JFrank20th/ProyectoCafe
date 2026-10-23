@@ -33,17 +33,11 @@ export const NAV: NavSection[] = [
         labelKey: 'campo',
         items: [
           { labelKey: 'fincas', href: '/produccion/fincas', permissions: ['perm:Produccion.Fincas:Ver'] },
-          { labelKey: 'parcelas', href: '/produccion/parcelas', permissions: ['perm:Produccion.Parcelas:Ver'] },
+          { labelKey: 'parcelas', href: '/produccion/cultivos', permissions: ['perm:Produccion.Cultivos:Ver'] },
           { labelKey: 'operacionesProduccion', href: '/produccion/operaciones-agricolas', permissions: ['perm:Produccion.OperacionesAgricolas:Ver'] },
         ],
       },
-      {
-        labelKey: 'proceso',
-        items: [
-          { labelKey: 'transformacionesCafe', href: '/produccion/transformaciones-cafe', permissions: ['perm:Produccion.TransformacionesCafe:Ver'] },
-          { labelKey: 'empaquesCafe', href: '/produccion/empaques-cafe', permissions: ['perm:Produccion.EmpaquesCafe:Ver'] },
-        ],
-      },
+      { labelKey: 'insumos', href: '/produccion/insumos', permissions: ['perm:Inventario.Insumos:Ver'] },
     ],
   },
   {
@@ -58,16 +52,13 @@ export const NAV: NavSection[] = [
   {
     labelKey: 'inventory',
     items: [
+      { labelKey: 'procesosInventario', href: '/inventario/procesos', permissions: ['perm:Inventario.Procesos:Ver'] },
       { labelKey: 'lotes', href: '/inventario/lotes', permissions: ['perm:Inventario.Lotes:Ver'] },
       { labelKey: 'productos', href: '/inventario/productos', permissions: ['perm:Inventario.Productos:Ver'] },
-      { labelKey: 'insumos', href: '/inventario/insumos', permissions: ['perm:Inventario.Insumos:Ver'] },
       {
-        labelKey: 'catalogos',
-        items: [
-          { labelKey: 'categorias', href: '/inventario/categorias', permissions: ['perm:Inventario.Categorias:Ver'] },
-          { labelKey: 'unidadesMedida', href: '/inventario/unidades-medida', permissions: ['perm:Inventario.UnidadesMedida:Ver'] },
-          { labelKey: 'presentaciones', href: '/inventario/presentaciones', permissions: ['perm:Inventario.Presentaciones:Ver'] },
-        ],
+        labelKey: 'unidadesMedida',
+        href: '/inventario/unidades-medida',
+        permissions: ['perm:Inventario.UnidadesMedida:Ver'],
       },
     ],
   },

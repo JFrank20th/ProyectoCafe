@@ -21,11 +21,6 @@ public sealed class RecepcionCafeRepository(ProyectoCafeDbContext dbContext) : I
                 x => x.recepcion.ProductoId,
                 producto => producto.ProductoId,
                 (x, producto) => new { x.recepcion, x.proveedor, producto })
-            .Join(
-                dbContext.Lotes.AsNoTracking(),
-                x => x.recepcion.LoteId,
-                lote => lote.LoteId,
-                (x, lote) => new { x.recepcion, x.proveedor, x.producto, lote })
             .OrderByDescending(x => x.recepcion.FechaRecepcion)
             .ThenByDescending(x => x.recepcion.RecepcionCafeId)
             .Select(x => new RecepcionCafeResponse
@@ -35,17 +30,17 @@ public sealed class RecepcionCafeRepository(ProyectoCafeDbContext dbContext) : I
                 ProveedorNombre = x.proveedor.Nombre,
                 ProductoId = x.recepcion.ProductoId,
                 ProductoNombre = x.producto.Nombre,
+                UnidadMedida = "KG",
                 TipoCafe = x.recepcion.TipoCafe,
                 FechaRecepcion = x.recepcion.FechaRecepcion,
-                NumeroDocumento = x.recepcion.NumeroDocumento,
+                CodigoLote = x.recepcion.CodigoLote,
                 Cantidad = x.recepcion.Cantidad,
+                CantidadDisponible = x.recepcion.CantidadDisponible,
                 PrecioUnitario = x.recepcion.PrecioUnitario,
                 Total = x.recepcion.Total,
                 Humedad = x.recepcion.Humedad,
                 Observaciones = x.recepcion.Observaciones,
                 Estado = x.recepcion.Estado,
-                LoteId = x.recepcion.LoteId,
-                CodigoLote = x.lote.CodigoLote,
             })
             .ToListAsync(cancellationToken);
     }
@@ -64,11 +59,6 @@ public sealed class RecepcionCafeRepository(ProyectoCafeDbContext dbContext) : I
                 x => x.recepcion.ProductoId,
                 producto => producto.ProductoId,
                 (x, producto) => new { x.recepcion, x.proveedor, producto })
-            .Join(
-                dbContext.Lotes.AsNoTracking(),
-                x => x.recepcion.LoteId,
-                lote => lote.LoteId,
-                (x, lote) => new { x.recepcion, x.proveedor, x.producto, lote })
             .Where(x => x.recepcion.RecepcionCafeId == id)
             .Select(x => new RecepcionCafeResponse
             {
@@ -77,17 +67,17 @@ public sealed class RecepcionCafeRepository(ProyectoCafeDbContext dbContext) : I
                 ProveedorNombre = x.proveedor.Nombre,
                 ProductoId = x.recepcion.ProductoId,
                 ProductoNombre = x.producto.Nombre,
+                UnidadMedida = "KG",
                 TipoCafe = x.recepcion.TipoCafe,
                 FechaRecepcion = x.recepcion.FechaRecepcion,
-                NumeroDocumento = x.recepcion.NumeroDocumento,
+                CodigoLote = x.recepcion.CodigoLote,
                 Cantidad = x.recepcion.Cantidad,
+                CantidadDisponible = x.recepcion.CantidadDisponible,
                 PrecioUnitario = x.recepcion.PrecioUnitario,
                 Total = x.recepcion.Total,
                 Humedad = x.recepcion.Humedad,
                 Observaciones = x.recepcion.Observaciones,
                 Estado = x.recepcion.Estado,
-                LoteId = x.recepcion.LoteId,
-                CodigoLote = x.lote.CodigoLote,
             })
             .SingleOrDefaultAsync(cancellationToken);
     }
@@ -147,69 +137,41 @@ public sealed class RecepcionCafeRepository(ProyectoCafeDbContext dbContext) : I
         }
 
         var fechaBase = (request.FechaRecepcion ?? DateTime.Today).Date;
-        var codigoLote = NormalizeCodigoLote(request.CodigoLote) ?? await AutoGenerarCodigoLoteCompraAsync(tipoCafe, request.ProductoId, fechaBase, cancellationToken);
+        var codigoLote = await AutoGenerarCodigoLoteCompraAsync(tipoCafe, request.ProductoId, fechaBase, cancellationToken);
         var total = Math.Round(request.Cantidad * request.PrecioUnitario, 2, MidpointRounding.AwayFromZero);
-
-        await using var tx = await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
         try
         {
-            var lote = new Lote
-            {
-                ProductoId = request.ProductoId,
-                CodigoLote = codigoLote,
-                CantidadInicial = request.Cantidad,
-                CantidadDisponible = request.Cantidad,
-                Estado = "Activo",
-            };
-
-            dbContext.Lotes.Add(lote);
-            producto.ManejaLotes = true;
-            producto.Stock = (producto.Stock ?? 0m) + request.Cantidad;
-
-            await dbContext.SaveChangesAsync(cancellationToken);
-
-            dbContext.LoteMovimientos.Add(new LoteMovimiento
-            {
-                LoteId = lote.LoteId,
-                Tipo = "IngresoCompra",
-                VentaId = null,
-                Cantidad = request.Cantidad,
-                Observacion = $"Ingreso por compra a proveedor #{proveedor.ProveedorId}",
-            });
-
             var recepcion = new RecepcionCafe
             {
                 ProveedorId = request.ProveedorId,
                 ProductoId = request.ProductoId,
                 TipoCafe = tipoCafe,
                 FechaRecepcion = request.FechaRecepcion,
-                NumeroDocumento = NormalizeOptional(request.NumeroDocumento),
+                CodigoLote = codigoLote,
                 Cantidad = request.Cantidad,
+                CantidadDisponible = request.Cantidad,
                 PrecioUnitario = request.PrecioUnitario,
                 Total = total,
                 Humedad = request.Humedad,
                 Observaciones = NormalizeOptional(request.Observaciones),
                 Estado = "Registrada",
-                LoteId = lote.LoteId,
+                LoteId = null,
             };
 
             dbContext.RecepcionesCafe.Add(recepcion);
 
             await dbContext.SaveChangesAsync(cancellationToken);
-            await tx.CommitAsync(cancellationToken);
 
             return new RecepcionCafeCreateResult
             {
                 RecepcionCafeId = recepcion.RecepcionCafeId,
-                LoteId = lote.LoteId,
-                CodigoLote = lote.CodigoLote,
+                CodigoLote = recepcion.CodigoLote,
             };
         }
         catch (DbUpdateException ex)
         {
-            await tx.RollbackAsync(cancellationToken);
-            throw new ArgumentException("No se pudo registrar la recepción. Verifica que el código de lote y el documento del proveedor no estén duplicados.", nameof(request), ex);
+            throw new ArgumentException("No se pudo registrar la recepción. Verifica que el código de lote no esté duplicado.", nameof(request), ex);
         }
     }
 
@@ -228,50 +190,15 @@ public sealed class RecepcionCafeRepository(ProyectoCafeDbContext dbContext) : I
             return true;
         }
 
-        var lote = await dbContext.Lotes
-            .SingleOrDefaultAsync(x => x.LoteId == recepcion.LoteId, cancellationToken);
-
-        if (lote is null)
+        if (recepcion.CantidadDisponible != recepcion.Cantidad)
         {
-            throw new ArgumentException("El lote asociado no existe.", nameof(id));
+            throw new ArgumentException("No se puede anular porque la recepción ya tuvo procesos posteriores.", nameof(id));
         }
 
-        if (lote.CantidadDisponible != recepcion.Cantidad || lote.CantidadInicial != recepcion.Cantidad)
-        {
-            throw new ArgumentException("No se puede anular porque el lote ya tuvo movimientos posteriores.", nameof(id));
-        }
-
-        var producto = await dbContext.Productos
-            .SingleOrDefaultAsync(x => x.ProductoId == recepcion.ProductoId, cancellationToken);
-
-        if (producto is null)
-        {
-            throw new ArgumentException("El producto asociado no existe.", nameof(id));
-        }
-
-        if ((producto.Stock ?? 0m) < recepcion.Cantidad)
-        {
-            throw new ArgumentException("No se puede anular porque el stock actual es menor al recibido.", nameof(id));
-        }
-
-        await using var tx = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-
-        producto.Stock = (producto.Stock ?? 0m) - recepcion.Cantidad;
-        lote.CantidadDisponible = 0m;
-        lote.Estado = "Inactivo";
         recepcion.Estado = "Anulada";
-
-        dbContext.LoteMovimientos.Add(new LoteMovimiento
-        {
-            LoteId = lote.LoteId,
-            Tipo = "AnulacionCompra",
-            VentaId = null,
-            Cantidad = recepcion.Cantidad,
-            Observacion = $"Anulacion de compra #{recepcion.RecepcionCafeId}",
-        });
+        recepcion.CantidadDisponible = 0m;
 
         await dbContext.SaveChangesAsync(cancellationToken);
-        await tx.CommitAsync(cancellationToken);
         return true;
     }
 
@@ -279,7 +206,7 @@ public sealed class RecepcionCafeRepository(ProyectoCafeDbContext dbContext) : I
     {
         var prefix = $"CMP-{MapTipoCafePrefix(tipoCafe)}-{productoId:000}-{fecha:yyyyMMdd}-";
 
-        var correlativo = await dbContext.Lotes
+        var correlativo = await dbContext.RecepcionesCafe
             .AsNoTracking()
             .CountAsync(x => x.CodigoLote.StartsWith(prefix), cancellationToken);
 
@@ -293,18 +220,17 @@ public sealed class RecepcionCafeRepository(ProyectoCafeDbContext dbContext) : I
             return "CER";
         }
 
+        if (tipoCafe.Equals(TiposCafeCompra.Oreado, StringComparison.OrdinalIgnoreCase))
+        {
+            return "ORE";
+        }
+
         if (tipoCafe.Equals(TiposCafeCompra.RecienLavado, StringComparison.OrdinalIgnoreCase))
         {
             return "LAV";
         }
 
         return "SEC";
-    }
-
-    private static string? NormalizeCodigoLote(string? codigoLote)
-    {
-        var normalized = (codigoLote ?? string.Empty).Trim().ToUpperInvariant();
-        return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
     }
 
     private static string? NormalizeOptional(string? value)

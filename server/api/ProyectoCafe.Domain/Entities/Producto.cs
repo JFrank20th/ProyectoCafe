@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations.Schema;
-
 namespace ProyectoCafe.Domain.Entities;
 
 public sealed class Producto
@@ -24,9 +22,13 @@ public sealed class Producto
 
     public bool? Estado { get; set; }
 
-    public int CategoriaId { get; set; }
+    public string? PresentacionCodigo { get; set; }
 
-    public int? PresentacionId { get; set; }
+    public string? PresentacionNombre { get; set; }
+
+    public decimal? PresentacionCantidad { get; set; }
+
+    public string? PresentacionUnidadMedida { get; set; }
 
     public required string UnidadMedida { get; set; }
 

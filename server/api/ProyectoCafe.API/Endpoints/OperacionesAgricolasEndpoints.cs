@@ -64,6 +64,32 @@ public static class OperacionesAgricolasEndpoints
         })
         .RequireAuthorization(Permissions.Policy(Permissions.Modulos.ProduccionOperacionesAgricolas, Permissions.Actions.Crear));
 
+        group.MapPut("/{id:int}", async (
+            int id,
+            [FromBody] OperacionAgricolaCreateRequest request,
+            [FromServices] IOperacionesAgricolasService service,
+            CancellationToken ct) =>
+        {
+            var errors = Validate(request);
+            if (errors.Count > 0)
+            {
+                return Results.ValidationProblem(errors);
+            }
+
+            bool updated;
+            try
+            {
+                updated = await service.UpdateAsync(id, request, ct);
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["request"] = [ex.Message] });
+            }
+
+            return updated ? Results.NoContent() : Results.NotFound();
+        })
+        .RequireAuthorization(Permissions.Policy(Permissions.Modulos.ProduccionOperacionesAgricolas, Permissions.Actions.Editar));
+
         group.MapPost("/{id:int}/anular", async (
             int id,
             [FromServices] IOperacionesAgricolasService service,
@@ -107,16 +133,27 @@ public static class OperacionesAgricolasEndpoints
     {
         var errors = new Dictionary<string, string[]>();
         var tipoOperacion = TiposOperacionAgricola.Normalize(request.TipoOperacion);
-        var esCosecha = string.Equals(tipoOperacion, TiposOperacionAgricola.Cosecha, StringComparison.Ordinal);
+        var esCosecha = TiposOperacionAgricola.IsHarvest(tipoOperacion);
+        var usaInsumo = TiposOperacionAgricola.UsesSupply(tipoOperacion);
 
-        if (request.ParcelaId <= 0)
+        if (request.CultivoId <= 0)
         {
-            errors[nameof(request.ParcelaId)] = ["ParcelaId es requerido."];
+            errors[nameof(request.CultivoId)] = ["CultivoId es requerido."];
         }
 
         if (tipoOperacion is null)
         {
             errors[nameof(request.TipoOperacion)] = ["TipoOperacion es inválido."];
+        }
+
+        if (!request.FechaOperacion.HasValue)
+        {
+            errors[nameof(request.FechaOperacion)] = ["FechaOperacion es requerida."];
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Observaciones))
+        {
+            errors[nameof(request.Observaciones)] = ["Observaciones es requerida."];
         }
 
         if (request.InsumoId.HasValue && request.InsumoId.Value <= 0)
@@ -141,6 +178,11 @@ public static class OperacionesAgricolasEndpoints
 
         if (esCosecha)
         {
+            if (!request.CultivoConfiguracionCosechaId.HasValue || request.CultivoConfiguracionCosechaId.Value <= 0)
+            {
+                errors[nameof(request.CultivoConfiguracionCosechaId)] = ["CultivoConfiguracionCosechaId es requerido para una cosecha."];
+            }
+
             if (!request.Cantidad.HasValue || request.Cantidad.Value <= 0)
             {
                 errors[nameof(request.Cantidad)] = ["Cantidad debe ser mayor a 0 para una cosecha."];
@@ -154,6 +196,38 @@ public static class OperacionesAgricolasEndpoints
             if (request.CantidadInsumo.HasValue)
             {
                 errors[nameof(request.CantidadInsumo)] = ["Una cosecha no utiliza cantidadInsumo."];
+            }
+
+            if (request.CostoManoObra != 0)
+            {
+                errors[nameof(request.CostoManoObra)] = ["Una cosecha no utiliza CostoManoObra."];
+            }
+
+            return errors;
+        }
+
+        if (usaInsumo)
+        {
+            if (!request.InsumoId.HasValue)
+            {
+                errors[nameof(request.InsumoId)] = ["InsumoId es requerido para este tipo de operación."];
+            }
+
+            if (!request.CantidadInsumo.HasValue || request.CantidadInsumo.Value <= 0)
+            {
+                errors[nameof(request.CantidadInsumo)] = ["CantidadInsumo debe ser mayor a 0 para este tipo de operación."];
+            }
+        }
+        else
+        {
+            if (request.InsumoId.HasValue)
+            {
+                errors[nameof(request.InsumoId)] = ["Este tipo de operación no utiliza insumoId."];
+            }
+
+            if (request.CantidadInsumo.HasValue)
+            {
+                errors[nameof(request.CantidadInsumo)] = ["Este tipo de operación no utiliza cantidadInsumo."];
             }
         }
 

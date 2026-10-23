@@ -43,7 +43,7 @@ public static class ProductosEndpoints
             HttpContext httpContext,
             CancellationToken ct) =>
         {
-            var errors = Validate(request, isCreate: true);
+            var errors = Validate(request);
             if (errors.Count > 0)
             {
                 return Results.ValidationProblem(errors);
@@ -71,7 +71,7 @@ public static class ProductosEndpoints
             [FromServices] IProductosService service,
             CancellationToken ct) =>
         {
-            var errors = Validate(request, isCreate: false);
+            var errors = Validate(request);
             if (errors.Count > 0)
             {
                 return Results.ValidationProblem(errors);
@@ -97,13 +97,22 @@ public static class ProductosEndpoints
             [FromServices] IProductosService service,
             CancellationToken ct) =>
         {
-            var deleted = await service.DeleteAsync(id, ct);
+            bool deleted;
+            try
+            {
+                deleted = await service.DeleteAsync(id, ct);
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["request"] = [ex.Message] });
+            }
+
             return deleted ? Results.NoContent() : Results.NotFound();
         })
         .RequireAuthorization(Permissions.Policy(Permissions.Modulos.InventarioProductos, Permissions.Actions.Eliminar));
     }
 
-    private static Dictionary<string, string[]> Validate(ProductoRequest request, bool isCreate)
+    private static Dictionary<string, string[]> Validate(ProductoRequest request)
     {
         var errors = new Dictionary<string, string[]>();
 
@@ -143,18 +152,41 @@ public static class ProductosEndpoints
             errors[nameof(request.Stock)] = ["Stock no puede ser negativo."];
         }
 
-        if (request.CategoriaId <= 0)
+        var presentacionCodigo = (request.PresentacionCodigo ?? string.Empty).Trim();
+        if (!string.IsNullOrEmpty(presentacionCodigo) && presentacionCodigo.Length > 30)
         {
-            errors[nameof(request.CategoriaId)] = ["CategoriaId es requerido."];
+            errors[nameof(request.PresentacionCodigo)] = ["PresentacionCodigo no puede exceder 30 caracteres."];
         }
 
-        if (!request.PresentacionId.HasValue || request.PresentacionId.Value <= 0)
+        var presentacionNombre = (request.PresentacionNombre ?? string.Empty).Trim();
+        if (!string.IsNullOrEmpty(presentacionNombre) && presentacionNombre.Length > 120)
         {
-            errors[nameof(request.PresentacionId)] = ["PresentacionId es requerido."];
+            errors[nameof(request.PresentacionNombre)] = ["PresentacionNombre no puede exceder 120 caracteres."];
+        }
+
+        var presentacionUnidadMedida = (request.PresentacionUnidadMedida ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(presentacionUnidadMedida) && presentacionUnidadMedida.Length > 20)
+        {
+            errors[nameof(request.PresentacionUnidadMedida)] = ["PresentacionUnidadMedida no puede exceder 20 caracteres."];
+        }
+
+        var hasPresentacion =
+            !string.IsNullOrWhiteSpace(presentacionCodigo) ||
+            !string.IsNullOrWhiteSpace(presentacionNombre) ||
+            request.PresentacionCantidad.HasValue ||
+            !string.IsNullOrWhiteSpace(presentacionUnidadMedida);
+
+        if (request.PresentacionCantidad.HasValue && request.PresentacionCantidad.Value <= 0)
+        {
+            errors[nameof(request.PresentacionCantidad)] = ["PresentacionCantidad debe ser mayor que cero."];
         }
 
         var unidadMedida = (request.UnidadMedida ?? string.Empty).Trim();
-        if (!string.IsNullOrWhiteSpace(unidadMedida) && unidadMedida.Length > 20)
+        if (string.IsNullOrWhiteSpace(unidadMedida))
+        {
+            errors[nameof(request.UnidadMedida)] = ["UnidadMedida es requerida."];
+        }
+        else if (unidadMedida.Length > 20)
         {
             errors[nameof(request.UnidadMedida)] = ["UnidadMedida no puede exceder 20 caracteres."];
         }
@@ -205,6 +237,11 @@ public static class ProductosEndpoints
 
         var unidadMedida = (request.UnidadMedida ?? string.Empty).Trim().ToUpperInvariant();
         request.UnidadMedida = string.IsNullOrWhiteSpace(unidadMedida) ? null : unidadMedida;
+
+        request.PresentacionCodigo = null;
+        request.PresentacionNombre = null;
+        request.PresentacionCantidad = null;
+        request.PresentacionUnidadMedida = null;
 
         var tipoLote = (request.TipoLote ?? string.Empty).Trim();
         request.TipoLote = string.IsNullOrWhiteSpace(tipoLote) ? null : tipoLote;

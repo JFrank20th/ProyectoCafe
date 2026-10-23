@@ -5,7 +5,7 @@ namespace ProyectoCafe.Application.Produccion.OperacionesAgricolas;
 public sealed class OperacionAgricolaCreateRequest
 {
     [Required]
-    public int ParcelaId { get; set; }
+    public int CultivoId { get; set; }
 
     [Required]
     [MaxLength(30)]
@@ -14,6 +14,8 @@ public sealed class OperacionAgricolaCreateRequest
     public DateTime? FechaOperacion { get; set; }
 
     public int? InsumoId { get; set; }
+
+    public int? CultivoConfiguracionCosechaId { get; set; }
 
     public int? ProductoId { get; set; }
 

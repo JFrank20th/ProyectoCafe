@@ -22,33 +22,6 @@ namespace ProyectoCafe.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("ProyectoCafe.Domain.Entities.Categoria", b =>
-                {
-                    b.Property<int>("CategoriaId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CategoriaId"));
-
-                    b.Property<string>("Descripcion")
-                        .HasMaxLength(250)
-                        .HasColumnType("nvarchar(250)");
-
-                    b.Property<bool?>("Estado")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
-
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("CategoriaId");
-
-                    b.ToTable("Categorias", "Inventario");
-                });
-
             modelBuilder.Entity("ProyectoCafe.Domain.Entities.Cliente", b =>
                 {
                     b.Property<int>("ClienteId")
@@ -115,6 +88,9 @@ namespace ProyectoCafe.Infrastructure.Migrations
                         .HasColumnType("nvarchar(30)")
                         .HasColumnName("TipoCafe");
 
+                    b.Property<int>("CultivoId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Estado")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -137,9 +113,6 @@ namespace ProyectoCafe.Infrastructure.Migrations
                         .HasMaxLength(250)
                         .HasColumnType("nvarchar(250)");
 
-                    b.Property<int>("ParcelaId")
-                        .HasColumnType("int");
-
                     b.Property<int>("ProductoId")
                         .HasColumnType("int");
 
@@ -149,11 +122,11 @@ namespace ProyectoCafe.Infrastructure.Migrations
 
                     b.HasIndex("ProductoId");
 
+                    b.HasIndex("CultivoId", "FechaCosecha")
+                        .HasDatabaseName("IX_Produccion_CosechasCafe_Cultivo_Fecha");
+
                     b.HasIndex("FechaCosecha", "Estado")
                         .HasDatabaseName("IX_Produccion_CosechasCafe_Fecha_Estado");
-
-                    b.HasIndex("ParcelaId", "FechaCosecha")
-                        .HasDatabaseName("IX_Produccion_CosechasCafe_Parcela_Fecha");
 
                     b.ToTable("CosechasCafe", "Produccion");
                 });
@@ -165,6 +138,9 @@ namespace ProyectoCafe.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CostoId"));
+
+                    b.Property<int?>("CultivoId")
+                        .HasColumnType("int");
 
                     b.Property<bool?>("Estado")
                         .ValueGeneratedOnAdd()
@@ -191,9 +167,6 @@ namespace ProyectoCafe.Infrastructure.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
-                    b.Property<int?>("ParcelaId")
-                        .HasColumnType("int");
-
                     b.Property<int?>("ReferenciaId")
                         .HasColumnType("int");
 
@@ -206,134 +179,90 @@ namespace ProyectoCafe.Infrastructure.Migrations
 
                     b.HasKey("CostoId");
 
+                    b.HasIndex("CultivoId", "Fecha")
+                        .HasDatabaseName("IX_Contabilidad_Costos_Cultivo_Fecha");
+
                     b.HasIndex("FuenteModulo", "ReferenciaId")
                         .HasDatabaseName("IX_Contabilidad_Costos_Fuente_Referencia");
 
                     b.HasIndex("LoteId", "Fecha")
                         .HasDatabaseName("IX_Contabilidad_Costos_Lote_Fecha");
 
-                    b.HasIndex("ParcelaId", "Fecha")
-                        .HasDatabaseName("IX_Contabilidad_Costos_Parcela_Fecha");
-
                     b.ToTable("Costos", "Contabilidad");
                 });
 
-            modelBuilder.Entity("ProyectoCafe.Domain.Entities.EmpaqueCafe", b =>
+            modelBuilder.Entity("ProyectoCafe.Domain.Entities.Cultivo", b =>
                 {
-                    b.Property<int>("EmpaqueCafeId")
+                    b.Property<int>("CultivoId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("EmpaqueCafeId"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CultivoId"));
 
-                    b.Property<decimal>("CantidadEmpaques")
-                        .HasColumnType("decimal(18,3)");
+                    b.Property<decimal?>("AreaHectareas")
+                        .HasColumnType("decimal(18,2)");
 
-                    b.Property<decimal>("CantidadOrigenConsumida")
-                        .HasColumnType("decimal(18,3)");
-
-                    b.Property<decimal>("CostoEmpaque")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("decimal(18,2)")
-                        .HasDefaultValue(0m);
-
-                    b.Property<string>("Estado")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
-                        .HasDefaultValue("Registrado");
-
-                    b.Property<DateTime?>("FechaEmpaque")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2(7)")
-                        .HasDefaultValueSql("sysdatetime()");
-
-                    b.Property<int>("LoteOrigenId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Observaciones")
+                    b.Property<string>("Descripcion")
                         .HasMaxLength(250)
                         .HasColumnType("nvarchar(250)");
 
-                    b.Property<decimal>("PesoTotalGramos")
-                        .HasColumnType("decimal(18,3)");
+                    b.Property<bool?>("Estado")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
 
-                    b.HasKey("EmpaqueCafeId");
+                    b.Property<int>("FincaId")
+                        .HasColumnType("int");
 
-                    b.HasIndex("LoteOrigenId");
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
-                    b.HasIndex("FechaEmpaque", "Estado")
-                        .HasDatabaseName("IX_Produccion_EmpaquesCafe_Fecha_Estado");
+                    b.Property<int?>("ProductoCosechaId")
+                        .HasColumnType("int");
 
-                    b.ToTable("EmpaquesCafe", "Produccion");
+                    b.HasKey("CultivoId");
+
+                    b.HasIndex("ProductoCosechaId");
+
+                    b.HasIndex("FincaId", "Nombre")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Produccion_Cultivos_Finca_Nombre");
+
+                    b.ToTable("Cultivos", "Produccion");
                 });
 
-            modelBuilder.Entity("ProyectoCafe.Domain.Entities.EmpaqueCafeDetalle", b =>
+            modelBuilder.Entity("ProyectoCafe.Domain.Entities.CultivoConfiguracionCosecha", b =>
                 {
-                    b.Property<int>("EmpaqueCafeDetalleId")
+                    b.Property<int>("CultivoConfiguracionCosechaId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("EmpaqueCafeDetalleId"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CultivoConfiguracionCosechaId"));
 
-                    b.Property<decimal>("Cantidad")
-                        .HasColumnType("decimal(18,3)");
-
-                    b.Property<decimal>("CantidadOrigenAsignada")
-                        .HasColumnType("decimal(18,3)");
-
-                    b.Property<decimal>("CostoEmpaqueAsignado")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("decimal(18,2)")
-                        .HasDefaultValue(0m);
-
-                    b.Property<decimal>("CostoOrigenAsignado")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("decimal(18,4)")
-                        .HasDefaultValue(0m);
-
-                    b.Property<int>("EmpaqueCafeId")
+                    b.Property<int>("CultivoId")
                         .HasColumnType("int");
 
-                    b.Property<string>("Estado")
+                    b.Property<string>("NombreTipoCosecha")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("UnidadMedidaCodigo")
+                        .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
-                        .HasDefaultValue("Registrado");
+                        .HasColumnType("nvarchar(20)");
 
-                    b.Property<int>("LoteSalidaId")
-                        .HasColumnType("int");
+                    b.HasKey("CultivoConfiguracionCosechaId");
 
-                    b.Property<decimal>("PesoGramosUnitario")
-                        .HasColumnType("decimal(18,3)");
+                    b.HasIndex("UnidadMedidaCodigo");
 
-                    b.Property<decimal>("PesoTotalGramos")
-                        .HasColumnType("decimal(18,3)");
-
-                    b.Property<int>("PresentacionId")
-                        .HasColumnType("int")
-                        .HasColumnName("PresentacionCafeId");
-
-                    b.Property<int>("ProductoSalidaId")
-                        .HasColumnType("int");
-
-                    b.HasKey("EmpaqueCafeDetalleId");
-
-                    b.HasIndex("EmpaqueCafeId")
-                        .HasDatabaseName("IX_Produccion_EmpaquesCafeDetalles_EmpaqueCafe");
-
-                    b.HasIndex("LoteSalidaId")
+                    b.HasIndex("CultivoId", "NombreTipoCosecha", "UnidadMedidaCodigo")
                         .IsUnique()
-                        .HasDatabaseName("UQ_Produccion_EmpaquesCafeDetalles_LoteSalida");
+                        .HasDatabaseName("UX_Produccion_CultivosConfiguracionesCosecha_Unica");
 
-                    b.HasIndex("PresentacionId")
-                        .HasDatabaseName("IX_EmpaquesCafeDetalles_PresentacionCafeId");
-
-                    b.HasIndex("ProductoSalidaId");
-
-                    b.ToTable("EmpaquesCafeDetalles", "Produccion");
+                    b.ToTable("CultivosConfiguracionesCosecha", "Produccion");
                 });
 
             modelBuilder.Entity("ProyectoCafe.Domain.Entities.Finca", b =>
@@ -625,6 +554,9 @@ namespace ProyectoCafe.Infrastructure.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
+                    b.Property<int>("CultivoId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Estado")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -650,10 +582,10 @@ namespace ProyectoCafe.Infrastructure.Migrations
                         .HasMaxLength(250)
                         .HasColumnType("nvarchar(250)");
 
-                    b.Property<int>("ParcelaId")
+                    b.Property<int?>("ProductoId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("ProductoId")
+                    b.Property<int?>("RecepcionCafeId")
                         .HasColumnType("int");
 
                     b.Property<string>("TipoOperacion")
@@ -669,60 +601,15 @@ namespace ProyectoCafe.Infrastructure.Migrations
 
                     b.HasIndex("ProductoId");
 
+                    b.HasIndex("RecepcionCafeId");
+
+                    b.HasIndex("CultivoId", "FechaOperacion")
+                        .HasDatabaseName("IX_Produccion_OperacionesAgricolas_Cultivo_Fecha");
+
                     b.HasIndex("FechaOperacion", "Estado")
                         .HasDatabaseName("IX_Produccion_OperacionesAgricolas_Fecha_Estado");
 
-                    b.HasIndex("ParcelaId", "FechaOperacion")
-                        .HasDatabaseName("IX_Produccion_OperacionesAgricolas_Parcela_Fecha");
-
                     b.ToTable("OperacionesAgricolas", "Produccion");
-                });
-
-            modelBuilder.Entity("ProyectoCafe.Domain.Entities.Parcela", b =>
-                {
-                    b.Property<int>("ParcelaId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ParcelaId"));
-
-                    b.Property<decimal?>("AreaHectareas")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Cultivo")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
-                        .HasColumnName("VariedadCafe");
-
-                    b.Property<string>("Descripcion")
-                        .HasMaxLength(250)
-                        .HasColumnType("nvarchar(250)");
-
-                    b.Property<bool?>("Estado")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
-
-                    b.Property<int>("FincaId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
-
-                    b.Property<int?>("ProductoCosechaId")
-                        .HasColumnType("int");
-
-                    b.HasKey("ParcelaId");
-
-                    b.HasIndex("ProductoCosechaId");
-
-                    b.HasIndex("FincaId", "Nombre")
-                        .IsUnique()
-                        .HasDatabaseName("UX_Produccion_Parcelas_Finca_Nombre");
-
-                    b.ToTable("Parcelas", "Produccion");
                 });
 
             modelBuilder.Entity("ProyectoCafe.Domain.Entities.Pasivo", b =>
@@ -756,53 +643,70 @@ namespace ProyectoCafe.Infrastructure.Migrations
                     b.ToTable("Pasivos", "Contabilidad");
                 });
 
-            modelBuilder.Entity("ProyectoCafe.Domain.Entities.Presentacion", b =>
+            modelBuilder.Entity("ProyectoCafe.Domain.Entities.ProcesoInventario", b =>
                 {
-                    b.Property<int>("PresentacionId")
+                    b.Property<int>("ProcesoInventarioId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("PresentacionCafeId");
+                        .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PresentacionId"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ProcesoInventarioId"));
 
-                    b.Property<decimal>("Cantidad")
+                    b.Property<decimal>("CantidadOrigenConsumida")
                         .HasColumnType("decimal(18,3)");
 
-                    b.Property<string>("Codigo")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
+                    b.Property<decimal>("CantidadSalida")
+                        .HasColumnType("decimal(18,3)");
 
-                    b.Property<bool?>("Estado")
+                    b.Property<decimal>("CostoProceso")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
 
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("nvarchar(120)");
-
-                    b.Property<decimal>("PesoGramosLegacy")
-                        .HasColumnType("decimal(18,3)")
-                        .HasColumnName("PesoGramos");
-
-                    b.Property<string>("UnidadMedida")
+                    b.Property<string>("Estado")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)")
-                        .HasDefaultValue("G");
+                        .HasDefaultValue("Registrado");
 
-                    b.HasKey("PresentacionId");
+                    b.Property<DateTime?>("FechaProceso")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(7)")
+                        .HasDefaultValueSql("sysdatetime()");
 
-                    b.HasIndex("Codigo")
-                        .IsUnique()
-                        .HasDatabaseName("UQ_Inventario_PresentacionesCafe_Codigo");
+                    b.Property<int?>("LoteOrigenId")
+                        .HasColumnType("int");
 
-                    b.HasIndex("UnidadMedida");
+                    b.Property<int>("LoteSalidaId")
+                        .HasColumnType("int");
 
-                    b.ToTable("PresentacionesCafe", "Inventario");
+                    b.Property<string>("Observaciones")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<int>("ProductoSalidaId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RecepcionCafeId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("UsaLoteCompleto")
+                        .HasColumnType("bit");
+
+                    b.HasKey("ProcesoInventarioId");
+
+                    b.HasIndex("LoteOrigenId");
+
+                    b.HasIndex("LoteSalidaId");
+
+                    b.HasIndex("ProductoSalidaId");
+
+                    b.HasIndex("RecepcionCafeId");
+
+                    b.HasIndex("FechaProceso", "Estado")
+                        .HasDatabaseName("IX_Inventario_ProcesosInventario_Fecha_Estado");
+
+                    b.ToTable("ProcesosInventario", "Inventario");
                 });
 
             modelBuilder.Entity("ProyectoCafe.Domain.Entities.Producto", b =>
@@ -812,9 +716,6 @@ namespace ProyectoCafe.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ProductoId"));
-
-                    b.Property<int>("CategoriaId")
-                        .HasColumnType("int");
 
                     b.Property<string>("Descripcion")
                         .HasMaxLength(250)
@@ -853,9 +754,20 @@ namespace ProyectoCafe.Infrastructure.Migrations
                         .HasColumnType("decimal(18,2)")
                         .HasDefaultValue(0m);
 
-                    b.Property<int?>("PresentacionId")
-                        .HasColumnType("int")
-                        .HasColumnName("PresentacionCafeId");
+                    b.Property<decimal?>("PresentacionCantidad")
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<string>("PresentacionCodigo")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("PresentacionNombre")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("PresentacionUnidadMedida")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<decimal?>("Stock")
                         .ValueGeneratedOnAdd()
@@ -877,11 +789,6 @@ namespace ProyectoCafe.Infrastructure.Migrations
                         .HasDefaultValue("UN");
 
                     b.HasKey("ProductoId");
-
-                    b.HasIndex("CategoriaId");
-
-                    b.HasIndex("PresentacionId")
-                        .HasDatabaseName("IX_Productos_PresentacionCafeId");
 
                     b.HasIndex("UnidadMedida");
 
@@ -941,6 +848,11 @@ namespace ProyectoCafe.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<bool?>("EsInterno")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<bool?>("Estado")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
@@ -971,6 +883,16 @@ namespace ProyectoCafe.Infrastructure.Migrations
                     b.Property<decimal>("Cantidad")
                         .HasColumnType("decimal(18,3)");
 
+                    b.Property<decimal>("CantidadDisponible")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,3)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<string>("CodigoLote")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("Estado")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -986,12 +908,8 @@ namespace ProyectoCafe.Infrastructure.Migrations
                     b.Property<decimal?>("Humedad")
                         .HasColumnType("decimal(5,2)");
 
-                    b.Property<int>("LoteId")
+                    b.Property<int?>("LoteId")
                         .HasColumnType("int");
-
-                    b.Property<string>("NumeroDocumento")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("Observaciones")
                         .HasMaxLength(250)
@@ -1016,17 +934,18 @@ namespace ProyectoCafe.Infrastructure.Migrations
 
                     b.HasKey("RecepcionCafeId");
 
+                    b.HasIndex("CodigoLote")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Compras_RecepcionesCafe_CodigoLote");
+
                     b.HasIndex("LoteId");
 
                     b.HasIndex("ProductoId");
 
+                    b.HasIndex("ProveedorId");
+
                     b.HasIndex("FechaRecepcion", "Estado")
                         .HasDatabaseName("IX_Compras_RecepcionesCafe_Fecha_Estado");
-
-                    b.HasIndex("ProveedorId", "NumeroDocumento")
-                        .IsUnique()
-                        .HasDatabaseName("UX_Compras_RecepcionesCafe_Proveedor_Documento")
-                        .HasFilter("[NumeroDocumento] IS NOT NULL");
 
                     b.ToTable("RecepcionesCafe", "Compras");
                 });
@@ -1141,75 +1060,6 @@ namespace ProyectoCafe.Infrastructure.Migrations
                             Nombre = "Precio mayorista",
                             Orden = 30
                         });
-                });
-
-            modelBuilder.Entity("ProyectoCafe.Domain.Entities.TransformacionCafe", b =>
-                {
-                    b.Property<int>("TransformacionCafeId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TransformacionCafeId"));
-
-                    b.Property<decimal>("CantidadEntrada")
-                        .HasColumnType("decimal(18,3)");
-
-                    b.Property<decimal>("CantidadSalida")
-                        .HasColumnType("decimal(18,3)");
-
-                    b.Property<decimal>("CostoProceso")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("decimal(18,2)")
-                        .HasDefaultValue(0m);
-
-                    b.Property<string>("Estado")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
-                        .HasDefaultValue("Registrada");
-
-                    b.Property<DateTime?>("FechaTransformacion")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2(7)")
-                        .HasDefaultValueSql("sysdatetime()");
-
-                    b.Property<int>("LoteOrigenId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("LoteSalidaId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal?>("Merma")
-                        .HasColumnType("decimal(18,3)");
-
-                    b.Property<string>("Observaciones")
-                        .HasMaxLength(250)
-                        .HasColumnType("nvarchar(250)");
-
-                    b.Property<int>("ProductoSalidaId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal?>("Rendimiento")
-                        .HasColumnType("decimal(9,4)");
-
-                    b.Property<string>("TipoTransformacion")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
-
-                    b.HasKey("TransformacionCafeId");
-
-                    b.HasIndex("LoteOrigenId");
-
-                    b.HasIndex("LoteSalidaId");
-
-                    b.HasIndex("ProductoSalidaId");
-
-                    b.HasIndex("FechaTransformacion", "Estado")
-                        .HasDatabaseName("IX_Produccion_TransformacionesCafe_Fecha_Estado");
-
-                    b.ToTable("TransformacionesCafe", "Produccion");
                 });
 
             modelBuilder.Entity("ProyectoCafe.Domain.Entities.UnidadMedida", b =>
@@ -1458,15 +1308,15 @@ namespace ProyectoCafe.Infrastructure.Migrations
 
             modelBuilder.Entity("ProyectoCafe.Domain.Entities.CosechaCafe", b =>
                 {
-                    b.HasOne("ProyectoCafe.Domain.Entities.Lote", null)
+                    b.HasOne("ProyectoCafe.Domain.Entities.Cultivo", null)
                         .WithMany()
-                        .HasForeignKey("LoteId")
+                        .HasForeignKey("CultivoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("ProyectoCafe.Domain.Entities.Parcela", null)
+                    b.HasOne("ProyectoCafe.Domain.Entities.Lote", null)
                         .WithMany()
-                        .HasForeignKey("ParcelaId")
+                        .HasForeignKey("LoteId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -1479,50 +1329,42 @@ namespace ProyectoCafe.Infrastructure.Migrations
 
             modelBuilder.Entity("ProyectoCafe.Domain.Entities.Costo", b =>
                 {
+                    b.HasOne("ProyectoCafe.Domain.Entities.Cultivo", null)
+                        .WithMany()
+                        .HasForeignKey("CultivoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("ProyectoCafe.Domain.Entities.Lote", null)
                         .WithMany()
                         .HasForeignKey("LoteId")
                         .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("ProyectoCafe.Domain.Entities.Parcela", null)
-                        .WithMany()
-                        .HasForeignKey("ParcelaId")
-                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
-            modelBuilder.Entity("ProyectoCafe.Domain.Entities.EmpaqueCafe", b =>
+            modelBuilder.Entity("ProyectoCafe.Domain.Entities.Cultivo", b =>
                 {
-                    b.HasOne("ProyectoCafe.Domain.Entities.Lote", null)
+                    b.HasOne("ProyectoCafe.Domain.Entities.Finca", null)
                         .WithMany()
-                        .HasForeignKey("LoteOrigenId")
+                        .HasForeignKey("FincaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("ProyectoCafe.Domain.Entities.EmpaqueCafeDetalle", b =>
-                {
-                    b.HasOne("ProyectoCafe.Domain.Entities.EmpaqueCafe", null)
-                        .WithMany()
-                        .HasForeignKey("EmpaqueCafeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("ProyectoCafe.Domain.Entities.Lote", null)
-                        .WithMany()
-                        .HasForeignKey("LoteSalidaId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("ProyectoCafe.Domain.Entities.Presentacion", null)
-                        .WithMany()
-                        .HasForeignKey("PresentacionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("FK_EmpaquesCafeDetalles_PresentacionesCafe_PresentacionCafeId");
 
                     b.HasOne("ProyectoCafe.Domain.Entities.Producto", null)
                         .WithMany()
-                        .HasForeignKey("ProductoSalidaId")
+                        .HasForeignKey("ProductoCosechaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("ProyectoCafe.Domain.Entities.CultivoConfiguracionCosecha", b =>
+                {
+                    b.HasOne("ProyectoCafe.Domain.Entities.Cultivo", null)
+                        .WithMany("ConfiguracionesCosecha")
+                        .HasForeignKey("CultivoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ProyectoCafe.Domain.Entities.UnidadMedida", null)
+                        .WithMany()
+                        .HasForeignKey("UnidadMedidaCodigo")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -1556,6 +1398,12 @@ namespace ProyectoCafe.Infrastructure.Migrations
 
             modelBuilder.Entity("ProyectoCafe.Domain.Entities.OperacionAgricola", b =>
                 {
+                    b.HasOne("ProyectoCafe.Domain.Entities.Cultivo", null)
+                        .WithMany()
+                        .HasForeignKey("CultivoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("ProyectoCafe.Domain.Entities.Insumo", null)
                         .WithMany()
                         .HasForeignKey("InsumoId")
@@ -1566,55 +1414,45 @@ namespace ProyectoCafe.Infrastructure.Migrations
                         .HasForeignKey("LoteId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("ProyectoCafe.Domain.Entities.Parcela", null)
-                        .WithMany()
-                        .HasForeignKey("ParcelaId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("ProyectoCafe.Domain.Entities.Producto", null)
                         .WithMany()
                         .HasForeignKey("ProductoId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ProyectoCafe.Domain.Entities.RecepcionCafe", null)
+                        .WithMany()
+                        .HasForeignKey("RecepcionCafeId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
-            modelBuilder.Entity("ProyectoCafe.Domain.Entities.Parcela", b =>
+            modelBuilder.Entity("ProyectoCafe.Domain.Entities.ProcesoInventario", b =>
                 {
-                    b.HasOne("ProyectoCafe.Domain.Entities.Finca", null)
+                    b.HasOne("ProyectoCafe.Domain.Entities.Lote", null)
                         .WithMany()
-                        .HasForeignKey("FincaId")
+                        .HasForeignKey("LoteOrigenId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ProyectoCafe.Domain.Entities.Lote", null)
+                        .WithMany()
+                        .HasForeignKey("LoteSalidaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("ProyectoCafe.Domain.Entities.Producto", null)
                         .WithMany()
-                        .HasForeignKey("ProductoCosechaId")
-                        .OnDelete(DeleteBehavior.Restrict);
-                });
+                        .HasForeignKey("ProductoSalidaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
-            modelBuilder.Entity("ProyectoCafe.Domain.Entities.Presentacion", b =>
-                {
-                    b.HasOne("ProyectoCafe.Domain.Entities.UnidadMedida", null)
+                    b.HasOne("ProyectoCafe.Domain.Entities.RecepcionCafe", null)
                         .WithMany()
-                        .HasForeignKey("UnidadMedida")
+                        .HasForeignKey("RecepcionCafeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
             modelBuilder.Entity("ProyectoCafe.Domain.Entities.Producto", b =>
                 {
-                    b.HasOne("ProyectoCafe.Domain.Entities.Categoria", null)
-                        .WithMany()
-                        .HasForeignKey("CategoriaId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("ProyectoCafe.Domain.Entities.Presentacion", null)
-                        .WithMany()
-                        .HasForeignKey("PresentacionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("FK_Productos_PresentacionesCafe_PresentacionCafeId");
-
                     b.HasOne("ProyectoCafe.Domain.Entities.UnidadMedida", null)
                         .WithMany()
                         .HasForeignKey("UnidadMedida")
@@ -1642,8 +1480,7 @@ namespace ProyectoCafe.Infrastructure.Migrations
                     b.HasOne("ProyectoCafe.Domain.Entities.Lote", null)
                         .WithMany()
                         .HasForeignKey("LoteId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("ProyectoCafe.Domain.Entities.Producto", null)
                         .WithMany()
@@ -1667,27 +1504,6 @@ namespace ProyectoCafe.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Rol");
-                });
-
-            modelBuilder.Entity("ProyectoCafe.Domain.Entities.TransformacionCafe", b =>
-                {
-                    b.HasOne("ProyectoCafe.Domain.Entities.Lote", null)
-                        .WithMany()
-                        .HasForeignKey("LoteOrigenId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("ProyectoCafe.Domain.Entities.Lote", null)
-                        .WithMany()
-                        .HasForeignKey("LoteSalidaId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("ProyectoCafe.Domain.Entities.Producto", null)
-                        .WithMany()
-                        .HasForeignKey("ProductoSalidaId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("ProyectoCafe.Domain.Entities.UsuarioRol", b =>
@@ -1751,6 +1567,11 @@ namespace ProyectoCafe.Infrastructure.Migrations
                         .HasForeignKey("VentaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("ProyectoCafe.Domain.Entities.Cultivo", b =>
+                {
+                    b.Navigation("ConfiguracionesCosecha");
                 });
 
             modelBuilder.Entity("ProyectoCafe.Domain.Entities.Rol", b =>

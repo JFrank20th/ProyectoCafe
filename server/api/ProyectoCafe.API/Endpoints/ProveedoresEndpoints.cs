@@ -19,9 +19,12 @@ public static class ProveedoresEndpoints
             .MapGroup(prefix)
             .WithTags("Proveedores");
 
-        group.MapGet("/", async ([FromServices] IProveedoresService service, CancellationToken ct) =>
+        group.MapGet("/", async (
+            [FromQuery] bool? soloExternos,
+            [FromServices] IProveedoresService service,
+            CancellationToken ct) =>
         {
-            var list = await service.GetAllAsync(ct);
+            var list = await service.GetAllAsync(soloExternos == true, ct);
             return Results.Ok(list);
         })
         .RequireAuthorization(Permissions.Policy(Permissions.Modulos.ComprasProveedores, Permissions.Actions.Ver));

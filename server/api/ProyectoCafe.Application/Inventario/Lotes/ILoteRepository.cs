@@ -2,6 +2,8 @@ namespace ProyectoCafe.Application.Inventario.Lotes;
 
 public interface ILoteRepository
 {
+    Task<IReadOnlyList<LoteExistenciaResumenResponse>> GetSummaryAsync(int? productoId, bool soloActivos, bool soloConStock, CancellationToken cancellationToken);
+
     Task<IReadOnlyList<LoteResponse>> GetAllAsync(int? productoId, bool soloActivos, bool soloConStock, CancellationToken cancellationToken);
 
     Task<LoteResponse?> GetByIdAsync(int id, CancellationToken cancellationToken);

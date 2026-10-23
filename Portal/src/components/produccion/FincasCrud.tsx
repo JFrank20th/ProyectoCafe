@@ -24,7 +24,7 @@ import TableRow from '@mui/material/TableRow';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 
-import { apiFetch } from '@/lib/api/client';
+import { ApiError, apiFetch } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { useTranslations } from '@/hooks/useTranslations';
 
@@ -41,10 +41,10 @@ type Finca = {
 
 type FincaRequest = {
   nombre: string;
-  descripcion?: string;
-  ubicacion?: string;
-  municipio?: string;
-  departamento?: string;
+  descripcion: string;
+  ubicacion: string;
+  municipio: string;
+  departamento: string;
   areaHectareas?: number;
   estado: boolean;
 };
@@ -53,6 +53,73 @@ function parseOptionalNumber(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return undefined;
   return Number(trimmed);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function describeApiError(err: unknown, fallback: string) {
+  if (err instanceof ApiError) {
+    if (err.bodyText) {
+      try {
+        const data: unknown = JSON.parse(err.bodyText);
+        if (isRecord(data)) {
+          const maybeError = data.error;
+          if (isRecord(maybeError)) {
+            const message = maybeError.message;
+            if (typeof message === 'string' && message.trim()) {
+              return message;
+            }
+          }
+
+          const maybeErrors = data.errors;
+          if (isRecord(maybeErrors)) {
+            for (const value of Object.values(maybeErrors)) {
+              if (Array.isArray(value)) {
+                const first = value.find((entry) => typeof entry === 'string' && entry.trim());
+                if (typeof first === 'string') {
+                  return first;
+                }
+              }
+            }
+          }
+        }
+      } catch {
+        // ignore invalid error payloads
+      }
+    }
+
+    return err.message || fallback;
+  }
+
+  if (err instanceof Error) {
+    return err.message;
+  }
+
+  return fallback;
+}
+
+function validateForm(values: {
+  nombre: string;
+  descripcion: string;
+  ubicacion: string;
+  municipio: string;
+  departamento: string;
+  areaHectareas: string;
+}) {
+  if (!values.nombre.trim()) return 'Nombre es requerido.';
+  if (!values.descripcion.trim()) return 'Descripcion es requerida.';
+  if (!values.ubicacion.trim()) return 'Ubicacion es requerida.';
+  if (!values.municipio.trim()) return 'Municipio es requerido.';
+  if (!values.departamento.trim()) return 'Departamento es requerido.';
+
+  const area = parseOptionalNumber(values.areaHectareas);
+  if (area !== undefined && (Number.isNaN(area) || area < 0)) {
+    return 'Area no puede ser negativa.';
+  }
+
+  return null;
 }
 
 export function FincasCrud() {
@@ -151,14 +218,29 @@ export function FincasCrud() {
     setEditSaving(true);
     setEditError(null);
 
+    const validationError = validateForm({
+      nombre,
+      descripcion,
+      ubicacion,
+      municipio,
+      departamento,
+      areaHectareas,
+    });
+
+    if (validationError) {
+      setEditError(validationError);
+      setEditSaving(false);
+      return;
+    }
+
     const area = parseOptionalNumber(areaHectareas);
     const payload: FincaRequest = {
       nombre: nombre.trim(),
+      descripcion: descripcion.trim(),
+      ubicacion: ubicacion.trim(),
+      municipio: municipio.trim(),
+      departamento: departamento.trim(),
       estado,
-      ...(descripcion.trim() ? { descripcion: descripcion.trim() } : {}),
-      ...(ubicacion.trim() ? { ubicacion: ubicacion.trim() } : {}),
-      ...(municipio.trim() ? { municipio: municipio.trim() } : {}),
-      ...(departamento.trim() ? { departamento: departamento.trim() } : {}),
       ...(area !== undefined ? { areaHectareas: area } : {}),
     };
 
@@ -179,7 +261,7 @@ export function FincasCrud() {
       setEditing(null);
       await reload();
     } catch (e) {
-      setEditError(e instanceof Error ? e.message : tcrud('errorSaving'));
+      setEditError(describeApiError(e, tcrud('errorSaving')));
     } finally {
       setEditSaving(false);
     }
@@ -209,7 +291,7 @@ export function FincasCrud() {
       setDeleteTarget(null);
       await reload();
     } catch (e) {
-      setDeleteError(e instanceof Error ? e.message : tcrud('errorDeleting'));
+      setDeleteError(describeApiError(e, tcrud('errorDeleting')));
     } finally {
       setDeleteSaving(false);
     }
@@ -304,11 +386,11 @@ export function FincasCrud() {
         <DialogContent sx={{ display: 'grid', gap: 2, pt: '12px !important' }}>
           {editError ? <Alert severity="error">{editError}</Alert> : null}
           <TextField label={tf('name')} value={nombre} onChange={(e) => setNombre(e.target.value)} required autoFocus />
-          <TextField label={tf('description')} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} multiline minRows={2} />
-          <TextField label={tf('location')} value={ubicacion} onChange={(e) => setUbicacion(e.target.value)} />
+          <TextField label={tf('description')} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} multiline minRows={2} required />
+          <TextField label={tf('location')} value={ubicacion} onChange={(e) => setUbicacion(e.target.value)} required />
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField fullWidth label={tf('municipality')} value={municipio} onChange={(e) => setMunicipio(e.target.value)} />
-            <TextField fullWidth label={tf('department')} value={departamento} onChange={(e) => setDepartamento(e.target.value)} />
+            <TextField fullWidth label={tf('municipality')} value={municipio} onChange={(e) => setMunicipio(e.target.value)} required />
+            <TextField fullWidth label={tf('department')} value={departamento} onChange={(e) => setDepartamento(e.target.value)} required />
           </Stack>
           <TextField
             label={tf('areaHectares')}

@@ -1,3 +1,4 @@
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using ProyectoCafe.Application.Produccion.Fincas;
 using ProyectoCafe.Domain.Entities;
@@ -96,7 +97,16 @@ public sealed class FincaRepository(ProyectoCafeDbContext dbContext) : IFincaRep
         }
 
         dbContext.Fincas.Remove(entity);
-        await dbContext.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (IsForeignKeyViolation(ex))
+        {
+            throw new ArgumentException("No se puede eliminar la finca porque tiene registros asociados.", ex);
+        }
+
         return true;
     }
 
@@ -104,5 +114,10 @@ public sealed class FincaRepository(ProyectoCafeDbContext dbContext) : IFincaRep
     {
         var normalized = value?.Trim();
         return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
+    }
+
+    private static bool IsForeignKeyViolation(DbUpdateException ex)
+    {
+        return ex.InnerException is SqlException { Number: 547 };
     }
 }

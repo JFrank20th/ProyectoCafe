@@ -134,7 +134,7 @@ public static class DashboardEndpoints
         }
 
         var filteredOperationalHarvests = db.OperacionesAgricolas
-            .Where(item => item.Estado != "Anulada" && item.TipoOperacion == TiposOperacionAgricola.Cosecha && item.LoteId.HasValue);
+            .Where(item => item.Estado != "Anulada" && item.TipoOperacion == TiposOperacionAgricola.Cosecha);
         if (startUtc.HasValue)
         {
             filteredOperationalHarvests = filteredOperationalHarvests.Where(item => item.FechaOperacion.HasValue && item.FechaOperacion.Value >= startUtc.Value);
@@ -156,34 +156,22 @@ public static class DashboardEndpoints
             filteredRecepciones = filteredRecepciones.Where(item => item.FechaRecepcion.HasValue && item.FechaRecepcion.Value < endUtc.Value);
         }
 
-        var filteredTransformaciones = db.TransformacionesCafe.Where(item => item.Estado != "Anulada");
+        var filteredProcesos = db.ProcesosInventario.Where(item => item.Estado != "Anulado");
         if (startUtc.HasValue)
         {
-            filteredTransformaciones = filteredTransformaciones.Where(item => item.FechaTransformacion.HasValue && item.FechaTransformacion.Value >= startUtc.Value);
+            filteredProcesos = filteredProcesos.Where(item => item.FechaProceso.HasValue && item.FechaProceso.Value >= startUtc.Value);
         }
 
         if (endUtc.HasValue)
         {
-            filteredTransformaciones = filteredTransformaciones.Where(item => item.FechaTransformacion.HasValue && item.FechaTransformacion.Value < endUtc.Value);
-        }
-
-        var filteredEmpaques = db.EmpaquesCafe.Where(item => item.Estado != "Anulada");
-        if (startUtc.HasValue)
-        {
-            filteredEmpaques = filteredEmpaques.Where(item => item.FechaEmpaque.HasValue && item.FechaEmpaque.Value >= startUtc.Value);
-        }
-
-        if (endUtc.HasValue)
-        {
-            filteredEmpaques = filteredEmpaques.Where(item => item.FechaEmpaque.HasValue && item.FechaEmpaque.Value < endUtc.Value);
+            filteredProcesos = filteredProcesos.Where(item => item.FechaProceso.HasValue && item.FechaProceso.Value < endUtc.Value);
         }
 
         var productionProcessCount = 0;
         productionProcessCount += await filteredLegacyHarvests.CountAsync(ct);
         productionProcessCount += await filteredOperationalHarvests.CountAsync(ct);
         productionProcessCount += await filteredRecepciones.CountAsync(ct);
-        productionProcessCount += await filteredTransformaciones.CountAsync(ct);
-        productionProcessCount += await filteredEmpaques.CountAsync(ct);
+        productionProcessCount += await filteredProcesos.CountAsync(ct);
 
         var filteredSales = db.Ventas.Where(venta => venta.Estado == true);
         if (startUtc.HasValue)
@@ -247,15 +235,9 @@ public static class DashboardEndpoints
 
         var traceableLotIds = await filteredLegacyHarvests
             .Select(item => item.LoteId)
-            .Concat(filteredOperationalHarvests.Select(item => item.LoteId!.Value))
-            .Concat(filteredRecepciones.Select(item => item.LoteId))
-            .Concat(filteredTransformaciones.Select(item => item.LoteSalidaId))
-            .Concat(db.EmpaquesCafeDetalles
-                .Join(
-                    filteredEmpaques,
-                    detalle => detalle.EmpaqueCafeId,
-                    empaque => empaque.EmpaqueCafeId,
-                    (detalle, _) => detalle.LoteSalidaId))
+            .Concat(filteredOperationalHarvests.Where(item => item.LoteId.HasValue).Select(item => item.LoteId!.Value))
+            .Concat(filteredRecepciones.Where(item => item.LoteId.HasValue).Select(item => item.LoteId!.Value))
+            .Concat(filteredProcesos.Select(item => item.LoteSalidaId))
             .Concat(filteredLoteMovimientos.Select(item => item.LoteId))
             .Distinct()
             .ToListAsync(ct);

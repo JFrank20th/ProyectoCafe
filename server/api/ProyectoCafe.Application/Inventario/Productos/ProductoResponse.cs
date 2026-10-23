@@ -22,10 +22,6 @@ public sealed class ProductoResponse
 
     public bool Estado { get; set; }
 
-    public int CategoriaId { get; set; }
-
-    public int? PresentacionId { get; set; }
-
     public string? PresentacionCodigo { get; set; }
 
     public string? PresentacionNombre { get; set; }

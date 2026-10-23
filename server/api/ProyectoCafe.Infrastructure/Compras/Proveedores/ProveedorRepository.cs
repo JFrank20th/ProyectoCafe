@@ -7,10 +7,17 @@ namespace ProyectoCafe.Infrastructure.Compras.Proveedores;
 
 public sealed class ProveedorRepository(ProyectoCafeDbContext dbContext) : IProveedorRepository
 {
-    public async Task<IReadOnlyList<ProveedorResponse>> GetAllAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<ProveedorResponse>> GetAllAsync(bool soloExternos, CancellationToken cancellationToken)
     {
-        return await dbContext.Proveedores
-            .AsNoTracking()
+        var query = dbContext.Proveedores
+            .AsNoTracking();
+
+        if (soloExternos)
+        {
+            query = query.Where(x => x.EsInterno != true);
+        }
+
+        return await query
             .OrderBy(x => x.Nombre)
             .ThenBy(x => x.ProveedorId)
             .Select(x => new ProveedorResponse
@@ -53,6 +60,7 @@ public sealed class ProveedorRepository(ProyectoCafeDbContext dbContext) : IProv
             Telefono = NullIfWhiteSpace(request.Telefono),
             Email = NormalizeEmail(request.Email),
             Direccion = NullIfWhiteSpace(request.Direccion),
+            EsInterno = false,
             Estado = request.Estado,
         };
 

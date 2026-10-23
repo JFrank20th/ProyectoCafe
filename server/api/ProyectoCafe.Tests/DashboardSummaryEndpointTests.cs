@@ -57,7 +57,7 @@ public sealed class DashboardSummaryEndpointTests
         Assert.Equal(1, summary.Production.LotsWithStockCount);
         Assert.Equal(120m, summary.Production.AvailableQuantity);
         Assert.Equal("kg", summary.Production.AvailableUnit);
-        Assert.Equal(4, summary.Production.ProcessRecordsCount);
+        Assert.Equal(5, summary.Production.ProcessRecordsCount);
 
         Assert.Equal(1, summary.Commercial.ActiveSalesCount);
         Assert.Equal(500m, summary.Commercial.ActiveSalesTotal);
@@ -238,7 +238,6 @@ public sealed class DashboardSummaryEndpointTests
                 ManejaLotes = true,
                 TipoLote = "Cafe",
                 Estado = true,
-                CategoriaId = 1,
                 UnidadMedida = "kg",
                 PermiteDecimal = true,
             });
@@ -279,7 +278,7 @@ public sealed class DashboardSummaryEndpointTests
                 new CosechaCafe
                 {
                     CosechaCafeId = 1,
-                    ParcelaId = 1,
+                    CultivoId = 1,
                     ProductoId = 1,
                     Cultivo = "Arabica",
                     FechaCosecha = nowUtc.AddDays(-4),
@@ -290,7 +289,7 @@ public sealed class DashboardSummaryEndpointTests
                 new CosechaCafe
                 {
                     CosechaCafeId = 2,
-                    ParcelaId = 1,
+                    CultivoId = 1,
                     ProductoId = 1,
                     Cultivo = "Arabica",
                     FechaCosecha = nowUtc.AddDays(-40),
@@ -305,9 +304,11 @@ public sealed class DashboardSummaryEndpointTests
                     RecepcionCafeId = 1,
                     ProveedorId = 1,
                     ProductoId = 1,
-                    TipoCafe = "Pergamino",
+                    TipoCafe = "Oreado",
                     FechaRecepcion = nowUtc.AddDays(-3),
+                    CodigoLote = "REC-001",
                     Cantidad = 40m,
+                    CantidadDisponible = 40m,
                     PrecioUnitario = 2m,
                     Total = 80m,
                     Estado = "Registrada",
@@ -318,100 +319,90 @@ public sealed class DashboardSummaryEndpointTests
                     RecepcionCafeId = 2,
                     ProveedorId = 1,
                     ProductoId = 1,
-                    TipoCafe = "Pergamino",
+                    TipoCafe = "Oreado",
                     FechaRecepcion = nowUtc.AddDays(-50),
+                    CodigoLote = "REC-002",
                     Cantidad = 35m,
+                    CantidadDisponible = 35m,
                     PrecioUnitario = 2m,
                     Total = 70m,
                     Estado = "Registrada",
                     LoteId = 2,
                 });
 
-            db.TransformacionesCafe.AddRange(
-                new TransformacionCafe
+            db.ProcesosInventario.AddRange(
+                new ProcesoInventario
                 {
-                    TransformacionCafeId = 1,
+                    ProcesoInventarioId = 1,
+                    RecepcionCafeId = 1,
                     LoteOrigenId = 1,
                     ProductoSalidaId = 1,
                     LoteSalidaId = 1,
-                    TipoTransformacion = "Secado",
-                    FechaTransformacion = nowUtc.AddDays(-2),
-                    CantidadEntrada = 50m,
+                    FechaProceso = nowUtc.AddDays(-2),
+                    UsaLoteCompleto = false,
+                    CantidadOrigenConsumida = 50m,
                     CantidadSalida = 45m,
                     CostoProceso = 10m,
-                    Rendimiento = 90m,
-                    Estado = "Registrada",
+                    Estado = "Registrado",
                 },
-                new TransformacionCafe
+                new ProcesoInventario
                 {
-                    TransformacionCafeId = 2,
+                    ProcesoInventarioId = 2,
+                    RecepcionCafeId = 2,
                     LoteOrigenId = 2,
                     ProductoSalidaId = 1,
                     LoteSalidaId = 2,
-                    TipoTransformacion = "Secado",
-                    FechaTransformacion = nowUtc.AddDays(-45),
-                    CantidadEntrada = 40m,
+                    FechaProceso = nowUtc.AddDays(-45),
+                    UsaLoteCompleto = false,
+                    CantidadOrigenConsumida = 40m,
                     CantidadSalida = 36m,
                     CostoProceso = 8m,
-                    Rendimiento = 90m,
-                    Estado = "Registrada",
-                });
-
-            db.EmpaquesCafe.AddRange(
-                new EmpaqueCafe
+                    Estado = "Registrado",
+                },
+                new ProcesoInventario
                 {
-                    EmpaqueCafeId = 1,
+                    ProcesoInventarioId = 3,
+                    RecepcionCafeId = 1,
                     LoteOrigenId = 1,
-                    FechaEmpaque = nowUtc.AddDays(-1),
+                    ProductoSalidaId = 1,
+                    LoteSalidaId = 1,
+                    FechaProceso = nowUtc.AddDays(-1),
+                    UsaLoteCompleto = false,
                     CantidadOrigenConsumida = 20m,
-                    CantidadEmpaques = 80m,
-                    PesoTotalGramos = 20000m,
-                    CostoEmpaque = 12m,
-                    Estado = "Registrada",
+                    CantidadSalida = 80m,
+                    CostoProceso = 12m,
+                    Estado = "Registrado",
                 },
-                new EmpaqueCafe
+                new ProcesoInventario
                 {
-                    EmpaqueCafeId = 2,
+                    ProcesoInventarioId = 4,
+                    RecepcionCafeId = 2,
                     LoteOrigenId = 2,
-                    FechaEmpaque = nowUtc.AddDays(-42),
+                    ProductoSalidaId = 1,
+                    LoteSalidaId = 2,
+                    FechaProceso = nowUtc.AddDays(-42),
+                    UsaLoteCompleto = false,
                     CantidadOrigenConsumida = 18m,
-                    CantidadEmpaques = 70m,
-                    PesoTotalGramos = 17500m,
-                    CostoEmpaque = 10m,
-                    Estado = "Registrada",
+                    CantidadSalida = 70m,
+                    CostoProceso = 10m,
+                    Estado = "Registrado",
                 });
 
-            db.EmpaquesCafeDetalles.AddRange(
-                new EmpaqueCafeDetalle
-                {
-                    EmpaqueCafeDetalleId = 1,
-                    EmpaqueCafeId = 1,
-                    ProductoSalidaId = 1,
-                    PresentacionId = 1,
-                    LoteSalidaId = 1,
-                    Cantidad = 80m,
-                    PesoGramosUnitario = 250m,
-                    PesoTotalGramos = 20000m,
-                    CantidadOrigenAsignada = 20m,
-                    CostoOrigenAsignado = 40m,
-                    CostoEmpaqueAsignado = 12m,
-                    Estado = "Registrada",
-                },
-                new EmpaqueCafeDetalle
-                {
-                    EmpaqueCafeDetalleId = 2,
-                    EmpaqueCafeId = 2,
-                    ProductoSalidaId = 1,
-                    PresentacionId = 1,
-                    LoteSalidaId = 2,
-                    Cantidad = 70m,
-                    PesoGramosUnitario = 250m,
-                    PesoTotalGramos = 17500m,
-                    CantidadOrigenAsignada = 18m,
-                    CostoOrigenAsignado = 36m,
-                    CostoEmpaqueAsignado = 10m,
-                    Estado = "Registrada",
-                });
+            db.OperacionesAgricolas.Add(new OperacionAgricola
+            {
+                OperacionAgricolaId = 1,
+                CultivoId = 1,
+                TipoOperacion = "Cosecha",
+                FechaOperacion = nowUtc.AddDays(-6),
+                Cantidad = 22m,
+                Cultivo = "Cafe cereza",
+                CostoInsumo = 0m,
+                CostoManoObra = 0m,
+                CostoOtros = 4m,
+                CostoTotal = 4m,
+                Observaciones = "Cosecha sin lote inmediato",
+                Estado = "Registrada",
+            });
 
             db.LoteMovimientos.AddRange(
                 new LoteMovimiento

@@ -13,17 +13,14 @@ public static class WebApplicationExtensions
         app.MapGastosEndpoints();
         app.MapPasivosEndpoints();
 
-        app.MapCategoriasEndpoints();
         app.MapUnidadesMedidaEndpoints();
         app.MapProductosEndpoints();
-        app.MapPresentacionesEndpoints();
         app.MapLotesEndpoints();
+        app.MapProcesosInventarioEndpoints();
         app.MapInsumosEndpoints();
         app.MapFincasEndpoints();
-        app.MapParcelasEndpoints();
+        app.MapCultivosEndpoints();
         app.MapOperacionesAgricolasEndpoints();
-        app.MapTransformacionesCafeEndpoints();
-        app.MapEmpaquesCafeEndpoints();
         app.MapProveedoresEndpoints();
         app.MapRecepcionesCafeEndpoints();
         app.MapDashboardEndpoints();

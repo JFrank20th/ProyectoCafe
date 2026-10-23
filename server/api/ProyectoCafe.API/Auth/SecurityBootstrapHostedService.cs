@@ -28,7 +28,7 @@ public sealed class SecurityBootstrapHostedService(
                 await db.Database.MigrateAsync(cancellationToken);
             }
 
-            await EnsurePresentacionesPermissionsMigratedAsync(db, cancellationToken);
+            await EnsureCultivosPermissionsMigratedAsync(db, cancellationToken);
             await EnsureBootstrapRolesAsync(db, cancellationToken);
             await EnsureBootstrapUsersAsync(db, cancellationToken);
             await EnsureAdminPermissionsAsync(db, cancellationToken);
@@ -41,10 +41,10 @@ public sealed class SecurityBootstrapHostedService(
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-    private static async Task EnsurePresentacionesPermissionsMigratedAsync(ProyectoCafeDbContext db, CancellationToken ct)
+    private static async Task EnsureCultivosPermissionsMigratedAsync(ProyectoCafeDbContext db, CancellationToken ct)
     {
-        var legacyModule = Permissions.Modulos.InventarioPresentacionesLegacy;
-        var newModule = Permissions.Modulos.InventarioPresentaciones;
+        var legacyModule = Permissions.Modulos.ProduccionParcelasLegacy;
+        var newModule = Permissions.Modulos.ProduccionCultivos;
 
         var legacyPermissions = await db.RolesPermisos
             .Where(rp => rp.Modulo == legacyModule)

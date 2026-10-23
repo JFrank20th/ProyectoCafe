@@ -119,7 +119,7 @@ public static class RecepcionesCafeEndpoints
 
         if (TiposCafeCompra.Normalize(request.TipoCafe) is null)
         {
-            errors[nameof(request.TipoCafe)] = ["TipoCafe es inválido. Valores permitidos: Cereza, RecienLavado, Seco."];
+            errors[nameof(request.TipoCafe)] = ["TipoCafe es inválido. Valores permitidos: Cereza, Oreado, RecienLavado, Seco."];
         }
 
         if (request.Cantidad <= 0)

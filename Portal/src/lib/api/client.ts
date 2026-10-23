@@ -17,6 +17,64 @@ export class ApiError extends Error {
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function describeErrorBody(bodyText: string | undefined, fallback: string) {
+  if (!bodyText) {
+    return fallback;
+  }
+
+  try {
+    const data: unknown = JSON.parse(bodyText);
+    if (!isRecord(data)) {
+      return fallback;
+    }
+
+    const maybeError = data.error;
+    if (isRecord(maybeError)) {
+      const message = maybeError.message;
+      if (typeof message === 'string' && message.trim()) {
+        return message;
+      }
+    }
+
+    const maybeMessage = data.message;
+    if (typeof maybeMessage === 'string' && maybeMessage.trim()) {
+      return maybeMessage;
+    }
+
+    const maybeErrors = data.errors;
+    if (isRecord(maybeErrors)) {
+      for (const value of Object.values(maybeErrors)) {
+        if (!Array.isArray(value)) {
+          continue;
+        }
+
+        const first = value.find((entry) => typeof entry === 'string' && entry.trim());
+        if (typeof first === 'string') {
+          return first;
+        }
+      }
+    }
+
+    const maybeDetail = data.detail;
+    if (typeof maybeDetail === 'string' && maybeDetail.trim()) {
+      return maybeDetail;
+    }
+
+    const maybeTitle = data.title;
+    if (typeof maybeTitle === 'string' && maybeTitle.trim()) {
+      return maybeTitle;
+    }
+  } catch {
+    return fallback;
+  }
+
+  return fallback;
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const { API_URL } = getRuntimeConfig();
   const url = joinUrl(API_URL, path);
@@ -51,11 +109,14 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
   if (!response.ok) {
     const bodyText = await response.text().catch(() => '');
-    const message = response.status === 401
+    const fallbackMessage = response.status === 401
       ? 'No autorizado.'
       : response.status === 403
         ? 'No tienes permisos.'
         : `Error HTTP ${response.status}.`;
+    const message = response.status === 401 || response.status === 403
+      ? fallbackMessage
+      : describeErrorBody(bodyText, fallbackMessage);
 
     if (response.status === 401) {
       if (typeof window !== 'undefined') {

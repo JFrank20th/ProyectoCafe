@@ -140,9 +140,9 @@ public static class CostosEndpoints
             errors[nameof(request.ReferenciaId)] = ["ReferenciaId debe ser mayor a 0."];
         }
 
-        if (request.ParcelaId.HasValue && request.ParcelaId.Value <= 0)
+        if (request.CultivoId.HasValue && request.CultivoId.Value <= 0)
         {
-            errors[nameof(request.ParcelaId)] = ["ParcelaId debe ser mayor a 0."];
+            errors[nameof(request.CultivoId)] = ["CultivoId debe ser mayor a 0."];
         }
 
         if (request.LoteId.HasValue && request.LoteId.Value <= 0)

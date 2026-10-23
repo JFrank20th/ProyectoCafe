@@ -12,9 +12,9 @@ public sealed class CostoResponse
 
     public int? ReferenciaId { get; set; }
 
-    public int? ParcelaId { get; set; }
+    public int? CultivoId { get; set; }
 
-    public string? ParcelaNombre { get; set; }
+    public string? CultivoNombre { get; set; }
 
     public int? FincaId { get; set; }
 

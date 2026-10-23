@@ -2,6 +2,9 @@ namespace ProyectoCafe.Application.Inventario.Lotes;
 
 public sealed class LotesService(ILoteRepository repository) : ILotesService
 {
+    public Task<IReadOnlyList<LoteExistenciaResumenResponse>> GetSummaryAsync(int? productoId, bool soloActivos, bool soloConStock, CancellationToken cancellationToken) =>
+        repository.GetSummaryAsync(productoId, soloActivos, soloConStock, cancellationToken);
+
     public Task<IReadOnlyList<LoteResponse>> GetAllAsync(int? productoId, bool soloActivos, bool soloConStock, CancellationToken cancellationToken) =>
         repository.GetAllAsync(productoId, soloActivos, soloConStock, cancellationToken);
 

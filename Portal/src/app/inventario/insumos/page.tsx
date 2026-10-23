@@ -1,7 +1,5 @@
-'use client';
-
-import { InsumosCrud } from '@/components/inventario/InsumosCrud';
+import { redirect } from 'next/navigation';
 
 export default function InsumosPage() {
-  return <InsumosCrud />;
+  redirect('/produccion/insumos');
 }
