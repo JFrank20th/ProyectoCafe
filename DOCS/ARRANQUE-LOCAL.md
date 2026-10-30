@@ -44,7 +44,8 @@ Set-Location -Path "c:\ProyectoCafe\server\api\ProyectoCafe.API"; dotnet run
 
 ```powershell
 # Terminal 2 — Portal en http://localhost:3010
-Set-Location -Path "c:\ProyectoCafe\Portal"; npm ci; npm run dev
+Set-Location -Path "c:\ProyectoCafe\Portal"; npm ci; npm run dev # para intalar nodeModules
+Set-Location -Path "c:\ProyectoCafe\Portal"; npm run dev
 ```
 
 ## 5. Entrar

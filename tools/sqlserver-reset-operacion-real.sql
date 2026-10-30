@@ -1,23 +1,29 @@
 /*
-  Reinicio de ProyectoCafe (alcance actual: Administración).
+  Reinicio de ProyectoCafe (alcance actual: Administración e Inventario de café terminado).
 
   Preserva:
   - Seguridad.Usuarios
   - Seguridad.Roles
   - Seguridad.UsuariosRoles
   - Seguridad.RolesPermisos
+  - Inventario.PresentacionesCafe
+  - Inventario.TiposCafe
+  - Inventario.LotesCafeTerminado
+  - Inventario.LotesCafeExistencias
+  - Inventario.MovimientosLoteCafe
 
   Elimina por completo:
-  - Esquemas heredados de módulos retirados: Inventario, Negocio, Compras, Produccion, Contabilidad.
+  - Esquemas heredados de módulos retirados: Negocio, Compras, Produccion, Contabilidad.
   - Sus tablas, llaves foráneas y esquemas.
 
-  Alinea el historial de migraciones con la línea base actual:
+  Alinea el historial de migraciones con las migraciones vigentes:
   - 20261023012804_InitialAdministration
+  - 20261028025431_AddInventarioCafeTerminado
 
   Modos de ejecución:
   - @ApplyChanges = 0 -> vista previa; ejecuta todo dentro de una transacción y hace ROLLBACK.
   - @ApplyChanges = 1 -> confirma los cambios.
-  - @FailOnUnlistedTables = 1 -> aborta si Seguridad tiene tablas no contempladas.
+  - @FailOnUnlistedTables = 1 -> aborta si Seguridad o Inventario tienen tablas no contempladas.
 */
 
 SET NOCOUNT ON;
@@ -33,7 +39,8 @@ SET NUMERIC_ROUNDABORT OFF;
 DECLARE @ExpectedDatabase sysname = N'ProyectoCafe.Dev';
 DECLARE @ApplyChanges bit = 1; -- colocar a 1 para confirmar cambios, dejar en 0 para vista previa sin cambios
 DECLARE @FailOnUnlistedTables bit = 1; -- colocar a 0 si solo quieres advertencia ante tablas nuevas no listadas
-DECLARE @BaselineMigrationId nvarchar(150) = N'20261023012804_InitialAdministration';
+DECLARE @InitialMigrationId nvarchar(150) = N'20261023012804_InitialAdministration';
+DECLARE @BaselineMigrationId nvarchar(150) = N'20261028025431_AddInventarioCafeTerminado';
 DECLARE @BaselineProductVersion nvarchar(32) = N'9.0.10';
 
 IF DB_NAME() <> @ExpectedDatabase
@@ -58,7 +65,6 @@ CREATE TABLE #LegacySchemas
 
 INSERT INTO #LegacySchemas (SchemaName)
 VALUES
-    (N'Inventario'),
     (N'Negocio'),
     (N'Compras'),
     (N'Produccion'),
@@ -81,7 +87,25 @@ VALUES
     (N'UsuariosRoles'),
     (N'RolesPermisos');
 
--- La línea base asume que las tablas de Seguridad ya existen.
+IF OBJECT_ID(N'tempdb..#ExpectedInventarioTables', N'U') IS NOT NULL
+BEGIN
+    DROP TABLE #ExpectedInventarioTables;
+END;
+
+CREATE TABLE #ExpectedInventarioTables
+(
+    TableName sysname NOT NULL PRIMARY KEY
+);
+
+INSERT INTO #ExpectedInventarioTables (TableName)
+VALUES
+    (N'PresentacionesCafe'),
+    (N'TiposCafe'),
+    (N'LotesCafeTerminado'),
+    (N'LotesCafeExistencias'),
+    (N'MovimientosLoteCafe');
+
+-- La línea base asume que las tablas de Seguridad e Inventario ya existen.
 IF EXISTS
 (
     SELECT 1
@@ -98,6 +122,22 @@ BEGIN
     THROW 50003, N'Abortado: faltan tablas de Seguridad requeridas por la línea base.', 1;
 END;
 
+IF EXISTS
+(
+    SELECT 1
+    FROM #ExpectedInventarioTables AS expected
+    WHERE OBJECT_ID(N'Inventario.' + expected.TableName, N'U') IS NULL
+)
+BEGIN
+    PRINT N'Tablas de Inventario esperadas que no existen:';
+    SELECT expected.TableName AS TablaFaltante
+    FROM #ExpectedInventarioTables AS expected
+    WHERE OBJECT_ID(N'Inventario.' + expected.TableName, N'U') IS NULL
+    ORDER BY expected.TableName;
+
+    THROW 50007, N'Abortado: faltan tablas de Inventario requeridas por la línea base.', 1;
+END;
+
 IF OBJECT_ID(N'tempdb..#UnlistedTables', N'U') IS NOT NULL
 BEGIN
     DROP TABLE #UnlistedTables;
@@ -112,24 +152,30 @@ FROM sys.tables AS tbl
 INNER JOIN sys.schemas AS sch
     ON sch.schema_id = tbl.schema_id
 WHERE tbl.is_ms_shipped = 0
-  AND sch.name = N'Seguridad'
+  AND sch.name IN (N'Seguridad', N'Inventario')
   AND NOT EXISTS
   (
       SELECT 1
       FROM #ExpectedSeguridadTables AS expected
-      WHERE expected.TableName = tbl.name
+      WHERE sch.name = N'Seguridad'
+        AND expected.TableName = tbl.name
+      UNION ALL
+      SELECT 1
+      FROM #ExpectedInventarioTables AS expected
+      WHERE sch.name = N'Inventario'
+        AND expected.TableName = tbl.name
   );
 
 IF EXISTS (SELECT 1 FROM #UnlistedTables)
 BEGIN
-    PRINT N'Advertencia: hay tablas de Seguridad no contempladas por la línea base.';
+    PRINT N'Advertencia: hay tablas de Seguridad o Inventario no contempladas por la línea base.';
     SELECT QualifiedName AS TablaNoContemplada
     FROM #UnlistedTables
     ORDER BY QualifiedName;
 
     IF @FailOnUnlistedTables = 1
     BEGIN
-        THROW 50004, N'Abortado: existen tablas de Seguridad no contempladas por la línea base.', 1;
+        THROW 50004, N'Abortado: existen tablas de Seguridad o Inventario no contempladas por la línea base.', 1;
     END;
 END;
 
@@ -187,15 +233,20 @@ SELECT @CountsSql =
     SELECT
         N'INSERT INTO #Counts (Fase, Orden, Accion, Tabla, Registros) '
         + N'SELECT @Phase, '
-        + CAST(CASE WHEN sch.name = N'Seguridad' THEN 0 ELSE 1000 END AS nvarchar(20))
-        + N', N''' + CASE WHEN sch.name = N'Seguridad' THEN N'PRESERVAR' ELSE N'ELIMINAR' END + N''' '
+        + CAST(
+            CASE
+                WHEN sch.name = N'Seguridad' THEN 0
+                WHEN sch.name = N'Inventario' THEN 1
+                ELSE 1000
+            END AS nvarchar(20))
+        + N', N''' + CASE WHEN sch.name IN (N'Seguridad', N'Inventario') THEN N'PRESERVAR' ELSE N'ELIMINAR' END + N''' '
         + N', N''' + REPLACE(QUOTENAME(sch.name) + N'.' + QUOTENAME(tbl.name), N'''', N'''''') + N''' '
         + N', COUNT_BIG(*) FROM ' + QUOTENAME(sch.name) + N'.' + QUOTENAME(tbl.name) + N';' + CHAR(10)
     FROM sys.tables AS tbl
     INNER JOIN sys.schemas AS sch
         ON sch.schema_id = tbl.schema_id
     WHERE tbl.is_ms_shipped = 0
-      AND (sch.name = N'Seguridad' OR sch.name IN (SELECT SchemaName FROM #LegacySchemas))
+      AND (sch.name IN (N'Seguridad', N'Inventario') OR sch.name IN (SELECT SchemaName FROM #LegacySchemas))
     ORDER BY sch.name, tbl.name
     FOR XML PATH(N''), TYPE
 ).value(N'.', N'nvarchar(max)');
@@ -211,8 +262,8 @@ SELECT @CountsAfterSql =
     INNER JOIN sys.schemas AS sch
         ON sch.schema_id = tbl.schema_id
     WHERE tbl.is_ms_shipped = 0
-      AND sch.name = N'Seguridad'
-    ORDER BY tbl.name
+      AND sch.name IN (N'Seguridad', N'Inventario')
+    ORDER BY sch.name, tbl.name
     FOR XML PATH(N''), TYPE
 ).value(N'.', N'nvarchar(max)');
 
@@ -295,16 +346,18 @@ BEGIN TRY
         EXEC sys.sp_executesql @DropSchemasSql;
     END;
 
-    -- Alinea el historial con la línea base actual (solo Administración).
+    -- Alinea el historial con la línea base actual (Administración e Inventario de café terminado).
     DELETE FROM dbo.__EFMigrationsHistory;
     INSERT INTO dbo.__EFMigrationsHistory (MigrationId, ProductVersion)
-    VALUES (@BaselineMigrationId, @BaselineProductVersion);
+    VALUES
+        (@InitialMigrationId, @BaselineProductVersion),
+        (@BaselineMigrationId, @BaselineProductVersion);
 
     SET @Phase = N'DESPUES_EN_TRANSACCION';
 
     EXEC sys.sp_executesql @CountsAfterSql, N'@Phase nvarchar(40)', @Phase = @Phase;
 
-    PRINT N'Conteos de Seguridad despues de eliminar esquemas heredados, aun dentro de la transaccion:';
+    PRINT N'Conteos de Seguridad e Inventario despues de eliminar esquemas heredados, aun dentro de la transaccion:';
     SELECT Fase, Accion, Tabla, Registros
     FROM #Counts
     WHERE Fase = @Phase
@@ -318,7 +371,7 @@ BEGIN TRY
     IF @ApplyChanges = 1
     BEGIN
         COMMIT TRANSACTION;
-        PRINT N'Reinicio confirmado: Seguridad preservada y esquemas heredados eliminados.';
+        PRINT N'Reinicio confirmado: Seguridad e Inventario preservados y esquemas heredados eliminados.';
     END
     ELSE
     BEGIN

@@ -261,6 +261,73 @@ internal sealed class ProyectoCafeApiFactory : WebApplicationFactory<Program>
             .ToArrayAsync();
     }
 
+    public async Task<int> SeedPresentacionCafeAsync(
+        string codigo,
+        string nombre,
+        int pesoUnitarioGramos,
+        EstadoCatalogoCafe estado = EstadoCatalogoCafe.Activo)
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ProyectoCafeDbContext>();
+
+        var presentacion = new PresentacionCafe
+        {
+            Codigo = codigo.Trim().ToUpperInvariant(),
+            Nombre = nombre.Trim(),
+            PesoUnitarioGramos = pesoUnitarioGramos,
+            Estado = estado,
+            CreadoEn = DateTime.UtcNow,
+        };
+
+        db.PresentacionesCafe.Add(presentacion);
+        await db.SaveChangesAsync();
+        return presentacion.PresentacionCafeId;
+    }
+
+    public async Task<int> SeedTipoCafeAsync(
+        string codigo,
+        string nombre,
+        EstadoCatalogoCafe estado = EstadoCatalogoCafe.Activo)
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ProyectoCafeDbContext>();
+
+        var tipo = new TipoCafe
+        {
+            Codigo = codigo.Trim().ToUpperInvariant(),
+            Nombre = nombre.Trim(),
+            Estado = estado,
+            CreadoEn = DateTime.UtcNow,
+        };
+
+        db.TiposCafe.Add(tipo);
+        await db.SaveChangesAsync();
+        return tipo.TipoCafeId;
+    }
+
+    public async Task<(
+        int Presentacion250Id,
+        int Presentacion454Id,
+        int TipoGranoId,
+        int TipoMolidoId)> SeedInventarioCafeCatalogsAsync()
+    {
+        var presentacion250 = await SeedPresentacionCafeAsync("250G", "250 g", 250);
+        var presentacion454 = await SeedPresentacionCafeAsync("454G", "454 g", 454);
+        var tipoGrano = await SeedTipoCafeAsync("GRANO", "Grano");
+        var tipoMolido = await SeedTipoCafeAsync("MOLIDO", "Molido");
+
+        return (presentacion250, presentacion454, tipoGrano, tipoMolido);
+    }
+
+    public async Task SetLoteCafeEstadoAsync(int loteCafeId, EstadoLoteCafe estado)
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ProyectoCafeDbContext>();
+        var lote = await db.LotesCafeTerminado.SingleAsync(l => l.LoteCafeId == loteCafeId);
+        lote.Estado = estado;
+        await db.SaveChangesAsync();
+    }
+
     public static string ReadCookie(HttpResponseMessage response, string cookieName)
     {
         if (!response.Headers.TryGetValues("Set-Cookie", out var headers))

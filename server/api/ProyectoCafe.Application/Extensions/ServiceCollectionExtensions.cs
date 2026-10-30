@@ -14,6 +14,8 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<AuthenticationService>();
         services.AddScoped<AdministrationService>();
+        services.AddScoped<LoteCafeService>();
+        services.AddScoped<CatalogoCafeService>();
 
         services.TryAddSingleton(TimeProvider.System);
 

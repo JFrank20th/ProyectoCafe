@@ -24,14 +24,19 @@ public sealed class PermissionCatalogEndpointTests
         var byModule = catalog!
             .ToDictionary(item => item.Modulo, item => item.Acciones, StringComparer.OrdinalIgnoreCase);
 
-        // El alcance actual del proyecto solo expone los módulos de Administración.
-        Assert.Equal(3, catalog!.Length);
+        // El alcance actual del proyecto expone Administración e Inventario de café terminado.
+        Assert.Equal(8, catalog!.Length);
         Assert.Equal(
             new[]
             {
                 "Administracion.Permisos",
                 "Administracion.Roles",
                 "Administracion.Usuarios",
+                "Inventario.Existencias",
+                "Inventario.Lotes",
+                "Inventario.Movimientos",
+                "Inventario.Presentaciones",
+                "Inventario.TiposCafe",
             },
             catalog.Select(item => item.Modulo).ToArray());
 
@@ -43,6 +48,12 @@ public sealed class PermissionCatalogEndpointTests
 
         // El propio módulo de permisos se descubre por sus endpoints de consulta y edición.
         Assert.Equal(new[] { "Ver", "Editar" }, byModule["Administracion.Permisos"]);
+
+        Assert.Equal(new[] { "Ver" }, byModule["Inventario.Existencias"]);
+        Assert.Equal(new[] { "Ver", "Crear" }, byModule["Inventario.Lotes"]);
+        Assert.Equal(new[] { "Ver", "Crear" }, byModule["Inventario.Movimientos"]);
+        Assert.Equal(new[] { "Ver", "Crear", "Editar", "Eliminar" }, byModule["Inventario.Presentaciones"]);
+        Assert.Equal(new[] { "Ver", "Crear", "Editar", "Eliminar" }, byModule["Inventario.TiposCafe"]);
     }
 
     private sealed record CatalogItem(string Modulo, string[] Acciones);

@@ -38,7 +38,9 @@ import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import {
   IconChevronDown,
   IconChevronUp,
+  IconCoffee,
   IconDashboard,
+  IconPackage,
   IconShield,
   IconUsers,
 } from '@tabler/icons-react';
@@ -100,6 +102,8 @@ const MiniDrawerStyled = styled(Drawer, { shouldForwardProp: (prop) => prop !== 
 
 const navIconByKey: Record<string, ComponentType<{ size?: number; stroke?: number }>> = {
   dashboard: IconDashboard,
+  inventario: IconPackage,
+  inventarioCafe: IconCoffee,
   usuarios: IconUsers,
   roles: IconShield,
   seguridad: IconShield,

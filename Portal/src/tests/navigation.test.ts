@@ -7,7 +7,7 @@ import {
   filterVisibleNavItems,
   type NavItem,
 } from '@/lib/navigation';
-import { DASHBOARD_ROUTE, HOME_ROUTE } from '@/lib/routes';
+import { DASHBOARD_ROUTE, HOME_ROUTE, INVENTARIO_CAFE_ROUTE } from '@/lib/routes';
 
 test('dashboard is visible for authenticated users without permissions', () => {
   const main = NAV.find((section) => section.labelKey === 'main');
@@ -47,6 +47,30 @@ test('users and roles are shown independently according to permissions', () => {
   );
 
   assert.deepEqual(onlyRoles[0].items?.map((item) => item.labelKey), ['roles']);
+});
+
+test('finished coffee inventory is shown with any inventory catalog read permission', () => {
+  const inventory = NAV.find((section) => section.labelKey === 'inventario');
+  assert.ok(inventory);
+
+  assert.deepEqual(filterVisibleNavItems([], [], inventory.items), []);
+
+  for (const permission of [
+    'PERM:INVENTARIO.LOTES:VER',
+    'perm:Inventario.Presentaciones:Ver',
+    'perm:Inventario.TiposCafe:Ver',
+  ]) {
+    const visible = filterVisibleNavItems([], [permission], inventory.items);
+
+    assert.equal(visible.length, 1);
+    assert.equal(visible[0].labelKey, 'inventarioCafe');
+    assert.equal(visible[0].href, INVENTARIO_CAFE_ROUTE);
+  }
+
+  assert.deepEqual(
+    filterVisibleNavItems([], ['perm:Inventario.Existencias:Ver'], inventory.items),
+    [],
+  );
 });
 
 test('navigation filters by role when an item declares one', () => {

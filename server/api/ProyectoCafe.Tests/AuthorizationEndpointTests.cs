@@ -96,6 +96,11 @@ public sealed class AuthorizationEndpointTests
                 Permissions.Modulos.AdministracionPermisos,
                 Permissions.Modulos.AdministracionRoles,
                 Permissions.Modulos.AdministracionUsuarios,
+                Permissions.Modulos.InventarioExistencias,
+                Permissions.Modulos.InventarioLotes,
+                Permissions.Modulos.InventarioMovimientos,
+                Permissions.Modulos.InventarioPresentaciones,
+                Permissions.Modulos.InventarioTiposCafe,
             ],
             modules);
     }

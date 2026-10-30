@@ -1,13 +1,14 @@
 import { buildPermission, createPermissionSet, hasPermission } from '@/lib/auth/permissions';
-import { isPublicRoute, normalizePathname } from '@/lib/routes';
+import { INVENTARIO_CAFE_ROUTE, isPublicRoute, normalizePathname } from '@/lib/routes';
 
 export type RouteAccess =
   | { access: 'public' }
-  | { access: 'protected'; permission?: string };
+  | { access: 'protected'; permission?: string; permissions?: string[] };
 
 type PermissionRoute = {
   path: string;
   permission: string;
+  permissions?: string[];
 };
 
 /**
@@ -23,6 +24,15 @@ export const PERMISSION_ROUTES: readonly PermissionRoute[] = [
   {
     path: '/administracion/roles',
     permission: buildPermission('Administracion.Roles', 'Ver'),
+  },
+  {
+    path: INVENTARIO_CAFE_ROUTE,
+    permission: buildPermission('Inventario.Lotes', 'Ver'),
+    permissions: [
+      buildPermission('Inventario.Lotes', 'Ver'),
+      buildPermission('Inventario.Presentaciones', 'Ver'),
+      buildPermission('Inventario.TiposCafe', 'Ver'),
+    ],
   },
 ];
 
@@ -45,7 +55,13 @@ export function getRouteAccess(pathname: string | null | undefined): RouteAccess
 
   const permissionRoute = PERMISSION_ROUTES.find((route) => matchesRoute(normalized, route.path));
   if (permissionRoute) {
-    return { access: 'protected', permission: permissionRoute.permission };
+    return permissionRoute.permissions
+      ? {
+          access: 'protected',
+          permission: permissionRoute.permission,
+          permissions: permissionRoute.permissions,
+        }
+      : { access: 'protected', permission: permissionRoute.permission };
   }
 
   return { access: 'protected' };
@@ -56,6 +72,9 @@ export function hasRoutePermission(
   access: RouteAccess,
 ): boolean {
   if (access.access === 'public') return true;
+  if (access.permissions && access.permissions.length > 0) {
+    return access.permissions.some((permission) => hasPermission(permissionSet, permission));
+  }
   if (!access.permission) return true;
 
   return hasPermission(permissionSet, access.permission);

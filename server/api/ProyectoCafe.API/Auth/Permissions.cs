@@ -21,11 +21,21 @@ public static class Permissions
         public const string AdministracionUsuarios = "Administracion.Usuarios";
         public const string AdministracionRoles = "Administracion.Roles";
         public const string AdministracionPermisos = "Administracion.Permisos";
+        public const string InventarioLotes = "Inventario.Lotes";
+        public const string InventarioExistencias = "Inventario.Existencias";
+        public const string InventarioMovimientos = "Inventario.Movimientos";
+        public const string InventarioPresentaciones = "Inventario.Presentaciones";
+        public const string InventarioTiposCafe = "Inventario.TiposCafe";
 
         public static readonly string[] All = [
             AdministracionUsuarios,
             AdministracionRoles,
             AdministracionPermisos,
+            InventarioLotes,
+            InventarioExistencias,
+            InventarioMovimientos,
+            InventarioPresentaciones,
+            InventarioTiposCafe,
         ];
     }
 

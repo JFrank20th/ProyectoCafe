@@ -5,6 +5,7 @@ public enum OperationStatus
     Success,
     NotFound,
     ValidationFailed,
+    Conflict,
 }
 
 /// <summary>
@@ -31,6 +32,8 @@ public class OperationResult
 
     public static OperationResult Validation(Dictionary<string, string[]> errors) =>
         new(OperationStatus.ValidationFailed, errors);
+
+    public static OperationResult Conflict() => new(OperationStatus.Conflict);
 }
 
 public sealed class OperationResult<T> : OperationResult
@@ -49,4 +52,6 @@ public sealed class OperationResult<T> : OperationResult
 
     public static new OperationResult<T> Validation(Dictionary<string, string[]> errors) =>
         new(OperationStatus.ValidationFailed, default, errors);
+
+    public static new OperationResult<T> Conflict() => new(OperationStatus.Conflict, default);
 }

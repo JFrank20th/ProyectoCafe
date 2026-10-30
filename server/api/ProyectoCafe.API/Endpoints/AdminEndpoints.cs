@@ -156,6 +156,10 @@ public static class AdminEndpoints
             OperationStatus.NotFound => Results.NotFound(),
             OperationStatus.ValidationFailed => Results.ValidationProblem(
                 result.Errors.ToDictionary(pair => pair.Key, pair => pair.Value)),
+            OperationStatus.Conflict => Results.Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: "Conflicto de concurrencia",
+                detail: "El registro fue modificado por otra operación. Vuelva a consultar e intentar de nuevo."),
             _ => Results.Problem(),
         };
 }

@@ -10,6 +10,7 @@ public static class WebApplicationExtensions
     {
         app.MapAuthEndpoints();
         app.MapAdminEndpoints();
+        app.MapInventarioCafeEndpoints();
 
         app.MapGet("/health", () => Results.Ok(new { status = "ok" }))
             .WithTags("Health")
