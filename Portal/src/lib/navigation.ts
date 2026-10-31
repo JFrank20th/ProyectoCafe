@@ -1,7 +1,7 @@
 import type { Permission, Role } from '@/lib/auth/types';
 import { normalizePermission } from '@/lib/auth/permissions';
 import { hasAnyRole } from '@/lib/auth/roles';
-import { DASHBOARD_ROUTE, INVENTARIO_CAFE_ROUTE } from '@/lib/routes';
+import { DASHBOARD_ROUTE, INVENTARIO_CAFE_ROUTE, VENTAS_ROUTE } from '@/lib/routes';
 
 export type NavItem = {
   labelKey: string;
@@ -31,6 +31,20 @@ export const NAV: NavSection[] = [
           'perm:Inventario.Lotes:Ver',
           'perm:Inventario.Presentaciones:Ver',
           'perm:Inventario.TiposCafe:Ver',
+        ],
+      },
+    ],
+  },
+  {
+    labelKey: 'ventas',
+    items: [
+      {
+        labelKey: 'ventasCafe',
+        href: VENTAS_ROUTE,
+        permissions: [
+          'perm:Ventas.Ventas:Ver',
+          'perm:Ventas.Precios:Ver',
+          'perm:Ventas.Clientes:Ver',
         ],
       },
     ],

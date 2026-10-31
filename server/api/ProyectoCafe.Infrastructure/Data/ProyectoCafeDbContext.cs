@@ -20,6 +20,14 @@ public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext
     public DbSet<LoteCafeExistencia> LotesCafeExistencias => Set<LoteCafeExistencia>();
     public DbSet<MovimientoLoteCafe> MovimientosLoteCafe => Set<MovimientoLoteCafe>();
 
+    public DbSet<PrecioVenta> PreciosVenta => Set<PrecioVenta>();
+
+    public DbSet<Cliente> Clientes => Set<Cliente>();
+
+    public DbSet<Venta> Ventas => Set<Venta>();
+
+    public DbSet<VentaDetalle> VentaDetalles => Set<VentaDetalle>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Usuario>(entity =>
@@ -389,6 +397,204 @@ public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext
 
             entity.HasIndex(x => new { x.LoteCafeExistenciaId, x.FechaMovimiento })
                 .HasDatabaseName("IX_Inventario_MovimientosLoteCafe_ExistenciaFecha");
+        });
+
+        modelBuilder.Entity<PrecioVenta>(entity =>
+        {
+            entity.ToTable("PreciosVenta", schema: "Ventas");
+            entity.HasKey(x => x.PrecioVentaId);
+
+            entity.Property(x => x.PrecioVentaId)
+                .ValueGeneratedOnAdd();
+
+            entity.Property(x => x.Nombre)
+                .HasMaxLength(80)
+                .IsRequired();
+
+            entity.Property(x => x.PresentacionCafeId)
+                .IsRequired();
+
+            entity.HasOne(x => x.PresentacionCafe)
+                .WithMany()
+                .HasForeignKey(x => x.PresentacionCafeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.Property(x => x.Precio)
+                .HasColumnType("decimal(18,2)")
+                .IsRequired();
+
+            entity.Property(x => x.Estado)
+                .HasDefaultValue(EstadoCatalogoCafe.Activo)
+                .IsRequired();
+
+            entity.Property(x => x.CreadoEn)
+                .HasColumnType("datetime2(7)")
+                .HasDefaultValueSql("sysdatetime()")
+                .ValueGeneratedOnAdd()
+                .IsRequired();
+
+            entity.Property(x => x.ActualizadoEn)
+                .HasColumnType("datetime2(7)");
+
+            entity.Property(x => x.RowVersion)
+                .IsRowVersion();
+
+            entity.HasIndex(x => new { x.PresentacionCafeId, x.Nombre })
+                .IsUnique()
+                .HasDatabaseName("UQ_Ventas_PreciosVenta_PresentacionNombre");
+        });
+
+        modelBuilder.Entity<Cliente>(entity =>
+        {
+            entity.ToTable("Clientes", schema: "Ventas");
+            entity.HasKey(x => x.ClienteId);
+
+            entity.Property(x => x.ClienteId)
+                .ValueGeneratedOnAdd();
+
+            entity.Property(x => x.TipoIdentificacion)
+                .HasMaxLength(10)
+                .IsRequired();
+
+            entity.Property(x => x.NumeroIdentificacion)
+                .HasMaxLength(30)
+                .IsRequired();
+
+            entity.HasIndex(x => x.NumeroIdentificacion)
+                .IsUnique()
+                .HasDatabaseName("UQ_Ventas_Clientes_NumeroIdentificacion");
+
+            entity.Property(x => x.Nombre)
+                .HasMaxLength(150)
+                .IsRequired();
+
+            entity.Property(x => x.Telefono)
+                .HasMaxLength(30);
+
+            entity.Property(x => x.Email)
+                .HasMaxLength(100);
+
+            entity.Property(x => x.Direccion)
+                .HasMaxLength(200);
+
+            entity.Property(x => x.Observacion)
+                .HasMaxLength(250);
+
+            entity.Property(x => x.Estado)
+                .HasDefaultValue(EstadoCatalogoCafe.Activo)
+                .IsRequired();
+
+            entity.Property(x => x.CreadoEn)
+                .HasColumnType("datetime2(7)")
+                .HasDefaultValueSql("sysdatetime()")
+                .ValueGeneratedOnAdd()
+                .IsRequired();
+
+            entity.Property(x => x.ActualizadoEn)
+                .HasColumnType("datetime2(7)");
+
+            entity.Property(x => x.RowVersion)
+                .IsRowVersion();
+
+            entity.HasIndex(x => x.Nombre)
+                .HasDatabaseName("IX_Ventas_Clientes_Nombre");
+        });
+
+        modelBuilder.Entity<Venta>(entity =>
+        {
+            entity.ToTable("Ventas", schema: "Ventas");
+            entity.HasKey(x => x.VentaId);
+
+            entity.Property(x => x.VentaId)
+                .ValueGeneratedOnAdd();
+
+            entity.Property(x => x.NumeroVenta)
+                .IsRequired();
+
+            entity.HasIndex(x => x.NumeroVenta)
+                .IsUnique()
+                .HasDatabaseName("UQ_Ventas_Ventas_NumeroVenta");
+
+            entity.Property(x => x.FechaVenta)
+                .HasColumnType("datetime2(7)")
+                .IsRequired();
+
+            entity.Property(x => x.Estado)
+                .HasDefaultValue(EstadoVenta.Registrada)
+                .IsRequired();
+
+            entity.Property(x => x.Observacion)
+                .HasMaxLength(250);
+
+            entity.Property(x => x.Total)
+                .HasColumnType("decimal(18,2)")
+                .IsRequired();
+
+            entity.Property(x => x.CreadoEn)
+                .HasColumnType("datetime2(7)")
+                .HasDefaultValueSql("sysdatetime()")
+                .ValueGeneratedOnAdd()
+                .IsRequired();
+
+            entity.Property(x => x.ActualizadoEn)
+                .HasColumnType("datetime2(7)");
+
+            entity.Property(x => x.RowVersion)
+                .IsRowVersion();
+
+            entity.HasOne(x => x.Cliente)
+                .WithMany()
+                .HasForeignKey(x => x.ClienteId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(x => x.FechaVenta)
+                .HasDatabaseName("IX_Ventas_Ventas_FechaVenta");
+        });
+
+        modelBuilder.Entity<VentaDetalle>(entity =>
+        {
+            entity.ToTable("VentaDetalles", schema: "Ventas");
+            entity.HasKey(x => x.VentaDetalleId);
+
+            entity.Property(x => x.VentaDetalleId)
+                .ValueGeneratedOnAdd();
+
+            entity.HasOne(x => x.Venta)
+                .WithMany(x => x.Detalles)
+                .HasForeignKey(x => x.VentaId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(x => x.PresentacionCafe)
+                .WithMany()
+                .HasForeignKey(x => x.PresentacionCafeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.TipoCafe)
+                .WithMany()
+                .HasForeignKey(x => x.TipoCafeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.PrecioVenta)
+                .WithMany()
+                .HasForeignKey(x => x.PrecioVentaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.Property(x => x.CantidadPaquetes)
+                .IsRequired();
+
+            entity.Property(x => x.PrecioUnitario)
+                .HasColumnType("decimal(18,2)")
+                .IsRequired();
+
+            entity.Property(x => x.Subtotal)
+                .HasColumnType("decimal(18,2)")
+                .IsRequired();
+
+            entity.Property(x => x.CreadoEn)
+                .HasColumnType("datetime2(7)")
+                .HasDefaultValueSql("sysdatetime()")
+                .ValueGeneratedOnAdd()
+                .IsRequired();
         });
     }
 }

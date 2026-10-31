@@ -1,7 +1,7 @@
 export const HOME_ROUTE = '/dashboard';
 export const DASHBOARD_ROUTE = HOME_ROUTE;
 export const INVENTARIO_CAFE_ROUTE = '/dashboard/inventario';
-export const LOGIN_ROUTE = '/login';
+export const VENTAS_ROUTE = '/dashboard/ventas';export const LOGIN_ROUTE = '/login';
 export const REGISTER_ROUTE = '/register';
 export const FORBIDDEN_ROUTE = '/acceso-denegado';
 

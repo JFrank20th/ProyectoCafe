@@ -26,6 +26,9 @@ public static class Permissions
         public const string InventarioMovimientos = "Inventario.Movimientos";
         public const string InventarioPresentaciones = "Inventario.Presentaciones";
         public const string InventarioTiposCafe = "Inventario.TiposCafe";
+        public const string VentasVentas = "Ventas.Ventas";
+        public const string VentasPrecios = "Ventas.Precios";
+        public const string VentasClientes = "Ventas.Clientes";
 
         public static readonly string[] All = [
             AdministracionUsuarios,
@@ -36,6 +39,9 @@ public static class Permissions
             InventarioMovimientos,
             InventarioPresentaciones,
             InventarioTiposCafe,
+            VentasVentas,
+            VentasPrecios,
+            VentasClientes,
         ];
     }
 

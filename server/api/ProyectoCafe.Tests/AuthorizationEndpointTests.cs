@@ -101,6 +101,9 @@ public sealed class AuthorizationEndpointTests
                 Permissions.Modulos.InventarioMovimientos,
                 Permissions.Modulos.InventarioPresentaciones,
                 Permissions.Modulos.InventarioTiposCafe,
+                Permissions.Modulos.VentasClientes,
+                Permissions.Modulos.VentasPrecios,
+                Permissions.Modulos.VentasVentas,
             ],
             modules);
     }

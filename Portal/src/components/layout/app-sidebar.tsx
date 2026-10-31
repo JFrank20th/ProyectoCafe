@@ -41,6 +41,7 @@ import {
   IconCoffee,
   IconDashboard,
   IconPackage,
+  IconReceipt,
   IconShield,
   IconUsers,
 } from '@tabler/icons-react';
@@ -104,6 +105,8 @@ const navIconByKey: Record<string, ComponentType<{ size?: number; stroke?: numbe
   dashboard: IconDashboard,
   inventario: IconPackage,
   inventarioCafe: IconCoffee,
+  ventas: IconReceipt,
+  ventasCafe: IconReceipt,
   usuarios: IconUsers,
   roles: IconShield,
   seguridad: IconShield,

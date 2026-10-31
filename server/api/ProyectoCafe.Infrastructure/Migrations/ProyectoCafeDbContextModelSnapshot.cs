@@ -22,6 +22,76 @@ namespace ProyectoCafe.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("ProyectoCafe.Domain.Entities.Cliente", b =>
+                {
+                    b.Property<int>("ClienteId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ClienteId"));
+
+                    b.Property<DateTime?>("ActualizadoEn")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<DateTime>("CreadoEn")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(7)")
+                        .HasDefaultValueSql("sysdatetime()");
+
+                    b.Property<string>("Direccion")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("Estado")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("NumeroIdentificacion")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("Observacion")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Telefono")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("TipoIdentificacion")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.HasKey("ClienteId");
+
+                    b.HasIndex("Nombre")
+                        .HasDatabaseName("IX_Ventas_Clientes_Nombre");
+
+                    b.HasIndex("NumeroIdentificacion")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_Ventas_Clientes_NumeroIdentificacion");
+
+                    b.ToTable("Clientes", "Ventas");
+                });
+
             modelBuilder.Entity("ProyectoCafe.Domain.Entities.LoteCafeExistencia", b =>
                 {
                     b.Property<int>("LoteCafeExistenciaId")
@@ -199,6 +269,53 @@ namespace ProyectoCafe.Infrastructure.Migrations
 
                             t.HasCheckConstraint("CK_Inventario_MovimientosLoteCafe_PesoNetoKg", "[PesoNetoKg] > 0");
                         });
+                });
+
+            modelBuilder.Entity("ProyectoCafe.Domain.Entities.PrecioVenta", b =>
+                {
+                    b.Property<int>("PrecioVentaId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PrecioVentaId"));
+
+                    b.Property<DateTime?>("ActualizadoEn")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<DateTime>("CreadoEn")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(7)")
+                        .HasDefaultValueSql("sysdatetime()");
+
+                    b.Property<int>("Estado")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<decimal>("Precio")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("PresentacionCafeId")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("PrecioVentaId");
+
+                    b.HasIndex("PresentacionCafeId", "Nombre")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_Ventas_PreciosVenta_PresentacionNombre");
+
+                    b.ToTable("PreciosVenta", "Ventas");
                 });
 
             modelBuilder.Entity("ProyectoCafe.Domain.Entities.PresentacionCafe", b =>
@@ -432,6 +549,110 @@ namespace ProyectoCafe.Infrastructure.Migrations
                     b.ToTable("UsuariosRoles", "Seguridad");
                 });
 
+            modelBuilder.Entity("ProyectoCafe.Domain.Entities.Venta", b =>
+                {
+                    b.Property<int>("VentaId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("VentaId"));
+
+                    b.Property<DateTime?>("ActualizadoEn")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<int?>("ClienteId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreadoEn")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(7)")
+                        .HasDefaultValueSql("sysdatetime()");
+
+                    b.Property<int>("Estado")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
+                    b.Property<DateTime>("FechaVenta")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<int>("NumeroVenta")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Observacion")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<decimal>("Total")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("VentaId");
+
+                    b.HasIndex("ClienteId");
+
+                    b.HasIndex("FechaVenta")
+                        .HasDatabaseName("IX_Ventas_Ventas_FechaVenta");
+
+                    b.HasIndex("NumeroVenta")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_Ventas_Ventas_NumeroVenta");
+
+                    b.ToTable("Ventas", "Ventas");
+                });
+
+            modelBuilder.Entity("ProyectoCafe.Domain.Entities.VentaDetalle", b =>
+                {
+                    b.Property<int>("VentaDetalleId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("VentaDetalleId"));
+
+                    b.Property<int>("CantidadPaquetes")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreadoEn")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(7)")
+                        .HasDefaultValueSql("sysdatetime()");
+
+                    b.Property<decimal>("PrecioUnitario")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("PrecioVentaId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PresentacionCafeId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Subtotal")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("TipoCafeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("VentaId")
+                        .HasColumnType("int");
+
+                    b.HasKey("VentaDetalleId");
+
+                    b.HasIndex("PrecioVentaId");
+
+                    b.HasIndex("PresentacionCafeId");
+
+                    b.HasIndex("TipoCafeId");
+
+                    b.HasIndex("VentaId");
+
+                    b.ToTable("VentaDetalles", "Ventas");
+                });
+
             modelBuilder.Entity("ProyectoCafe.Domain.Entities.LoteCafeExistencia", b =>
                 {
                     b.HasOne("ProyectoCafe.Domain.Entities.LoteCafeTerminado", "LoteCafe")
@@ -475,6 +696,17 @@ namespace ProyectoCafe.Infrastructure.Migrations
                     b.Navigation("LoteCafeExistencia");
                 });
 
+            modelBuilder.Entity("ProyectoCafe.Domain.Entities.PrecioVenta", b =>
+                {
+                    b.HasOne("ProyectoCafe.Domain.Entities.PresentacionCafe", "PresentacionCafe")
+                        .WithMany()
+                        .HasForeignKey("PresentacionCafeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("PresentacionCafe");
+                });
+
             modelBuilder.Entity("ProyectoCafe.Domain.Entities.RolPermiso", b =>
                 {
                     b.HasOne("ProyectoCafe.Domain.Entities.Rol", "Rol")
@@ -505,6 +737,51 @@ namespace ProyectoCafe.Infrastructure.Migrations
                     b.Navigation("Usuario");
                 });
 
+            modelBuilder.Entity("ProyectoCafe.Domain.Entities.Venta", b =>
+                {
+                    b.HasOne("ProyectoCafe.Domain.Entities.Cliente", "Cliente")
+                        .WithMany()
+                        .HasForeignKey("ClienteId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Cliente");
+                });
+
+            modelBuilder.Entity("ProyectoCafe.Domain.Entities.VentaDetalle", b =>
+                {
+                    b.HasOne("ProyectoCafe.Domain.Entities.PrecioVenta", "PrecioVenta")
+                        .WithMany()
+                        .HasForeignKey("PrecioVentaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ProyectoCafe.Domain.Entities.PresentacionCafe", "PresentacionCafe")
+                        .WithMany()
+                        .HasForeignKey("PresentacionCafeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ProyectoCafe.Domain.Entities.TipoCafe", "TipoCafe")
+                        .WithMany()
+                        .HasForeignKey("TipoCafeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ProyectoCafe.Domain.Entities.Venta", "Venta")
+                        .WithMany("Detalles")
+                        .HasForeignKey("VentaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PrecioVenta");
+
+                    b.Navigation("PresentacionCafe");
+
+                    b.Navigation("TipoCafe");
+
+                    b.Navigation("Venta");
+                });
+
             modelBuilder.Entity("ProyectoCafe.Domain.Entities.LoteCafeExistencia", b =>
                 {
                     b.Navigation("Movimientos");
@@ -525,6 +802,11 @@ namespace ProyectoCafe.Infrastructure.Migrations
             modelBuilder.Entity("ProyectoCafe.Domain.Entities.Usuario", b =>
                 {
                     b.Navigation("UsuariosRoles");
+                });
+
+            modelBuilder.Entity("ProyectoCafe.Domain.Entities.Venta", b =>
+                {
+                    b.Navigation("Detalles");
                 });
 #pragma warning restore 612, 618
         }

@@ -16,6 +16,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<AdministrationService>();
         services.AddScoped<LoteCafeService>();
         services.AddScoped<CatalogoCafeService>();
+        services.AddScoped<PrecioVentaService>();
+        services.AddScoped<ClienteService>();
+        services.AddScoped<VentaService>();
 
         services.TryAddSingleton(TimeProvider.System);
 

@@ -1,5 +1,5 @@
 import { buildPermission, createPermissionSet, hasPermission } from '@/lib/auth/permissions';
-import { INVENTARIO_CAFE_ROUTE, isPublicRoute, normalizePathname } from '@/lib/routes';
+import { INVENTARIO_CAFE_ROUTE, isPublicRoute, normalizePathname, VENTAS_ROUTE } from '@/lib/routes';
 
 export type RouteAccess =
   | { access: 'public' }
@@ -32,6 +32,15 @@ export const PERMISSION_ROUTES: readonly PermissionRoute[] = [
       buildPermission('Inventario.Lotes', 'Ver'),
       buildPermission('Inventario.Presentaciones', 'Ver'),
       buildPermission('Inventario.TiposCafe', 'Ver'),
+    ],
+  },
+  {
+    path: VENTAS_ROUTE,
+    permission: buildPermission('Ventas.Ventas', 'Ver'),
+    permissions: [
+      buildPermission('Ventas.Ventas', 'Ver'),
+      buildPermission('Ventas.Precios', 'Ver'),
+      buildPermission('Ventas.Clientes', 'Ver'),
     ],
   },
 ];
