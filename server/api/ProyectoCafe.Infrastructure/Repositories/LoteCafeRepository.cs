@@ -40,6 +40,9 @@ public sealed class LoteCafeRepository(ProyectoCafeDbContext db) : ILoteCafeRepo
                 Observacion = l.Observacion,
                 CreadoEn = l.CreadoEn,
                 ActualizadoEn = l.ActualizadoEn,
+                VariedadCafeId = l.VariedadCafeId,
+                TipoTuesteCafeId = l.TipoTuesteCafeId,
+                TipoProcesoCafeId = l.TipoProcesoCafeId,
                 TotalPaquetes = l.Existencias.Sum(e => (int?)e.CantidadPaquetes) ?? 0,
                 TotalPesoNetoKg = l.Existencias.Sum(
                     e => (decimal?)((decimal)e.CantidadPaquetes * e.PesoUnitarioGramos / 1000m)) ?? 0m,
@@ -123,6 +126,22 @@ public sealed class LoteCafeRepository(ProyectoCafeDbContext db) : ILoteCafeRepo
                 TipoCafeCodigo = m.LoteCafeExistencia!.TipoCafe!.Codigo,
                 TipoCafeNombre = m.LoteCafeExistencia!.TipoCafe!.Nombre,
             })
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<MovimientoLoteCafe>> ListMovimientosByReferenciaAsync(
+        string referencia,
+        TipoMovimientoLoteCafe? tipoMovimiento = null,
+        CancellationToken ct = default) =>
+        await _db.MovimientosLoteCafe
+            .Include(m => m.LoteCafeExistencia!)
+                .ThenInclude(e => e.LoteCafe!)
+            .Include(m => m.LoteCafeExistencia!)
+                .ThenInclude(e => e.PresentacionCafe!)
+            .Include(m => m.LoteCafeExistencia!)
+                .ThenInclude(e => e.TipoCafe!)
+            .Where(m => m.Referencia == referencia &&
+                        (!tipoMovimiento.HasValue || m.TipoMovimiento == tipoMovimiento.Value))
+            .OrderBy(m => m.MovimientoLoteCafeId)
             .ToListAsync(ct);
 
     public async Task<int> GetTotalPaquetesAsync(int loteCafeId, CancellationToken ct) =>

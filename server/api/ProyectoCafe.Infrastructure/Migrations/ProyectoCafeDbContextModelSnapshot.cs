@@ -200,11 +200,29 @@ namespace ProyectoCafe.Infrastructure.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
+                    b.Property<int?>("TipoProcesoCafeId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TipoTuesteCafeId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("VariedadCafeId")
+                        .HasColumnType("int");
+
                     b.HasKey("LoteCafeId");
 
                     b.HasIndex("CodigoLote")
                         .IsUnique()
                         .HasDatabaseName("UQ_Inventario_LotesCafeTerminado_CodigoLote");
+
+                    b.HasIndex("TipoProcesoCafeId")
+                        .HasDatabaseName("IX_Inventario_LotesCafeTerminado_TipoProcesoCafeId");
+
+                    b.HasIndex("TipoTuesteCafeId")
+                        .HasDatabaseName("IX_Inventario_LotesCafeTerminado_TipoTuesteCafeId");
+
+                    b.HasIndex("VariedadCafeId")
+                        .HasDatabaseName("IX_Inventario_LotesCafeTerminado_VariedadCafeId");
 
                     b.HasIndex("Estado", "FechaProduccion")
                         .HasDatabaseName("IX_Inventario_LotesCafeTerminado_Estado_FechaProduccion");
@@ -268,6 +286,51 @@ namespace ProyectoCafe.Infrastructure.Migrations
                             t.HasCheckConstraint("CK_Inventario_MovimientosLoteCafe_CantidadPaquetes", "[CantidadPaquetes] > 0");
 
                             t.HasCheckConstraint("CK_Inventario_MovimientosLoteCafe_PesoNetoKg", "[PesoNetoKg] > 0");
+                        });
+                });
+
+            modelBuilder.Entity("ProyectoCafe.Domain.Entities.PagoVenta", b =>
+                {
+                    b.Property<int>("PagoVentaId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PagoVentaId"));
+
+                    b.Property<DateTime>("CreadoEn")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(7)")
+                        .HasDefaultValueSql("sysdatetime()");
+
+                    b.Property<DateTime>("FechaPago")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<string>("MetodoPago")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal>("Monto")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Referencia")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int?>("UsuarioId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("VentaId")
+                        .HasColumnType("int");
+
+                    b.HasKey("PagoVentaId");
+
+                    b.HasIndex("VentaId")
+                        .HasDatabaseName("IX_Ventas_PagosVenta_VentaId");
+
+                    b.ToTable("PagosVenta", "Ventas", t =>
+                        {
+                            t.HasCheckConstraint("CK_Ventas_PagosVenta_Monto", "[Monto] > 0");
                         });
                 });
 
@@ -473,6 +536,106 @@ namespace ProyectoCafe.Infrastructure.Migrations
                     b.ToTable("TiposCafe", "Inventario");
                 });
 
+            modelBuilder.Entity("ProyectoCafe.Domain.Entities.TipoProcesoCafe", b =>
+                {
+                    b.Property<int>("TipoProcesoCafeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TipoProcesoCafeId"));
+
+                    b.Property<DateTime?>("ActualizadoEn")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("CreadoEn")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(7)")
+                        .HasDefaultValueSql("sysdatetime()");
+
+                    b.Property<int>("Estado")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("TipoProcesoCafeId");
+
+                    b.HasIndex("Codigo")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_Inventario_TiposProcesoCafe_Codigo");
+
+                    b.HasIndex("Nombre")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_Inventario_TiposProcesoCafe_Nombre");
+
+                    b.ToTable("TiposProcesoCafe", "Inventario");
+                });
+
+            modelBuilder.Entity("ProyectoCafe.Domain.Entities.TipoTuesteCafe", b =>
+                {
+                    b.Property<int>("TipoTuesteCafeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TipoTuesteCafeId"));
+
+                    b.Property<DateTime?>("ActualizadoEn")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("CreadoEn")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(7)")
+                        .HasDefaultValueSql("sysdatetime()");
+
+                    b.Property<int>("Estado")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("TipoTuesteCafeId");
+
+                    b.HasIndex("Codigo")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_Inventario_TiposTuesteCafe_Codigo");
+
+                    b.HasIndex("Nombre")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_Inventario_TiposTuesteCafe_Nombre");
+
+                    b.ToTable("TiposTuesteCafe", "Inventario");
+                });
+
             modelBuilder.Entity("ProyectoCafe.Domain.Entities.Usuario", b =>
                 {
                     b.Property<int>("UsuarioId")
@@ -549,6 +712,56 @@ namespace ProyectoCafe.Infrastructure.Migrations
                     b.ToTable("UsuariosRoles", "Seguridad");
                 });
 
+            modelBuilder.Entity("ProyectoCafe.Domain.Entities.VariedadCafe", b =>
+                {
+                    b.Property<int>("VariedadCafeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("VariedadCafeId"));
+
+                    b.Property<DateTime?>("ActualizadoEn")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("CreadoEn")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(7)")
+                        .HasDefaultValueSql("sysdatetime()");
+
+                    b.Property<int>("Estado")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("VariedadCafeId");
+
+                    b.HasIndex("Codigo")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_Inventario_VariedadesCafe_Codigo");
+
+                    b.HasIndex("Nombre")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_Inventario_VariedadesCafe_Nombre");
+
+                    b.ToTable("VariedadesCafe", "Inventario");
+                });
+
             modelBuilder.Entity("ProyectoCafe.Domain.Entities.Venta", b =>
                 {
                     b.Property<int>("VentaId")
@@ -559,6 +772,18 @@ namespace ProyectoCafe.Infrastructure.Migrations
 
                     b.Property<DateTime?>("ActualizadoEn")
                         .HasColumnType("datetime2(7)");
+
+                    b.Property<DateTime?>("AnuladoEn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("AnuladoPorUsuarioId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CanceladoEn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CanceladoPorUsuarioId")
+                        .HasColumnType("int");
 
                     b.Property<int?>("ClienteId")
                         .HasColumnType("int");
@@ -573,8 +798,21 @@ namespace ProyectoCafe.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(1);
 
+                    b.Property<int>("EstadoEntrega")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<DateTime>("FechaVenta")
                         .HasColumnType("datetime2(7)");
+
+                    b.Property<string>("MotivoAnulacion")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<string>("MotivoCancelacion")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
 
                     b.Property<int>("NumeroVenta")
                         .HasColumnType("int");
@@ -593,6 +831,10 @@ namespace ProyectoCafe.Infrastructure.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("VentaId");
+
+                    b.HasIndex("AnuladoPorUsuarioId");
+
+                    b.HasIndex("CanceladoPorUsuarioId");
 
                     b.HasIndex("ClienteId");
 
@@ -680,6 +922,24 @@ namespace ProyectoCafe.Infrastructure.Migrations
                     b.Navigation("TipoCafe");
                 });
 
+            modelBuilder.Entity("ProyectoCafe.Domain.Entities.LoteCafeTerminado", b =>
+                {
+                    b.HasOne("ProyectoCafe.Domain.Entities.TipoProcesoCafe", null)
+                        .WithMany()
+                        .HasForeignKey("TipoProcesoCafeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ProyectoCafe.Domain.Entities.TipoTuesteCafe", null)
+                        .WithMany()
+                        .HasForeignKey("TipoTuesteCafeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ProyectoCafe.Domain.Entities.VariedadCafe", null)
+                        .WithMany()
+                        .HasForeignKey("VariedadCafeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
             modelBuilder.Entity("ProyectoCafe.Domain.Entities.MovimientoLoteCafe", b =>
                 {
                     b.HasOne("ProyectoCafe.Domain.Entities.LoteCafeExistencia", "LoteCafeExistencia")
@@ -694,6 +954,17 @@ namespace ProyectoCafe.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("LoteCafeExistencia");
+                });
+
+            modelBuilder.Entity("ProyectoCafe.Domain.Entities.PagoVenta", b =>
+                {
+                    b.HasOne("ProyectoCafe.Domain.Entities.Venta", "Venta")
+                        .WithMany("Pagos")
+                        .HasForeignKey("VentaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Venta");
                 });
 
             modelBuilder.Entity("ProyectoCafe.Domain.Entities.PrecioVenta", b =>
@@ -739,6 +1010,16 @@ namespace ProyectoCafe.Infrastructure.Migrations
 
             modelBuilder.Entity("ProyectoCafe.Domain.Entities.Venta", b =>
                 {
+                    b.HasOne("ProyectoCafe.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("AnuladoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ProyectoCafe.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("CanceladoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("ProyectoCafe.Domain.Entities.Cliente", "Cliente")
                         .WithMany()
                         .HasForeignKey("ClienteId")
@@ -807,6 +1088,8 @@ namespace ProyectoCafe.Infrastructure.Migrations
             modelBuilder.Entity("ProyectoCafe.Domain.Entities.Venta", b =>
                 {
                     b.Navigation("Detalles");
+
+                    b.Navigation("Pagos");
                 });
 #pragma warning restore 612, 618
         }

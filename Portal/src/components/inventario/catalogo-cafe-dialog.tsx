@@ -26,6 +26,9 @@ import {
   catalogoCafePath,
   validatePresentacionCafeInput,
   validateTipoCafeInput,
+  validateVariedadCafeInput,
+  validateTipoTuesteCafeInput,
+  validateTipoProcesoCafeInput,
   type CatalogoCafeFieldError,
   type CatalogoCafeFormValues,
   type CatalogoCafeKind,
@@ -68,6 +71,9 @@ export function CatalogoCafeDialog({
   const [dialogError, setDialogError] = useState<string | null>(null);
 
   const isPresentacion = kind === 'presentacion';
+  const isVariedad = kind === 'variedad';
+  const isTipoTueste = kind === 'tipoTueste';
+  const isTipoProceso = kind === 'tipoProceso';
   const editing = item !== null;
   const values: CatalogoCafeFormValues = {
     codigo,
@@ -78,7 +84,13 @@ export function CatalogoCafeDialog({
   const errors = submitted
     ? isPresentacion
       ? validatePresentacionCafeInput(values)
-      : validateTipoCafeInput(values)
+      : isVariedad
+        ? validateVariedadCafeInput(values)
+        : isTipoTueste
+          ? validateTipoTuesteCafeInput(values)
+          : isTipoProceso
+            ? validateTipoProcesoCafeInput(values)
+            : validateTipoCafeInput(values)
     : {};
 
   useEffect(() => {
@@ -132,7 +144,13 @@ export function CatalogoCafeDialog({
 
     const currentErrors = isPresentacion
       ? validatePresentacionCafeInput(values)
-      : validateTipoCafeInput(values);
+      : isVariedad
+        ? validateVariedadCafeInput(values)
+        : isTipoTueste
+          ? validateTipoTuesteCafeInput(values)
+          : isTipoProceso
+            ? validateTipoProcesoCafeInput(values)
+            : validateTipoCafeInput(values);
 
     if (Object.keys(currentErrors).length > 0) {
       setDialogError(ti('validationErrorSummary'));
@@ -143,7 +161,15 @@ export function CatalogoCafeDialog({
 
     const path = catalogoCafePath(kind);
     const fallback = ti(
-      isPresentacion ? 'errorSavingPresentacion' : 'errorSavingTipoCafe',
+      isPresentacion
+        ? 'errorSavingPresentacion'
+        : isVariedad
+          ? 'errorSavingVariedad'
+          : isTipoTueste
+            ? 'errorSavingTipoTueste'
+            : isTipoProceso
+              ? 'errorSavingTipoProceso'
+              : 'errorSavingTipoCafe',
     );
     const errorMessages = {
       conflict: ti('conflictError'),
@@ -182,11 +208,27 @@ export function CatalogoCafeDialog({
           });
           onSaved({ id: item.id, nombre: payload.nombre, created: false });
         } else {
-          const created = await apiFetch<{ tipoCafeId: number }>(path, {
+          const created = await apiFetch<{
+            tipoCafeId?: number;
+            variedadCafeId?: number;
+            tipoTuesteCafeId?: number;
+            tipoProcesoCafeId?: number;
+          }>(path, {
             method: 'POST',
             body: JSON.stringify(payload),
           });
-          onSaved({ id: created.tipoCafeId, nombre: payload.nombre, created: true });
+          onSaved({
+            id:
+              (isVariedad
+                ? created.variedadCafeId
+                : isTipoTueste
+                  ? created.tipoTuesteCafeId
+                  : isTipoProceso
+                    ? created.tipoProcesoCafeId
+                    : created.tipoCafeId) ?? 0,
+            nombre: payload.nombre,
+            created: true,
+          });
         }
       }
 
@@ -202,9 +244,21 @@ export function CatalogoCafeDialog({
     ? editing
       ? ti('editPresentacionTitle')
       : ti('newPresentacionTitle')
-    : editing
-      ? ti('editTipoCafeTitle')
-      : ti('newTipoCafeTitle');
+    : isVariedad
+      ? editing
+        ? ti('editVariedadTitle')
+        : ti('newVariedadTitle')
+      : isTipoTueste
+        ? editing
+          ? ti('editTipoTuesteTitle')
+          : ti('newTipoTuesteTitle')
+        : isTipoProceso
+          ? editing
+            ? ti('editTipoProcesoTitle')
+            : ti('newTipoProcesoTitle')
+          : editing
+            ? ti('editTipoCafeTitle')
+            : ti('newTipoCafeTitle');
 
   return (
     <Dialog open={open} onClose={closeDialog} fullWidth maxWidth="sm">
@@ -281,7 +335,13 @@ export function CatalogoCafeDialog({
             <Alert severity="info">
               {isPresentacion
                 ? ti('presentacionEditRestrictions')
-                : ti('tipoCafeEditRestrictions')}
+                : isVariedad
+                  ? ti('variedadEditRestrictions')
+                  : isTipoTueste
+                    ? ti('tipoTuesteEditRestrictions')
+                    : isTipoProceso
+                      ? ti('tipoProcesoEditRestrictions')
+                      : ti('tipoCafeEditRestrictions')}
             </Alert>
           ) : null}
         </Stack>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { IconSearch } from '@tabler/icons-react';
 
@@ -26,10 +26,16 @@ import {
   type MovimientoCafe,
   type PresentacionCafe,
   type TipoCafe,
+  type VariedadCafe,
+  type TipoTuesteCafe,
+  type TipoProcesoCafe,
 } from '@/lib/inventario/cafe';
 import {
   toPresentacionCafeRow,
   toTipoCafeRow,
+  toVariedadCafeRow,
+  toTipoTuesteCafeRow,
+  toTipoProcesoCafeRow,
   type CatalogoCafeKind,
   type CatalogoCafeRow,
 } from '@/lib/inventario/catalogos';
@@ -73,7 +79,7 @@ import Typography from '@mui/material/Typography';
 
 const ESTADOS_LOTE: readonly EstadoLoteCafe[] = [1, 2, 3];
 
-type InventoryTab = 'lotes' | 'presentaciones' | 'tiposCafe';
+type InventoryTab = 'lotes' | 'presentaciones' | 'tiposCafe' | 'variedades' | 'tiposTueste' | 'tiposProceso';
 
 export default function InventarioCafePage() {
   const nav = useTranslations('navigation');
@@ -97,6 +103,18 @@ export default function InventarioCafePage() {
   const canCreateTiposCafe = has('Inventario.TiposCafe', 'Crear');
   const canEditTiposCafe = has('Inventario.TiposCafe', 'Editar');
   const canDeleteTiposCafe = has('Inventario.TiposCafe', 'Eliminar');
+  const canViewVariedades = has('Inventario.Variedades', 'Ver');
+  const canCreateVariedades = has('Inventario.Variedades', 'Crear');
+  const canEditVariedades = has('Inventario.Variedades', 'Editar');
+  const canDeleteVariedades = has('Inventario.Variedades', 'Eliminar');
+  const canViewTiposTueste = has('Inventario.TiposTueste', 'Ver');
+  const canCreateTiposTueste = has('Inventario.TiposTueste', 'Crear');
+  const canEditTiposTueste = has('Inventario.TiposTueste', 'Editar');
+  const canDeleteTiposTueste = has('Inventario.TiposTueste', 'Eliminar');
+  const canViewTiposProceso = has('Inventario.TiposProceso', 'Ver');
+  const canCreateTiposProceso = has('Inventario.TiposProceso', 'Crear');
+  const canEditTiposProceso = has('Inventario.TiposProceso', 'Editar');
+  const canDeleteTiposProceso = has('Inventario.TiposProceso', 'Eliminar');
   const canLoadCatalogos = canViewPresentaciones && canViewTiposCafe;
   const canAccessInventario =
     canViewLotes || canViewPresentaciones || canViewTiposCafe;
@@ -110,6 +128,8 @@ export default function InventarioCafePage() {
 
   const [query, setQuery] = useState('');
   const [estadoFiltro, setEstadoFiltro] = useState<EstadoLoteFiltro>('all');
+  const [fechaDesde, setFechaDesde] = useState('');
+  const [fechaHasta, setFechaHasta] = useState('');
   const [selectedLoteId, setSelectedLoteId] = useState<number | null>(null);
   const [preferredLoteId, setPreferredLoteId] = useState<number | null>(null);
 
@@ -123,10 +143,28 @@ export default function InventarioCafePage() {
   const [tiposCafeLoading, setTiposCafeLoading] = useState(false);
   const [tiposCafeError, setTiposCafeError] = useState<string | null>(null);
 
+  const [variedades, setVariedades] = useState<VariedadCafe[]>([]);
+  const [variedadesLoading, setVariedadesLoading] = useState(false);
+  const [variedadesError, setVariedadesError] = useState<string | null>(null);
+
+  const [tiposTueste, setTiposTueste] = useState<TipoTuesteCafe[]>([]);
+  const [tiposTuesteLoading, setTiposTuesteLoading] = useState(false);
+  const [tiposTuesteError, setTiposTuesteError] = useState<string | null>(null);
+
+  const [tiposProceso, setTiposProceso] = useState<TipoProcesoCafe[]>([]);
+  const [tiposProcesoLoading, setTiposProcesoLoading] = useState(false);
+  const [tiposProcesoError, setTiposProcesoError] = useState<string | null>(null);
+
   const [presentacionDialogOpen, setPresentacionDialogOpen] = useState(false);
   const [editingPresentacion, setEditingPresentacion] = useState<CatalogoCafeRow | null>(null);
   const [tipoCafeDialogOpen, setTipoCafeDialogOpen] = useState(false);
   const [editingTipoCafe, setEditingTipoCafe] = useState<CatalogoCafeRow | null>(null);
+  const [variedadDialogOpen, setVariedadDialogOpen] = useState(false);
+  const [editingVariedad, setEditingVariedad] = useState<CatalogoCafeRow | null>(null);
+  const [tipoTuesteDialogOpen, setTipoTuesteDialogOpen] = useState(false);
+  const [editingTipoTueste, setEditingTipoTueste] = useState<CatalogoCafeRow | null>(null);
+  const [tipoProcesoDialogOpen, setTipoProcesoDialogOpen] = useState(false);
+  const [editingTipoProceso, setEditingTipoProceso] = useState<CatalogoCafeRow | null>(null);
   const [deleteCatalogOpen, setDeleteCatalogOpen] = useState(false);
   const [deleteCatalogKind, setDeleteCatalogKind] =
     useState<CatalogoCafeKind>('presentacion');
@@ -147,8 +185,11 @@ export default function InventarioCafePage() {
     if (canViewLotes) tabs.push('lotes');
     if (canViewPresentaciones) tabs.push('presentaciones');
     if (canViewTiposCafe) tabs.push('tiposCafe');
+    if (canViewVariedades) tabs.push('variedades');
+    if (canViewTiposTueste) tabs.push('tiposTueste');
+    if (canViewTiposProceso) tabs.push('tiposProceso');
     return tabs;
-  }, [canViewLotes, canViewPresentaciones, canViewTiposCafe]);
+  }, [canViewLotes, canViewPresentaciones, canViewTiposCafe, canViewVariedades, canViewTiposTueste, canViewTiposProceso]);
 
   const effectiveTab =
     activeTab && availableTabs.includes(activeTab)
@@ -160,6 +201,9 @@ export default function InventarioCafePage() {
     [presentaciones],
   );
   const tipoCafeRows = useMemo(() => tiposCafe.map(toTipoCafeRow), [tiposCafe]);
+  const variedadRows = useMemo(() => variedades.map(toVariedadCafeRow), [variedades]);
+  const tipoTuesteRows = useMemo(() => tiposTueste.map(toTipoTuesteCafeRow), [tiposTueste]);
+  const tipoProcesoRows = useMemo(() => tiposProceso.map(toTipoProcesoCafeRow), [tiposProceso]);
 
   const catalogsLoading = presentacionesLoading || tiposCafeLoading;
   const catalogsError = presentacionesError ?? tiposCafeError;
@@ -171,8 +215,8 @@ export default function InventarioCafePage() {
         : tiposCafeLoading;
 
   const filteredLotes = useMemo(
-    () => filterLotes(items, query, estadoFiltro),
-    [items, query, estadoFiltro],
+    () => filterLotes(items, query, estadoFiltro, fechaDesde || null, fechaHasta || null),
+    [items, query, estadoFiltro, fechaDesde, fechaHasta],
   );
 
   const selectedLote = useMemo(
@@ -273,6 +317,93 @@ export default function InventarioCafePage() {
     }
   }
 
+  async function loadVariedades(): Promise<boolean> {
+    if (!canViewVariedades) {
+      setVariedades([]);
+      setVariedadesError(null);
+      setVariedadesLoading(false);
+      return false;
+    }
+
+    setVariedadesLoading(true);
+    setVariedadesError(null);
+
+    try {
+      const list = await apiFetch<VariedadCafe[]>('/api/v1/inventario/variedades');
+      setVariedades(list);
+      return true;
+    } catch (error) {
+      setVariedadesError(
+        resolveInventoryError(error, ti('errorLoadingVariedades'), {
+          conflict: ti('conflictError'),
+          forbidden: ti('forbiddenError'),
+          notFound: ti('catalogNotFoundError'),
+        }),
+      );
+      return false;
+    } finally {
+      setVariedadesLoading(false);
+    }
+  }
+
+  async function loadTiposTueste(): Promise<boolean> {
+    if (!canViewTiposTueste) {
+      setTiposTueste([]);
+      setTiposTuesteError(null);
+      setTiposTuesteLoading(false);
+      return false;
+    }
+
+    setTiposTuesteLoading(true);
+    setTiposTuesteError(null);
+
+    try {
+      const list = await apiFetch<TipoTuesteCafe[]>('/api/v1/inventario/tipos-tueste');
+      setTiposTueste(list);
+      return true;
+    } catch (error) {
+      setTiposTuesteError(
+        resolveInventoryError(error, ti('errorLoadingTiposTueste'), {
+          conflict: ti('conflictError'),
+          forbidden: ti('forbiddenError'),
+          notFound: ti('catalogNotFoundError'),
+        }),
+      );
+      return false;
+    } finally {
+      setTiposTuesteLoading(false);
+    }
+  }
+
+  async function loadTiposProceso(): Promise<boolean> {
+    if (!canViewTiposProceso) {
+      setTiposProceso([]);
+      setTiposProcesoError(null);
+      setTiposProcesoLoading(false);
+      return false;
+    }
+
+    setTiposProcesoLoading(true);
+    setTiposProcesoError(null);
+
+    try {
+      const list = await apiFetch<TipoProcesoCafe[]>('/api/v1/inventario/tipos-proceso');
+      setTiposProceso(list);
+      return true;
+    } catch (error) {
+      setTiposProcesoError(
+        resolveInventoryError(error, ti('errorLoadingTiposProceso'), {
+          conflict: ti('conflictError'),
+          forbidden: ti('forbiddenError'),
+          notFound: ti('catalogNotFoundError'),
+        }),
+      );
+      return false;
+    } finally {
+      setTiposProcesoLoading(false);
+    }
+  }
+
   async function loadCatalogos(): Promise<boolean> {
     if (!canLoadCatalogos) {
       setPresentacionesLoading(false);
@@ -302,6 +433,21 @@ export default function InventarioCafePage() {
     void loadTiposCafe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canViewTiposCafe]);
+
+  useEffect(() => {
+    void loadVariedades();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canViewVariedades]);
+
+  useEffect(() => {
+    void loadTiposTueste();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canViewTiposTueste]);
+
+  useEffect(() => {
+    void loadTiposProceso();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canViewTiposProceso]);
 
   useEffect(() => {
     if (preferredLoteId) {
@@ -434,8 +580,29 @@ export default function InventarioCafePage() {
       return;
     }
 
-    const ok = await loadTiposCafe();
-    if (ok) setSuccess(ti('refreshSuccess'));
+    if (effectiveTab === 'tiposCafe') {
+      const ok = await loadTiposCafe();
+      if (ok) setSuccess(ti('refreshSuccess'));
+      return;
+    }
+
+    if (effectiveTab === 'variedades') {
+      const ok = await loadVariedades();
+      if (ok) setSuccess(ti('refreshSuccess'));
+      return;
+    }
+
+    if (effectiveTab === 'tiposTueste') {
+      const ok = await loadTiposTueste();
+      if (ok) setSuccess(ti('refreshSuccess'));
+      return;
+    }
+
+    if (effectiveTab === 'tiposProceso') {
+      const ok = await loadTiposProceso();
+      if (ok) setSuccess(ti('refreshSuccess'));
+      return;
+    }
   }
 
   function openCreateDialog() {
@@ -518,9 +685,105 @@ export default function InventarioCafePage() {
     void loadTiposCafe();
   }
 
+  function openVariedadCreate() {
+    if (!canCreateVariedades) return;
+
+    setSuccess(null);
+    setEditingVariedad(null);
+    setVariedadDialogOpen(true);
+  }
+
+  function openVariedadEdit(item: CatalogoCafeRow) {
+    if (!canEditVariedades) return;
+
+    setSuccess(null);
+    setEditingVariedad(item);
+    setVariedadDialogOpen(true);
+  }
+
+  function closeVariedadDialog() {
+    setVariedadDialogOpen(false);
+    setEditingVariedad(null);
+  }
+
+  function onVariedadSaved(result: CatalogoCafeSaved) {
+    setSuccess(
+      ti(result.created ? 'variedadCreated' : 'variedadUpdated', {
+        name: result.nombre,
+      }),
+    );
+    setRefreshToken((value) => value + 1);
+    void loadVariedades();
+  }
+
+  function openTipoTuesteCreate() {
+    if (!canCreateTiposTueste) return;
+
+    setSuccess(null);
+    setEditingTipoTueste(null);
+    setTipoTuesteDialogOpen(true);
+  }
+
+  function openTipoTuesteEdit(item: CatalogoCafeRow) {
+    if (!canEditTiposTueste) return;
+
+    setSuccess(null);
+    setEditingTipoTueste(item);
+    setTipoTuesteDialogOpen(true);
+  }
+
+  function closeTipoTuesteDialog() {
+    setTipoTuesteDialogOpen(false);
+    setEditingTipoTueste(null);
+  }
+
+  function onTipoTuesteSaved(result: CatalogoCafeSaved) {
+    setSuccess(
+      ti(result.created ? 'tipoTuesteCreated' : 'tipoTuesteUpdated', {
+        name: result.nombre,
+      }),
+    );
+    setRefreshToken((value) => value + 1);
+    void loadTiposTueste();
+  }
+
+  function openTipoProcesoCreate() {
+    if (!canCreateTiposProceso) return;
+
+    setSuccess(null);
+    setEditingTipoProceso(null);
+    setTipoProcesoDialogOpen(true);
+  }
+
+  function openTipoProcesoEdit(item: CatalogoCafeRow) {
+    if (!canEditTiposProceso) return;
+
+    setSuccess(null);
+    setEditingTipoProceso(item);
+    setTipoProcesoDialogOpen(true);
+  }
+
+  function closeTipoProcesoDialog() {
+    setTipoProcesoDialogOpen(false);
+    setEditingTipoProceso(null);
+  }
+
+  function onTipoProcesoSaved(result: CatalogoCafeSaved) {
+    setSuccess(
+      ti(result.created ? 'tipoProcesoCreated' : 'tipoProcesoUpdated', {
+        name: result.nombre,
+      }),
+    );
+    setRefreshToken((value) => value + 1);
+    void loadTiposProceso();
+  }
+
   function openCatalogDelete(kind: CatalogoCafeKind, item: CatalogoCafeRow) {
     if (kind === 'presentacion' && !canDeletePresentaciones) return;
     if (kind === 'tipoCafe' && !canDeleteTiposCafe) return;
+    if (kind === 'variedad' && !canDeleteVariedades) return;
+    if (kind === 'tipoTueste' && !canDeleteTiposTueste) return;
+    if (kind === 'tipoProceso' && !canDeleteTiposProceso) return;
 
     setSuccess(null);
     setDeleteCatalogKind(kind);
@@ -545,8 +808,14 @@ export default function InventarioCafePage() {
 
     if (deleteCatalogKind === 'presentacion') {
       void loadPresentaciones();
-    } else {
+    } else if (deleteCatalogKind === 'tipoCafe') {
       void loadTiposCafe();
+    } else if (deleteCatalogKind === 'variedad') {
+      void loadVariedades();
+    } else if (deleteCatalogKind === 'tipoTueste') {
+      void loadTiposTueste();
+    } else {
+      void loadTiposProceso();
     }
 
     setRefreshToken((value) => value + 1);
@@ -589,6 +858,8 @@ export default function InventarioCafePage() {
   function clearFilters() {
     setQuery('');
     setEstadoFiltro('all');
+    setFechaDesde('');
+    setFechaHasta('');
   }
 
   if (!canAccessInventario) {
@@ -611,7 +882,6 @@ export default function InventarioCafePage() {
         spacing={2}
       >
         <Box>
-          <Typography variant="h4">{nav('inventarioCafe')}</Typography>
           <Typography variant="body2" color="text.secondary">
             {ti('subtitle')}
           </Typography>
@@ -651,6 +921,15 @@ export default function InventarioCafePage() {
             ) : null}
             {canViewTiposCafe ? (
               <Tab value="tiposCafe" label={ti('tabTiposCafe')} />
+            ) : null}
+            {canViewVariedades ? (
+              <Tab value="variedades" label={ti('tabVariedades')} />
+            ) : null}
+            {canViewTiposTueste ? (
+              <Tab value="tiposTueste" label={ti('tabTiposTueste')} />
+            ) : null}
+            {canViewTiposProceso ? (
+              <Tab value="tiposProceso" label={ti('tabTiposProceso')} />
             ) : null}
           </Tabs>
         </Box>
@@ -753,10 +1032,33 @@ export default function InventarioCafePage() {
               </Select>
             </FormControl>
 
+            <TextField
+              size="small"
+              type="date"
+              label={ti('productionDateFrom')}
+              value={fechaDesde}
+              onChange={(event) => setFechaDesde(event.target.value)}
+              sx={{ minWidth: { xs: '100%', md: 200 } }}
+              slotProps={{ inputLabel: { shrink: true } }}
+            />
+            <TextField
+              size="small"
+              type="date"
+              label={ti('productionDateTo')}
+              value={fechaHasta}
+              onChange={(event) => setFechaHasta(event.target.value)}
+              sx={{ minWidth: { xs: '100%', md: 200 } }}
+              slotProps={{ inputLabel: { shrink: true } }}
+            />
             <Button
               variant="text"
               onClick={clearFilters}
-              disabled={!query.trim() && estadoFiltro === 'all'}
+              disabled={
+                !query.trim() &&
+                estadoFiltro === 'all' &&
+                !fechaDesde &&
+                !fechaHasta
+              }
             >
               {ti('clearFilters')}
             </Button>
@@ -785,9 +1087,9 @@ export default function InventarioCafePage() {
                   <TableRow>
                     <TableCell>{tf('lotCode')}</TableCell>
                     <TableCell>{tf('productionDate')}</TableCell>
-                    <TableCell>{tf('packagingDate')}</TableCell>
                     <TableCell>{tf('expirationDate')}</TableCell>
                     <TableCell>{tf('status')}</TableCell>
+                    <TableCell>{ti('lotAttributes')}</TableCell>
                     <TableCell align="right">{tf('packages')}</TableCell>
                     <TableCell align="right">{tf('netWeight')}</TableCell>
                     <TableCell align="right">{tf('actions')}</TableCell>
@@ -805,7 +1107,6 @@ export default function InventarioCafePage() {
                           </Typography>
                         </TableCell>
                         <TableCell>{formatDate(locale, lote.fechaProduccion)}</TableCell>
-                        <TableCell>{formatDate(locale, lote.fechaEnvasado)}</TableCell>
                         <TableCell>{formatDate(locale, lote.fechaVencimiento)}</TableCell>
                         <TableCell>
                           <Chip
@@ -813,6 +1114,15 @@ export default function InventarioCafePage() {
                             color={estadoLoteColor(lote.estado)}
                             label={ti(estadoLoteKey(lote.estado))}
                           />
+                        </TableCell>
+                        <TableCell>
+                          {[
+                            lote.variedadCafeNombre,
+                            lote.tipoTuesteCafeNombre,
+                            lote.tipoProcesoCafeNombre,
+                          ]
+                            .filter(Boolean)
+                            .join(' / ') || '—'}
                         </TableCell>
                         <TableCell align="right">
                           {formatNumber(locale, lote.totalPaquetes)}
@@ -841,9 +1151,24 @@ export default function InventarioCafePage() {
 
       {selectedLote ? (
         <Stack spacing={2}>
+          {selectedLote.estado === 3 ? (
+            <Alert severity="error">{ti('lotBlockedWarning')}</Alert>
+          ) : null}
+
+          {selectedLote.observacion ? (
+            <Alert severity="info">{selectedLote.observacion}</Alert>
+          ) : null}
+
           <Card variant="outlined">
             <CardHeader
-              title={ti('selectedLotTitle', { code: selectedLote.codigoLote })}
+              title={ti('existenciasTitle')}
+              subheader={`${ti('existenciasCount', { count: existencias.length })} · ${[
+                selectedLote.variedadCafeNombre,
+                selectedLote.tipoTuesteCafeNombre,
+                selectedLote.tipoProcesoCafeNombre,
+              ]
+                .filter(Boolean)
+                .join(' / ') || '—'}`}
               action={
                 <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
                   <Chip
@@ -861,56 +1186,6 @@ export default function InventarioCafePage() {
                   </Button>
                 </Stack>
               }
-            />
-            <CardContent sx={{ pt: 0 }}>
-              <Stack
-                direction="row"
-                spacing={3}
-                useFlexGap
-                flexWrap="wrap"
-                sx={{ rowGap: 2 }}
-              >
-                <SummaryItem label={tf('productionDate')}>
-                  {formatDate(locale, selectedLote.fechaProduccion)}
-                </SummaryItem>
-                <SummaryItem label={tf('packagingDate')}>
-                  {formatDate(locale, selectedLote.fechaEnvasado)}
-                </SummaryItem>
-                <SummaryItem label={tf('expirationDate')}>
-                  {formatDate(locale, selectedLote.fechaVencimiento)}
-                </SummaryItem>
-                <SummaryItem label={tf('createdAt')}>
-                  {formatDateTime(locale, selectedLote.creadoEn)}
-                </SummaryItem>
-                <SummaryItem label={tf('updatedAt')}>
-                  {formatDateTime(locale, selectedLote.actualizadoEn)}
-                </SummaryItem>
-                <SummaryItem label={tf('packages')}>
-                  {formatNumber(locale, selectedLote.totalPaquetes)}
-                </SummaryItem>
-                <SummaryItem label={tf('netWeight')}>
-                  {formatKg(locale, selectedLote.totalPesoNetoKg)}
-                </SummaryItem>
-              </Stack>
-
-              {selectedLote.estado === 3 ? (
-                <Alert severity="error" sx={{ mt: 2 }}>
-                  {ti('lotBlockedWarning')}
-                </Alert>
-              ) : null}
-
-              {selectedLote.observacion ? (
-                <Alert severity="info" sx={{ mt: 2 }}>
-                  {selectedLote.observacion}
-                </Alert>
-              ) : null}
-            </CardContent>
-          </Card>
-
-          <Card variant="outlined">
-            <CardHeader
-              title={ti('existenciasTitle')}
-              subheader={ti('existenciasCount', { count: existencias.length })}
             />
             <CardContent sx={{ pt: 0 }}>
               {!canViewExistencias ? (
@@ -1152,6 +1427,51 @@ export default function InventarioCafePage() {
         />
       ) : null}
 
+      {effectiveTab === 'variedades' ? (
+        <CatalogoCafePanel
+          kind="variedad"
+          items={variedadRows}
+          loading={variedadesLoading}
+          error={variedadesError}
+          canCreate={canCreateVariedades}
+          canEdit={canEditVariedades}
+          canDelete={canDeleteVariedades}
+          onCreate={openVariedadCreate}
+          onEdit={openVariedadEdit}
+          onDelete={(item) => openCatalogDelete('variedad', item)}
+        />
+      ) : null}
+
+      {effectiveTab === 'tiposTueste' ? (
+        <CatalogoCafePanel
+          kind="tipoTueste"
+          items={tipoTuesteRows}
+          loading={tiposTuesteLoading}
+          error={tiposTuesteError}
+          canCreate={canCreateTiposTueste}
+          canEdit={canEditTiposTueste}
+          canDelete={canDeleteTiposTueste}
+          onCreate={openTipoTuesteCreate}
+          onEdit={openTipoTuesteEdit}
+          onDelete={(item) => openCatalogDelete('tipoTueste', item)}
+        />
+      ) : null}
+
+      {effectiveTab === 'tiposProceso' ? (
+        <CatalogoCafePanel
+          kind="tipoProceso"
+          items={tipoProcesoRows}
+          loading={tiposProcesoLoading}
+          error={tiposProcesoError}
+          canCreate={canCreateTiposProceso}
+          canEdit={canEditTiposProceso}
+          canDelete={canDeleteTiposProceso}
+          onCreate={openTipoProcesoCreate}
+          onEdit={openTipoProcesoEdit}
+          onDelete={(item) => openCatalogDelete('tipoProceso', item)}
+        />
+      ) : null}
+
       <CreateLoteDialog
         open={createOpen}
         onClose={() => setCreateOpen(false)}
@@ -1160,6 +1480,9 @@ export default function InventarioCafePage() {
         canLoadCatalogos={canLoadCatalogos}
         presentaciones={presentaciones}
         tiposCafe={tiposCafe}
+        variedades={variedades}
+        tiposTueste={tiposTueste}
+        tiposProceso={tiposProceso}
         catalogsLoading={catalogsLoading}
         catalogsError={catalogsError}
       />
@@ -1198,6 +1521,30 @@ export default function InventarioCafePage() {
         onSaved={onTipoCafeSaved}
       />
 
+      <CatalogoCafeDialog
+        kind="variedad"
+        open={variedadDialogOpen}
+        item={editingVariedad}
+        onClose={closeVariedadDialog}
+        onSaved={onVariedadSaved}
+      />
+
+      <CatalogoCafeDialog
+        kind="tipoTueste"
+        open={tipoTuesteDialogOpen}
+        item={editingTipoTueste}
+        onClose={closeTipoTuesteDialog}
+        onSaved={onTipoTuesteSaved}
+      />
+
+      <CatalogoCafeDialog
+        kind="tipoProceso"
+        open={tipoProcesoDialogOpen}
+        item={editingTipoProceso}
+        onClose={closeTipoProcesoDialog}
+        onSaved={onTipoProcesoSaved}
+      />
+
       <CatalogoCafeDeleteDialog
         kind={deleteCatalogKind}
         open={deleteCatalogOpen}
@@ -1206,18 +1553,5 @@ export default function InventarioCafePage() {
         onDeleted={onCatalogDeleted}
       />
     </Stack>
-  );
-}
-
-function SummaryItem({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <Box sx={{ minWidth: 140 }}>
-      <Typography variant="caption" color="text.secondary">
-        {label}
-      </Typography>
-      <Box sx={{ mt: 0.5 }}>
-        <Typography variant="body2">{children}</Typography>
-      </Box>
-    </Box>
   );
 }

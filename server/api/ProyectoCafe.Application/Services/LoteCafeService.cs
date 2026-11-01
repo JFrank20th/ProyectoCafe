@@ -32,6 +32,13 @@ public sealed class LoteCafeService(
             return OperationResult<int>.Validation(errors);
         }
 
+        var catalogErrors = new Dictionary<string, string[]>();
+        await ValidateLoteCatalogosAsync(data, catalogErrors, ct);
+        if (catalogErrors.Count > 0)
+        {
+            return OperationResult<int>.Validation(catalogErrors);
+        }
+
         if (await _lotes.CodigoExistsAsync(data.CodigoLote, ct))
         {
             return OperationResult<int>.Validation(Error(
@@ -46,6 +53,9 @@ public sealed class LoteCafeService(
             FechaEnvasado = data.FechaEnvasado,
             FechaVencimiento = data.FechaVencimiento,
             Observacion = data.Observacion,
+            VariedadCafeId = data.VariedadCafeId,
+            TipoTuesteCafeId = data.TipoTuesteCafeId,
+            TipoProcesoCafeId = data.TipoProcesoCafeId,
             Estado = EstadoLoteCafe.Activo,
             CreadoEn = now,
         };
@@ -65,7 +75,19 @@ public sealed class LoteCafeService(
     public async Task<IReadOnlyList<LoteCafeResumenDto>> GetLotesAsync(CancellationToken ct)
     {
         var rows = await _lotes.ListLotesAsync(ct);
-        return rows.Select(MapResumen).ToArray();
+        var variedades = await _catalogos.ListVariedadesAsync(ct);
+        var tiposTueste = await _catalogos.ListTiposTuesteAsync(ct);
+        var tiposProceso = await _catalogos.ListTiposProcesoAsync(ct);
+
+        var variedadNames = variedades.ToDictionary(x => x.VariedadCafeId, x => x.Nombre);
+        var tipoTuesteNames = tiposTueste.ToDictionary(x => x.TipoTuesteCafeId, x => x.Nombre);
+        var tipoProcesoNames = tiposProceso.ToDictionary(x => x.TipoProcesoCafeId, x => x.Nombre);
+
+        return rows.Select(row => MapResumen(
+            row,
+            variedadNames,
+            tipoTuesteNames,
+            tipoProcesoNames)).ToArray();
     }
 
     public async Task<OperationResult<LoteCafeDetalleDto>> GetLoteAsync(
@@ -80,6 +102,16 @@ public sealed class LoteCafeService(
 
         var existencias = await _lotes.ListExistenciasAsync(loteCafeId, ct);
 
+        var variedad = lote.VariedadCafeId.HasValue
+            ? await _catalogos.FindVariedadAsync(lote.VariedadCafeId.Value, ct)
+            : null;
+        var tipoTueste = lote.TipoTuesteCafeId.HasValue
+            ? await _catalogos.FindTipoTuesteAsync(lote.TipoTuesteCafeId.Value, ct)
+            : null;
+        var tipoProceso = lote.TipoProcesoCafeId.HasValue
+            ? await _catalogos.FindTipoProcesoAsync(lote.TipoProcesoCafeId.Value, ct)
+            : null;
+
         return OperationResult<LoteCafeDetalleDto>.Success(new LoteCafeDetalleDto
         {
             LoteCafeId = lote.LoteCafeId,
@@ -91,6 +123,12 @@ public sealed class LoteCafeService(
             Observacion = lote.Observacion,
             CreadoEn = lote.CreadoEn,
             ActualizadoEn = lote.ActualizadoEn,
+            VariedadCafeId = lote.VariedadCafeId,
+            VariedadCafeNombre = variedad?.Nombre,
+            TipoTuesteCafeId = lote.TipoTuesteCafeId,
+            TipoTuesteCafeNombre = tipoTueste?.Nombre,
+            TipoProcesoCafeId = lote.TipoProcesoCafeId,
+            TipoProcesoCafeNombre = tipoProceso?.Nombre,
             TotalPaquetes = existencias.Sum(x => x.CantidadPaquetes),
             TotalPesoNetoKg = Redondear(existencias.Sum(
                 x => CalcularPesoNetoKg(x.CantidadPaquetes, x.PesoUnitarioGramos))),
@@ -173,7 +211,7 @@ public sealed class LoteCafeService(
         if (data.FechaMovimiento < lote.FechaProduccion)
         {
             AddError(errors, nameof(RegistrarMovimientoRequest.FechaMovimiento),
-                "La fecha del movimiento no puede ser anterior a la fecha de producción del lote.");
+                "La fecha del movimiento no puede ser anterior a la fecha de tueste del lote.");
         }
 
         var presentacion = await _catalogos.FindPresentacionAsync(data.PresentacionCafeId, ct);
@@ -333,16 +371,17 @@ public sealed class LoteCafeService(
         if (request.FechaProduccion == default)
         {
             AddError(errors, nameof(CreateLoteCafeRequest.FechaProduccion),
-                "La fecha de producción es requerida.");
+                "La fecha de tueste es requerida.");
         }
         else if (request.FechaProduccion > now)
         {
             AddError(errors, nameof(CreateLoteCafeRequest.FechaProduccion),
-                "La fecha de producción no puede ser futura.");
+                "La fecha de tueste no puede ser futura.");
         }
         else
         {
             data.FechaProduccion = request.FechaProduccion;
+            data.FechaVencimiento = request.FechaProduccion.AddMonths(3);
         }
 
         if (request.FechaEnvasado is { } fechaEnvasado)
@@ -350,7 +389,7 @@ public sealed class LoteCafeService(
             if (data.FechaProduccion != default && fechaEnvasado < data.FechaProduccion)
             {
                 AddError(errors, nameof(CreateLoteCafeRequest.FechaEnvasado),
-                    "La fecha de envasado no puede ser anterior a la fecha de producción.");
+                    "La fecha de envasado no puede ser anterior a la fecha de tueste.");
             }
             else
             {
@@ -358,23 +397,8 @@ public sealed class LoteCafeService(
             }
         }
 
-        if (request.FechaVencimiento is { } fechaVencimiento)
-        {
-            if (data.FechaProduccion != default && fechaVencimiento < data.FechaProduccion)
-            {
-                AddError(errors, nameof(CreateLoteCafeRequest.FechaVencimiento),
-                    "La fecha de vencimiento no puede ser anterior a la fecha de producción.");
-            }
-            else if (data.FechaEnvasado is { } envasado && fechaVencimiento < envasado)
-            {
-                AddError(errors, nameof(CreateLoteCafeRequest.FechaVencimiento),
-                    "La fecha de vencimiento no puede ser anterior a la fecha de envasado.");
-            }
-            else
-            {
-                data.FechaVencimiento = fechaVencimiento;
-            }
-        }
+        // La fecha de vencimiento se calcula en el backend (tueste + 3 meses).
+        // No se confía en el valor enviado por el cliente.
 
         var observacion = NormalizeOptionalText(request.Observacion);
         if (observacion is { Length: > 250 })
@@ -387,7 +411,82 @@ public sealed class LoteCafeService(
             data.Observacion = observacion;
         }
 
+        if (request.VariedadCafeId.HasValue)
+        {
+            if (request.VariedadCafeId.Value <= 0)
+            {
+                AddError(errors, nameof(CreateLoteCafeRequest.VariedadCafeId),
+                    "La variedad no es válida.");
+            }
+            else
+            {
+                data.VariedadCafeId = request.VariedadCafeId.Value;
+            }
+        }
+
+        if (request.TipoTuesteCafeId.HasValue)
+        {
+            if (request.TipoTuesteCafeId.Value <= 0)
+            {
+                AddError(errors, nameof(CreateLoteCafeRequest.TipoTuesteCafeId),
+                    "El tipo de tueste no es válido.");
+            }
+            else
+            {
+                data.TipoTuesteCafeId = request.TipoTuesteCafeId.Value;
+            }
+        }
+
+        if (request.TipoProcesoCafeId.HasValue)
+        {
+            if (request.TipoProcesoCafeId.Value <= 0)
+            {
+                AddError(errors, nameof(CreateLoteCafeRequest.TipoProcesoCafeId),
+                    "El tipo de proceso no es válido.");
+            }
+            else
+            {
+                data.TipoProcesoCafeId = request.TipoProcesoCafeId.Value;
+            }
+        }
+
         return errors.Count == 0;
+    }
+
+    private async Task ValidateLoteCatalogosAsync(
+        LoteNormalizado data,
+        Dictionary<string, string[]> errors,
+        CancellationToken ct)
+    {
+        if (data.VariedadCafeId.HasValue)
+        {
+            var variedad = await _catalogos.FindVariedadAsync(data.VariedadCafeId.Value, ct);
+            if (variedad is null || variedad.Estado != EstadoCatalogoCafe.Activo)
+            {
+                AddError(errors, nameof(CreateLoteCafeRequest.VariedadCafeId),
+                    "La variedad no existe o no está activa.");
+            }
+        }
+
+        if (data.TipoTuesteCafeId.HasValue)
+        {
+            var tipoTueste = await _catalogos.FindTipoTuesteAsync(data.TipoTuesteCafeId.Value, ct);
+            if (tipoTueste is null || tipoTueste.Estado != EstadoCatalogoCafe.Activo)
+            {
+                AddError(errors, nameof(CreateLoteCafeRequest.TipoTuesteCafeId),
+                    "El tipo de tueste no existe o no está activo.");
+            }
+        }
+
+        if (data.TipoProcesoCafeId.HasValue)
+        {
+            var tipoProceso = await _catalogos.FindTipoProcesoAsync(data.TipoProcesoCafeId.Value, ct);
+            if (tipoProceso is null || tipoProceso.Estado != EstadoCatalogoCafe.Activo)
+            {
+                AddError(errors, nameof(CreateLoteCafeRequest.TipoProcesoCafeId),
+                    "El tipo de proceso no existe o no está activo.");
+            }
+        }
     }
 
     private static bool TryNormalizeMovement(
@@ -482,7 +581,11 @@ public sealed class LoteCafeService(
         return errors.Count == 0;
     }
 
-    private static LoteCafeResumenDto MapResumen(LoteCafeResumenRow row) =>
+    private static LoteCafeResumenDto MapResumen(
+        LoteCafeResumenRow row,
+        IReadOnlyDictionary<int, string> variedadNames,
+        IReadOnlyDictionary<int, string> tipoTuesteNames,
+        IReadOnlyDictionary<int, string> tipoProcesoNames) =>
         new()
         {
             LoteCafeId = row.LoteCafeId,
@@ -494,6 +597,21 @@ public sealed class LoteCafeService(
             Observacion = row.Observacion,
             CreadoEn = row.CreadoEn,
             ActualizadoEn = row.ActualizadoEn,
+            VariedadCafeId = row.VariedadCafeId,
+            VariedadCafeNombre = row.VariedadCafeId.HasValue &&
+                variedadNames.TryGetValue(row.VariedadCafeId.Value, out var variedadNombre)
+                ? variedadNombre
+                : null,
+            TipoTuesteCafeId = row.TipoTuesteCafeId,
+            TipoTuesteCafeNombre = row.TipoTuesteCafeId.HasValue &&
+                tipoTuesteNames.TryGetValue(row.TipoTuesteCafeId.Value, out var tipoTuesteNombre)
+                ? tipoTuesteNombre
+                : null,
+            TipoProcesoCafeId = row.TipoProcesoCafeId,
+            TipoProcesoCafeNombre = row.TipoProcesoCafeId.HasValue &&
+                tipoProcesoNames.TryGetValue(row.TipoProcesoCafeId.Value, out var tipoProcesoNombre)
+                ? tipoProcesoNombre
+                : null,
             TotalPaquetes = row.TotalPaquetes,
             TotalPesoNetoKg = Redondear(row.TotalPesoNetoKg),
         };
@@ -604,6 +722,9 @@ public sealed class LoteCafeService(
         public DateTime? FechaEnvasado { get; set; }
         public DateTime? FechaVencimiento { get; set; }
         public string? Observacion { get; set; }
+        public int? VariedadCafeId { get; set; }
+        public int? TipoTuesteCafeId { get; set; }
+        public int? TipoProcesoCafeId { get; set; }
     }
 
     private sealed class MovimientoNormalizado

@@ -335,6 +335,609 @@ public sealed class CatalogoCafeService(
         }
     }
 
+    public async Task<IReadOnlyList<VariedadCafeDto>> GetVariedadesAsync(CancellationToken ct)
+    {
+        var variedades = await _catalogos.ListVariedadesAsync(ct);
+        return variedades.Select(MapVariedad).ToArray();
+    }
+
+    public async Task<OperationResult<VariedadCafeDto>> GetVariedadAsync(
+        int variedadCafeId,
+        CancellationToken ct)
+    {
+        var variedad = await _catalogos.FindVariedadAsync(variedadCafeId, ct);
+        return variedad is null
+            ? OperationResult<VariedadCafeDto>.NotFound()
+            : OperationResult<VariedadCafeDto>.Success(MapVariedad(variedad));
+    }
+
+    public async Task<OperationResult<int>> CreateVariedadAsync(
+        UpsertVariedadCafeRequest request,
+        CancellationToken ct)
+    {
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+
+        if (!TryNormalizeVariedad(request, out var data, out var errors))
+        {
+            return OperationResult<int>.Validation(errors);
+        }
+
+        if (await _catalogos.VariedadCodigoExistsAsync(data.Codigo, null, ct))
+        {
+            return OperationResult<int>.Validation(Error(
+                nameof(UpsertVariedadCafeRequest.Codigo),
+                "Ya existe una variedad con ese código."));
+        }
+
+        if (await _catalogos.VariedadNombreExistsAsync(data.Nombre, null, ct))
+        {
+            return OperationResult<int>.Validation(Error(
+                nameof(UpsertVariedadCafeRequest.Nombre),
+                "Ya existe una variedad con ese nombre."));
+        }
+
+        var variedad = new VariedadCafe
+        {
+            Codigo = data.Codigo,
+            Nombre = data.Nombre,
+            Estado = data.Estado ?? EstadoCatalogoCafe.Activo,
+            CreadoEn = now,
+        };
+
+        try
+        {
+            await _catalogos.AddVariedadAsync(variedad, ct);
+            await _unitOfWork.SaveChangesAsync(ct);
+            return OperationResult<int>.Success(variedad.VariedadCafeId);
+        }
+        catch (ConcurrencyConflictException)
+        {
+            return OperationResult<int>.Conflict();
+        }
+    }
+
+    public async Task<OperationResult> UpdateVariedadAsync(
+        int variedadCafeId,
+        UpsertVariedadCafeRequest request,
+        CancellationToken ct)
+    {
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+
+        if (!TryNormalizeVariedad(request, out var data, out var errors))
+        {
+            return OperationResult.Validation(errors);
+        }
+
+        var variedad = await _catalogos.FindVariedadAsync(variedadCafeId, ct);
+        if (variedad is null)
+        {
+            return OperationResult.NotFound();
+        }
+
+        if (await _catalogos.VariedadCodigoExistsAsync(data.Codigo, variedadCafeId, ct))
+        {
+            return OperationResult.Validation(Error(
+                nameof(UpsertVariedadCafeRequest.Codigo),
+                "Ya existe una variedad con ese código."));
+        }
+
+        if (await _catalogos.VariedadNombreExistsAsync(data.Nombre, variedadCafeId, ct))
+        {
+            return OperationResult.Validation(Error(
+                nameof(UpsertVariedadCafeRequest.Nombre),
+                "Ya existe una variedad con ese nombre."));
+        }
+
+        variedad.Codigo = data.Codigo;
+        variedad.Nombre = data.Nombre;
+        if (data.Estado is { } estado)
+        {
+            variedad.Estado = estado;
+        }
+
+        variedad.ActualizadoEn = now;
+
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(ct);
+            return OperationResult.Success();
+        }
+        catch (ConcurrencyConflictException)
+        {
+            return OperationResult.Conflict();
+        }
+    }
+
+    public async Task<OperationResult> DeleteVariedadAsync(
+        int variedadCafeId,
+        CancellationToken ct)
+    {
+        var variedad = await _catalogos.FindVariedadAsync(variedadCafeId, ct);
+        if (variedad is null)
+        {
+            return OperationResult.NotFound();
+        }
+
+        variedad.Estado = EstadoCatalogoCafe.Eliminado;
+        variedad.ActualizadoEn = _timeProvider.GetUtcNow().UtcDateTime;
+
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(ct);
+            return OperationResult.Success();
+        }
+        catch (ConcurrencyConflictException)
+        {
+            return OperationResult.Conflict();
+        }
+    }
+
+    private static bool TryNormalizeVariedad(
+        UpsertVariedadCafeRequest request,
+        out VariedadNormalizada data,
+        out Dictionary<string, string[]> errors)
+    {
+        data = new VariedadNormalizada();
+        errors = new Dictionary<string, string[]>();
+
+        var codigo = NormalizeCode(request.Codigo);
+        if (string.IsNullOrWhiteSpace(codigo))
+        {
+            AddError(errors, nameof(UpsertVariedadCafeRequest.Codigo),
+                "El código de la variedad es requerido.");
+        }
+        else if (codigo.Length > 20)
+        {
+            AddError(errors, nameof(UpsertVariedadCafeRequest.Codigo),
+                "El código no puede exceder 20 caracteres.");
+        }
+        else
+        {
+            data.Codigo = codigo;
+        }
+
+        var nombre = NormalizeOptionalText(request.Nombre);
+        if (string.IsNullOrWhiteSpace(nombre))
+        {
+            AddError(errors, nameof(UpsertVariedadCafeRequest.Nombre),
+                "El nombre de la variedad es requerido.");
+        }
+        else if (nombre.Length > 80)
+        {
+            AddError(errors, nameof(UpsertVariedadCafeRequest.Nombre),
+                "El nombre no puede exceder 80 caracteres.");
+        }
+        else
+        {
+            data.Nombre = nombre;
+        }
+
+        ValidateEstado(request.Estado, errors, nameof(UpsertVariedadCafeRequest.Estado));
+        data.Estado = request.Estado;
+
+        return errors.Count == 0;
+    }
+
+    private static VariedadCafeDto MapVariedad(VariedadCafe variedad) =>
+        new()
+        {
+            VariedadCafeId = variedad.VariedadCafeId,
+            Codigo = variedad.Codigo,
+            Nombre = variedad.Nombre,
+            Estado = variedad.Estado,
+            CreadoEn = variedad.CreadoEn,
+            ActualizadoEn = variedad.ActualizadoEn,
+        };
+
+    private sealed class VariedadNormalizada
+    {
+        public string Codigo { get; set; } = string.Empty;
+        public string Nombre { get; set; } = string.Empty;
+        public EstadoCatalogoCafe? Estado { get; set; }
+    }
+
+    public async Task<IReadOnlyList<TipoTuesteCafeDto>> GetTiposTuesteAsync(CancellationToken ct)
+    {
+        var tiposTueste = await _catalogos.ListTiposTuesteAsync(ct);
+        return tiposTueste.Select(MapTipoTueste).ToArray();
+    }
+
+    public async Task<OperationResult<TipoTuesteCafeDto>> GetTipoTuesteAsync(
+        int tipoTuesteCafeId,
+        CancellationToken ct)
+    {
+        var tipoTueste = await _catalogos.FindTipoTuesteAsync(tipoTuesteCafeId, ct);
+        return tipoTueste is null
+            ? OperationResult<TipoTuesteCafeDto>.NotFound()
+            : OperationResult<TipoTuesteCafeDto>.Success(MapTipoTueste(tipoTueste));
+    }
+
+    public async Task<OperationResult<int>> CreateTipoTuesteAsync(
+        UpsertTipoTuesteCafeRequest request,
+        CancellationToken ct)
+    {
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+
+        if (!TryNormalizeTipoTueste(request, out var data, out var errors))
+        {
+            return OperationResult<int>.Validation(errors);
+        }
+
+        if (await _catalogos.TipoTuesteCodigoExistsAsync(data.Codigo, null, ct))
+        {
+            return OperationResult<int>.Validation(Error(
+                nameof(UpsertTipoTuesteCafeRequest.Codigo),
+                "Ya existe un tipo de tueste con ese código."));
+        }
+
+        if (await _catalogos.TipoTuesteNombreExistsAsync(data.Nombre, null, ct))
+        {
+            return OperationResult<int>.Validation(Error(
+                nameof(UpsertTipoTuesteCafeRequest.Nombre),
+                "Ya existe un tipo de tueste con ese nombre."));
+        }
+
+        var tipoTueste = new TipoTuesteCafe
+        {
+            Codigo = data.Codigo,
+            Nombre = data.Nombre,
+            Estado = data.Estado ?? EstadoCatalogoCafe.Activo,
+            CreadoEn = now,
+        };
+
+        try
+        {
+            await _catalogos.AddTipoTuesteAsync(tipoTueste, ct);
+            await _unitOfWork.SaveChangesAsync(ct);
+            return OperationResult<int>.Success(tipoTueste.TipoTuesteCafeId);
+        }
+        catch (ConcurrencyConflictException)
+        {
+            return OperationResult<int>.Conflict();
+        }
+    }
+
+    public async Task<OperationResult> UpdateTipoTuesteAsync(
+        int tipoTuesteCafeId,
+        UpsertTipoTuesteCafeRequest request,
+        CancellationToken ct)
+    {
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+
+        if (!TryNormalizeTipoTueste(request, out var data, out var errors))
+        {
+            return OperationResult.Validation(errors);
+        }
+
+        var tipoTueste = await _catalogos.FindTipoTuesteAsync(tipoTuesteCafeId, ct);
+        if (tipoTueste is null)
+        {
+            return OperationResult.NotFound();
+        }
+
+        if (await _catalogos.TipoTuesteCodigoExistsAsync(data.Codigo, tipoTuesteCafeId, ct))
+        {
+            return OperationResult.Validation(Error(
+                nameof(UpsertTipoTuesteCafeRequest.Codigo),
+                "Ya existe un tipo de tueste con ese código."));
+        }
+
+        if (await _catalogos.TipoTuesteNombreExistsAsync(data.Nombre, tipoTuesteCafeId, ct))
+        {
+            return OperationResult.Validation(Error(
+                nameof(UpsertTipoTuesteCafeRequest.Nombre),
+                "Ya existe un tipo de tueste con ese nombre."));
+        }
+
+        tipoTueste.Codigo = data.Codigo;
+        tipoTueste.Nombre = data.Nombre;
+        if (data.Estado is { } estado)
+        {
+            tipoTueste.Estado = estado;
+        }
+
+        tipoTueste.ActualizadoEn = now;
+
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(ct);
+            return OperationResult.Success();
+        }
+        catch (ConcurrencyConflictException)
+        {
+            return OperationResult.Conflict();
+        }
+    }
+
+    public async Task<OperationResult> DeleteTipoTuesteAsync(
+        int tipoTuesteCafeId,
+        CancellationToken ct)
+    {
+        var tipoTueste = await _catalogos.FindTipoTuesteAsync(tipoTuesteCafeId, ct);
+        if (tipoTueste is null)
+        {
+            return OperationResult.NotFound();
+        }
+
+        tipoTueste.Estado = EstadoCatalogoCafe.Eliminado;
+        tipoTueste.ActualizadoEn = _timeProvider.GetUtcNow().UtcDateTime;
+
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(ct);
+            return OperationResult.Success();
+        }
+        catch (ConcurrencyConflictException)
+        {
+            return OperationResult.Conflict();
+        }
+    }
+
+    private static bool TryNormalizeTipoTueste(
+        UpsertTipoTuesteCafeRequest request,
+        out TipoTuesteNormalizado data,
+        out Dictionary<string, string[]> errors)
+    {
+        data = new TipoTuesteNormalizado();
+        errors = new Dictionary<string, string[]>();
+
+        var codigo = NormalizeCode(request.Codigo);
+        if (string.IsNullOrWhiteSpace(codigo))
+        {
+            AddError(errors, nameof(UpsertTipoTuesteCafeRequest.Codigo),
+                "El código del tipo de tueste es requerido.");
+        }
+        else if (codigo.Length > 20)
+        {
+            AddError(errors, nameof(UpsertTipoTuesteCafeRequest.Codigo),
+                "El código no puede exceder 20 caracteres.");
+        }
+        else
+        {
+            data.Codigo = codigo;
+        }
+
+        var nombre = NormalizeOptionalText(request.Nombre);
+        if (string.IsNullOrWhiteSpace(nombre))
+        {
+            AddError(errors, nameof(UpsertTipoTuesteCafeRequest.Nombre),
+                "El nombre del tipo de tueste es requerido.");
+        }
+        else if (nombre.Length > 80)
+        {
+            AddError(errors, nameof(UpsertTipoTuesteCafeRequest.Nombre),
+                "El nombre no puede exceder 80 caracteres.");
+        }
+        else
+        {
+            data.Nombre = nombre;
+        }
+
+        ValidateEstado(request.Estado, errors, nameof(UpsertTipoTuesteCafeRequest.Estado));
+        data.Estado = request.Estado;
+
+        return errors.Count == 0;
+    }
+
+    private static TipoTuesteCafeDto MapTipoTueste(TipoTuesteCafe tipoTueste) =>
+        new()
+        {
+            TipoTuesteCafeId = tipoTueste.TipoTuesteCafeId,
+            Codigo = tipoTueste.Codigo,
+            Nombre = tipoTueste.Nombre,
+            Estado = tipoTueste.Estado,
+            CreadoEn = tipoTueste.CreadoEn,
+            ActualizadoEn = tipoTueste.ActualizadoEn,
+        };
+
+    private sealed class TipoTuesteNormalizado
+    {
+        public string Codigo { get; set; } = string.Empty;
+        public string Nombre { get; set; } = string.Empty;
+        public EstadoCatalogoCafe? Estado { get; set; }
+    }
+
+    public async Task<IReadOnlyList<TipoProcesoCafeDto>> GetTiposProcesoAsync(CancellationToken ct)
+    {
+        var tiposProceso = await _catalogos.ListTiposProcesoAsync(ct);
+        return tiposProceso.Select(MapTipoProceso).ToArray();
+    }
+
+    public async Task<OperationResult<TipoProcesoCafeDto>> GetTipoProcesoAsync(
+        int tipoProcesoCafeId,
+        CancellationToken ct)
+    {
+        var tipoProceso = await _catalogos.FindTipoProcesoAsync(tipoProcesoCafeId, ct);
+        return tipoProceso is null
+            ? OperationResult<TipoProcesoCafeDto>.NotFound()
+            : OperationResult<TipoProcesoCafeDto>.Success(MapTipoProceso(tipoProceso));
+    }
+
+    public async Task<OperationResult<int>> CreateTipoProcesoAsync(
+        UpsertTipoProcesoCafeRequest request,
+        CancellationToken ct)
+    {
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+
+        if (!TryNormalizeTipoProceso(request, out var data, out var errors))
+        {
+            return OperationResult<int>.Validation(errors);
+        }
+
+        if (await _catalogos.TipoProcesoCodigoExistsAsync(data.Codigo, null, ct))
+        {
+            return OperationResult<int>.Validation(Error(
+                nameof(UpsertTipoProcesoCafeRequest.Codigo),
+                "Ya existe un tipo de proceso con ese código."));
+        }
+
+        if (await _catalogos.TipoProcesoNombreExistsAsync(data.Nombre, null, ct))
+        {
+            return OperationResult<int>.Validation(Error(
+                nameof(UpsertTipoProcesoCafeRequest.Nombre),
+                "Ya existe un tipo de proceso con ese nombre."));
+        }
+
+        var tipoProceso = new TipoProcesoCafe
+        {
+            Codigo = data.Codigo,
+            Nombre = data.Nombre,
+            Estado = data.Estado ?? EstadoCatalogoCafe.Activo,
+            CreadoEn = now,
+        };
+
+        try
+        {
+            await _catalogos.AddTipoProcesoAsync(tipoProceso, ct);
+            await _unitOfWork.SaveChangesAsync(ct);
+            return OperationResult<int>.Success(tipoProceso.TipoProcesoCafeId);
+        }
+        catch (ConcurrencyConflictException)
+        {
+            return OperationResult<int>.Conflict();
+        }
+    }
+
+    public async Task<OperationResult> UpdateTipoProcesoAsync(
+        int tipoProcesoCafeId,
+        UpsertTipoProcesoCafeRequest request,
+        CancellationToken ct)
+    {
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+
+        if (!TryNormalizeTipoProceso(request, out var data, out var errors))
+        {
+            return OperationResult.Validation(errors);
+        }
+
+        var tipoProceso = await _catalogos.FindTipoProcesoAsync(tipoProcesoCafeId, ct);
+        if (tipoProceso is null)
+        {
+            return OperationResult.NotFound();
+        }
+
+        if (await _catalogos.TipoProcesoCodigoExistsAsync(data.Codigo, tipoProcesoCafeId, ct))
+        {
+            return OperationResult.Validation(Error(
+                nameof(UpsertTipoProcesoCafeRequest.Codigo),
+                "Ya existe un tipo de proceso con ese código."));
+        }
+
+        if (await _catalogos.TipoProcesoNombreExistsAsync(data.Nombre, tipoProcesoCafeId, ct))
+        {
+            return OperationResult.Validation(Error(
+                nameof(UpsertTipoProcesoCafeRequest.Nombre),
+                "Ya existe un tipo de proceso con ese nombre."));
+        }
+
+        tipoProceso.Codigo = data.Codigo;
+        tipoProceso.Nombre = data.Nombre;
+        if (data.Estado is { } estado)
+        {
+            tipoProceso.Estado = estado;
+        }
+
+        tipoProceso.ActualizadoEn = now;
+
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(ct);
+            return OperationResult.Success();
+        }
+        catch (ConcurrencyConflictException)
+        {
+            return OperationResult.Conflict();
+        }
+    }
+
+    public async Task<OperationResult> DeleteTipoProcesoAsync(
+        int tipoProcesoCafeId,
+        CancellationToken ct)
+    {
+        var tipoProceso = await _catalogos.FindTipoProcesoAsync(tipoProcesoCafeId, ct);
+        if (tipoProceso is null)
+        {
+            return OperationResult.NotFound();
+        }
+
+        tipoProceso.Estado = EstadoCatalogoCafe.Eliminado;
+        tipoProceso.ActualizadoEn = _timeProvider.GetUtcNow().UtcDateTime;
+
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(ct);
+            return OperationResult.Success();
+        }
+        catch (ConcurrencyConflictException)
+        {
+            return OperationResult.Conflict();
+        }
+    }
+
+    private static bool TryNormalizeTipoProceso(
+        UpsertTipoProcesoCafeRequest request,
+        out TipoProcesoNormalizado data,
+        out Dictionary<string, string[]> errors)
+    {
+        data = new TipoProcesoNormalizado();
+        errors = new Dictionary<string, string[]>();
+
+        var codigo = NormalizeCode(request.Codigo);
+        if (string.IsNullOrWhiteSpace(codigo))
+        {
+            AddError(errors, nameof(UpsertTipoProcesoCafeRequest.Codigo),
+                "El código del tipo de proceso es requerido.");
+        }
+        else if (codigo.Length > 20)
+        {
+            AddError(errors, nameof(UpsertTipoProcesoCafeRequest.Codigo),
+                "El código no puede exceder 20 caracteres.");
+        }
+        else
+        {
+            data.Codigo = codigo;
+        }
+
+        var nombre = NormalizeOptionalText(request.Nombre);
+        if (string.IsNullOrWhiteSpace(nombre))
+        {
+            AddError(errors, nameof(UpsertTipoProcesoCafeRequest.Nombre),
+                "El nombre del tipo de proceso es requerido.");
+        }
+        else if (nombre.Length > 80)
+        {
+            AddError(errors, nameof(UpsertTipoProcesoCafeRequest.Nombre),
+                "El nombre no puede exceder 80 caracteres.");
+        }
+        else
+        {
+            data.Nombre = nombre;
+        }
+
+        ValidateEstado(request.Estado, errors, nameof(UpsertTipoProcesoCafeRequest.Estado));
+        data.Estado = request.Estado;
+
+        return errors.Count == 0;
+    }
+
+    private static TipoProcesoCafeDto MapTipoProceso(TipoProcesoCafe tipoProceso) =>
+        new()
+        {
+            TipoProcesoCafeId = tipoProceso.TipoProcesoCafeId,
+            Codigo = tipoProceso.Codigo,
+            Nombre = tipoProceso.Nombre,
+            Estado = tipoProceso.Estado,
+            CreadoEn = tipoProceso.CreadoEn,
+            ActualizadoEn = tipoProceso.ActualizadoEn,
+        };
+
+    private sealed class TipoProcesoNormalizado
+    {
+        public string Codigo { get; set; } = string.Empty;
+        public string Nombre { get; set; } = string.Empty;
+        public EstadoCatalogoCafe? Estado { get; set; }
+    }
+
     private static bool TryNormalizePresentacion(
         UpsertPresentacionCafeRequest request,
         out PresentacionNormalizada data,

@@ -147,10 +147,28 @@ public static class VentasEndpoints
         var ventas = group.MapGroup("/ventas");
 
         ventas.MapGet("", async (
+            int? numeroVenta,
+            int? clienteId,
+            int? estado,
+            int? estadoEntrega,
+            int? estadoPago,
+            DateTime? fechaDesde,
+            DateTime? fechaHasta,
             [FromServices] VentaService service,
             CancellationToken ct) =>
         {
-            var list = await service.GetVentasAsync(ct);
+            var filtro = new VentaFiltro
+            {
+                NumeroVenta = numeroVenta,
+                ClienteId = clienteId,
+                Estado = estado,
+                EstadoEntrega = estadoEntrega,
+                EstadoPago = estadoPago,
+                FechaDesde = fechaDesde,
+                FechaHasta = fechaHasta,
+            };
+
+            var list = await service.GetVentasAsync(filtro, ct);
             return Results.Ok(list);
         })
         .RequireAuthorization(Permissions.Policy(
@@ -172,9 +190,15 @@ public static class VentasEndpoints
         ventas.MapPost("", async (
             [FromBody] CreateVentaRequest request,
             [FromServices] VentaService service,
+            HttpContext http,
             CancellationToken ct) =>
         {
-            var result = await service.CreateVentaAsync(request, ct);
+            var uid = http.User.FindFirst("uid")?.Value;
+            int? usuarioId = int.TryParse(uid, out var parsedUsuarioId)
+                ? parsedUsuarioId
+                : null;
+
+            var result = await service.CreateVentaAsync(request, usuarioId, ct);
             if (!result.IsSuccess)
             {
                 return Failure(result);
@@ -187,6 +211,107 @@ public static class VentasEndpoints
         .RequireAuthorization(Permissions.Policy(
             Permissions.Modulos.VentasVentas,
             Permissions.Actions.Crear));
+
+        ventas.MapGet("/{id:int}/pagos", async (
+            int id,
+            [FromServices] PagoVentaService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetPagosAsync(id, ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : Failure(result);
+        })
+        .RequireAuthorization(Permissions.Policy(
+            Permissions.Modulos.VentasVentas,
+            Permissions.Actions.Ver));
+
+        ventas.MapGet("/{id:int}/resumen-financiero", async (
+            int id,
+            [FromServices] PagoVentaService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetResumenFinancieroAsync(id, ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : Failure(result);
+        })
+        .RequireAuthorization(Permissions.Policy(
+            Permissions.Modulos.VentasVentas,
+            Permissions.Actions.Ver));
+
+        ventas.MapPost("/{id:int}/pagos", async (
+            int id,
+            [FromBody] CreatePagoVentaRequest request,
+            [FromServices] PagoVentaService service,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var uid = http.User.FindFirst("uid")?.Value;
+            int? usuarioId = int.TryParse(uid, out var parsedUsuarioId)
+                ? parsedUsuarioId
+                : null;
+
+            var result = await service.RegisterPagoAsync(id, request, usuarioId, ct);
+            if (!result.IsSuccess)
+            {
+                return Failure(result);
+            }
+
+            return Results.Created(
+                $"/api/v1/ventas/ventas/{id}/pagos/{result.Value!.PagoVentaId}",
+                result.Value);
+        })
+        .RequireAuthorization(Permissions.Policy(
+            Permissions.Modulos.VentasVentas,
+            Permissions.Actions.Crear));
+
+        ventas.MapPut("/{id:int}/estado-entrega", async (
+            int id,
+            [FromBody] UpdateEstadoEntregaVentaRequest request,
+            [FromServices] VentaService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.UpdateEstadoEntregaAsync(id, request.EstadoEntrega, ct);
+            return result.IsSuccess ? Results.NoContent() : Failure(result);
+        })
+        .RequireAuthorization(Permissions.Policy(
+            Permissions.Modulos.VentasVentas,
+            Permissions.Actions.Editar));
+
+        ventas.MapPost("/{id:int}/cancelar", async (
+            int id,
+            [FromBody] CancelVentaRequest request,
+            [FromServices] VentaService service,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var uid = http.User.FindFirst("uid")?.Value;
+            int? usuarioId = int.TryParse(uid, out var parsedUsuarioId)
+                ? parsedUsuarioId
+                : null;
+
+            var result = await service.CancelVentaAsync(id, request.Motivo ?? string.Empty, usuarioId, ct);
+            return result.IsSuccess ? Results.NoContent() : Failure(result);
+        })
+        .RequireAuthorization(Permissions.Policy(
+            Permissions.Modulos.VentasVentas,
+            Permissions.Actions.Cancelar));
+
+        ventas.MapPost("/{id:int}/anular", async (
+            int id,
+            [FromBody] AnulateVentaRequest request,
+            [FromServices] VentaService service,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var uid = http.User.FindFirst("uid")?.Value;
+            int? usuarioId = int.TryParse(uid, out var parsedUsuarioId)
+                ? parsedUsuarioId
+                : null;
+
+            var result = await service.AnulateVentaAsync(id, request.Motivo ?? string.Empty, usuarioId, ct);
+            return result.IsSuccess ? Results.NoContent() : Failure(result);
+        })
+        .RequireAuthorization(Permissions.Policy(
+            Permissions.Modulos.VentasVentas,
+            Permissions.Actions.Anular));
     }
 
     private static IResult Failure(OperationResult result) =>

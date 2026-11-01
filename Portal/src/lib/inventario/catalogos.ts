@@ -2,13 +2,16 @@ import type {
   EstadoCatalogoCafe,
   PresentacionCafe,
   TipoCafe,
+  VariedadCafe,
+  TipoTuesteCafe,
+  TipoProcesoCafe,
 } from '@/lib/inventario/cafe';
 
 export const CATALOGO_CODIGO_MAX_LENGTH = 20;
 export const CATALOGO_NOMBRE_MAX_LENGTH = 80;
 export const MAX_PESO_UNITARIO_GRAMOS = 2_147_483_647;
 
-export type CatalogoCafeKind = 'presentacion' | 'tipoCafe';
+export type CatalogoCafeKind = 'presentacion' | 'tipoCafe' | 'variedad' | 'tipoTueste' | 'tipoProceso';
 
 export type EstadoCatalogoCafeEditable = 1 | 2;
 
@@ -73,10 +76,42 @@ export function toTipoCafeRow(tipoCafe: TipoCafe): CatalogoCafeRow {
   };
 }
 
+export function toVariedadCafeRow(variedadCafe: VariedadCafe): CatalogoCafeRow {
+  return {
+    id: variedadCafe.variedadCafeId,
+    codigo: variedadCafe.codigo,
+    nombre: variedadCafe.nombre,
+    estado: variedadCafe.estado,
+    actualizadoEn: variedadCafe.actualizadoEn,
+  };
+}
+
+export function toTipoTuesteCafeRow(tipoTuesteCafe: TipoTuesteCafe): CatalogoCafeRow {
+  return {
+    id: tipoTuesteCafe.tipoTuesteCafeId,
+    codigo: tipoTuesteCafe.codigo,
+    nombre: tipoTuesteCafe.nombre,
+    estado: tipoTuesteCafe.estado,
+    actualizadoEn: tipoTuesteCafe.actualizadoEn,
+  };
+}
+
+export function toTipoProcesoCafeRow(tipoProcesoCafe: TipoProcesoCafe): CatalogoCafeRow {
+  return {
+    id: tipoProcesoCafe.tipoProcesoCafeId,
+    codigo: tipoProcesoCafe.codigo,
+    nombre: tipoProcesoCafe.nombre,
+    estado: tipoProcesoCafe.estado,
+    actualizadoEn: tipoProcesoCafe.actualizadoEn,
+  };
+}
+
 export function catalogoCafePath(kind: CatalogoCafeKind): string {
-  return kind === 'presentacion'
-    ? '/api/v1/inventario/presentaciones'
-    : '/api/v1/inventario/tipos-cafe';
+  if (kind === 'presentacion') return '/api/v1/inventario/presentaciones';
+  if (kind === 'variedad') return '/api/v1/inventario/variedades';
+  if (kind === 'tipoTueste') return '/api/v1/inventario/tipos-tueste';
+  if (kind === 'tipoProceso') return '/api/v1/inventario/tipos-proceso';
+  return '/api/v1/inventario/tipos-cafe';
 }
 
 export function validatePresentacionCafeInput(
@@ -89,6 +124,24 @@ export function validateTipoCafeInput(
   input: CatalogoCafeFormValues,
 ): CatalogoCafeFieldErrors {
   return validateCatalogoCafeInput('tipoCafe', input);
+}
+
+export function validateVariedadCafeInput(
+  input: CatalogoCafeFormValues,
+): CatalogoCafeFieldErrors {
+  return validateCatalogoCafeInput('variedad', input);
+}
+
+export function validateTipoTuesteCafeInput(
+  input: CatalogoCafeFormValues,
+): CatalogoCafeFieldErrors {
+  return validateCatalogoCafeInput('tipoTueste', input);
+}
+
+export function validateTipoProcesoCafeInput(
+  input: CatalogoCafeFormValues,
+): CatalogoCafeFieldErrors {
+  return validateCatalogoCafeInput('tipoProceso', input);
 }
 
 export function validateCatalogoCafeInput(
@@ -142,6 +195,24 @@ export function buildTipoCafePayload(input: CatalogoCafeFormValues): TipoCafePay
     nombre: input.nombre.trim(),
     estado: input.estado,
   };
+}
+
+export type VariedadCafePayload = TipoCafePayload;
+
+export function buildVariedadCafePayload(input: CatalogoCafeFormValues): VariedadCafePayload {
+  return buildTipoCafePayload(input);
+}
+
+export type TipoTuesteCafePayload = TipoCafePayload;
+
+export function buildTipoTuesteCafePayload(input: CatalogoCafeFormValues): TipoTuesteCafePayload {
+  return buildTipoCafePayload(input);
+}
+
+export type TipoProcesoCafePayload = TipoCafePayload;
+
+export function buildTipoProcesoCafePayload(input: CatalogoCafeFormValues): TipoProcesoCafePayload {
+  return buildTipoCafePayload(input);
 }
 
 function validatePesoUnitario(value: string): CatalogoCafeFieldError | null {

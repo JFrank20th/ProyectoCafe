@@ -13,6 +13,12 @@ public sealed class CreateLoteCafeRequest
     public DateTime? FechaVencimiento { get; set; }
 
     public string? Observacion { get; set; }
+
+    public int? VariedadCafeId { get; set; }
+
+    public int? TipoTuesteCafeId { get; set; }
+
+    public int? TipoProcesoCafeId { get; set; }
 }
 
 public sealed class RegistrarMovimientoRequest
@@ -63,6 +69,12 @@ public sealed class LoteCafeResumenDto
     public string? Observacion { get; set; }
     public required DateTime CreadoEn { get; set; }
     public DateTime? ActualizadoEn { get; set; }
+    public int? VariedadCafeId { get; set; }
+    public string? VariedadCafeNombre { get; set; }
+    public int? TipoTuesteCafeId { get; set; }
+    public string? TipoTuesteCafeNombre { get; set; }
+    public int? TipoProcesoCafeId { get; set; }
+    public string? TipoProcesoCafeNombre { get; set; }
     public int TotalPaquetes { get; set; }
     public decimal TotalPesoNetoKg { get; set; }
 }
@@ -78,6 +90,12 @@ public sealed class LoteCafeDetalleDto
     public string? Observacion { get; set; }
     public required DateTime CreadoEn { get; set; }
     public DateTime? ActualizadoEn { get; set; }
+    public int? VariedadCafeId { get; set; }
+    public string? VariedadCafeNombre { get; set; }
+    public int? TipoTuesteCafeId { get; set; }
+    public string? TipoTuesteCafeNombre { get; set; }
+    public int? TipoProcesoCafeId { get; set; }
+    public string? TipoProcesoCafeNombre { get; set; }
     public int TotalPaquetes { get; set; }
     public decimal TotalPesoNetoKg { get; set; }
 }
@@ -135,6 +153,63 @@ public sealed class PresentacionCafeDto
 public sealed class TipoCafeDto
 {
     public required int TipoCafeId { get; set; }
+    public required string Codigo { get; set; }
+    public required string Nombre { get; set; }
+    public required EstadoCatalogoCafe Estado { get; set; }
+    public required DateTime CreadoEn { get; set; }
+    public DateTime? ActualizadoEn { get; set; }
+}
+
+public sealed class UpsertVariedadCafeRequest
+{
+    public string? Codigo { get; set; }
+
+    public string? Nombre { get; set; }
+
+    public EstadoCatalogoCafe? Estado { get; set; }
+}
+
+public sealed class VariedadCafeDto
+{
+    public required int VariedadCafeId { get; set; }
+    public required string Codigo { get; set; }
+    public required string Nombre { get; set; }
+    public required EstadoCatalogoCafe Estado { get; set; }
+    public required DateTime CreadoEn { get; set; }
+    public DateTime? ActualizadoEn { get; set; }
+}
+
+public sealed class UpsertTipoTuesteCafeRequest
+{
+    public string? Codigo { get; set; }
+
+    public string? Nombre { get; set; }
+
+    public EstadoCatalogoCafe? Estado { get; set; }
+}
+
+public sealed class TipoTuesteCafeDto
+{
+    public required int TipoTuesteCafeId { get; set; }
+    public required string Codigo { get; set; }
+    public required string Nombre { get; set; }
+    public required EstadoCatalogoCafe Estado { get; set; }
+    public required DateTime CreadoEn { get; set; }
+    public DateTime? ActualizadoEn { get; set; }
+}
+
+public sealed class UpsertTipoProcesoCafeRequest
+{
+    public string? Codigo { get; set; }
+
+    public string? Nombre { get; set; }
+
+    public EstadoCatalogoCafe? Estado { get; set; }
+}
+
+public sealed class TipoProcesoCafeDto
+{
+    public required int TipoProcesoCafeId { get; set; }
     public required string Codigo { get; set; }
     public required string Nombre { get; set; }
     public required EstadoCatalogoCafe Estado { get; set; }

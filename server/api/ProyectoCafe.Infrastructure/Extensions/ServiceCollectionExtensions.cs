@@ -34,6 +34,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPrecioVentaRepository, PrecioVentaRepository>();
         services.AddScoped<IClienteRepository, ClienteRepository>();
         services.AddScoped<IVentaRepository, VentaRepository>();
+services.AddScoped<IPagoVentaRepository, PagoVentaRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<ISecurityBootstrapStore, SecurityBootstrapStore>();
 

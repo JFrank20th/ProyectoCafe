@@ -24,6 +24,12 @@ public sealed class LoteCafeTerminado
 
     public string? Observacion { get; set; }
 
+    public int? VariedadCafeId { get; set; }
+
+    public int? TipoTuesteCafeId { get; set; }
+
+    public int? TipoProcesoCafeId { get; set; }
+
     public DateTime CreadoEn { get; set; }
 
     public DateTime? ActualizadoEn { get; set; }

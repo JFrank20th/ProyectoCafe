@@ -20,6 +20,9 @@ export type LoteFormValues = {
   fechaEnvasado: string;
   fechaVencimiento: string;
   observacion: string;
+  variedadCafeId: string;
+  tipoTuesteCafeId: string;
+  tipoProcesoCafeId: string;
 };
 
 export type LoteFieldError =
@@ -38,6 +41,9 @@ export type CreateLotePayload = {
   fechaEnvasado: string | null;
   fechaVencimiento: string | null;
   observacion: string | null;
+  variedadCafeId: number | null;
+  tipoTuesteCafeId: number | null;
+  tipoProcesoCafeId: number | null;
 };
 
 export type IngresoLineaInput = {
@@ -129,12 +135,22 @@ export type InventoryErrorMessages = {
 export function buildCreateLotePayload(input: LoteFormValues): CreateLotePayload {
   const observacion = input.observacion.trim();
 
+  function parseOptionalId(value: string): number | null {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const parsed = Number(trimmed);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  }
+
   return {
     codigoLote: input.codigoLote.trim().toUpperCase(),
     fechaProduccion: input.fechaProduccion,
     fechaEnvasado: input.fechaEnvasado.trim() || null,
-    fechaVencimiento: input.fechaVencimiento.trim() || null,
+    fechaVencimiento: calcularFechaVencimiento(input.fechaProduccion) || null,
     observacion: observacion || null,
+    variedadCafeId: parseOptionalId(input.variedadCafeId),
+    tipoTuesteCafeId: parseOptionalId(input.tipoTuesteCafeId),
+    tipoProcesoCafeId: parseOptionalId(input.tipoProcesoCafeId),
   };
 }
 
@@ -405,6 +421,27 @@ export function resolveInventoryError(
 export function todayIsoUtc(): string {
   return new Date().toISOString().slice(0, 10);
 }
+
+export function calcularFechaVencimiento(
+  fechaTueste: string,
+  meses = 3,
+): string {
+  if (!isIsoDate(fechaTueste)) return '';
+
+  const [year, month, day] = fechaTueste.split('-').map(Number);
+  const fecha = new Date(Date.UTC(year, month - 1, day));
+  const mesDestino = fecha.getUTCMonth() + meses;
+  const anioDestino = fecha.getUTCFullYear() + Math.floor(mesDestino / 12);
+  const mesNormalizado = ((mesDestino % 12) + 12) % 12;
+  const ultimoDia = new Date(Date.UTC(anioDestino, mesNormalizado + 1, 0)).getUTCDate();
+  const diaFinal = Math.min(day, ultimoDia);
+
+  return new Date(Date.UTC(anioDestino, mesNormalizado, diaFinal))
+    .toISOString()
+    .slice(0, 10);
+}
+
+export const addMonthsIso = calcularFechaVencimiento;
 
 function findActivePresentacion(
   presentaciones: readonly PresentacionCafe[],

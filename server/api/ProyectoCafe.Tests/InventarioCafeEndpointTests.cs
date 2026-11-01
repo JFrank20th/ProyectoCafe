@@ -25,6 +25,18 @@ public sealed class InventarioCafeEndpointTests
         (Permissions.Modulos.InventarioTiposCafe, Permissions.Actions.Crear),
         (Permissions.Modulos.InventarioTiposCafe, Permissions.Actions.Editar),
         (Permissions.Modulos.InventarioTiposCafe, Permissions.Actions.Eliminar),
+        (Permissions.Modulos.InventarioVariedades, Permissions.Actions.Ver),
+        (Permissions.Modulos.InventarioVariedades, Permissions.Actions.Crear),
+        (Permissions.Modulos.InventarioVariedades, Permissions.Actions.Editar),
+        (Permissions.Modulos.InventarioVariedades, Permissions.Actions.Eliminar),
+        (Permissions.Modulos.InventarioTiposTueste, Permissions.Actions.Ver),
+        (Permissions.Modulos.InventarioTiposTueste, Permissions.Actions.Crear),
+        (Permissions.Modulos.InventarioTiposTueste, Permissions.Actions.Editar),
+        (Permissions.Modulos.InventarioTiposTueste, Permissions.Actions.Eliminar),
+        (Permissions.Modulos.InventarioTiposProceso, Permissions.Actions.Ver),
+        (Permissions.Modulos.InventarioTiposProceso, Permissions.Actions.Crear),
+        (Permissions.Modulos.InventarioTiposProceso, Permissions.Actions.Editar),
+        (Permissions.Modulos.InventarioTiposProceso, Permissions.Actions.Eliminar),
     ];
 
     [Fact]
@@ -44,6 +56,7 @@ public sealed class InventarioCafeEndpointTests
 
         var detail = await GetLoteAsync(client, loteId);
         Assert.Equal("LOTE-001", detail.CodigoLote);
+        Assert.Equal(DateTime.UtcNow.AddDays(-1).AddMonths(3).Date, detail.FechaVencimiento!.Value.Date);
 
         var duplicate = await client.PostAsJsonAsync("/api/v1/inventario/lotes", new
         {
@@ -322,16 +335,6 @@ public sealed class InventarioCafeEndpointTests
         await AssertValidationProblemAsync(
             envasadoInvalido, nameof(CreateLoteCafeRequest.FechaEnvasado));
 
-        var vencimientoInvalido = await client.PostAsJsonAsync("/api/v1/inventario/lotes", new
-        {
-            codigoLote = "LOTE-VENCIMIENTO",
-            fechaProduccion,
-            fechaEnvasado = fechaProduccion.AddDays(1),
-            fechaVencimiento = fechaProduccion,
-        });
-        await AssertValidationProblemAsync(
-            vencimientoInvalido, nameof(CreateLoteCafeRequest.FechaVencimiento));
-
         var loteId = await CreateLoteAsync(client, "LOTE-FECHAS");
         var movimientoFuturo = await RegisterMovementAsync(
             client, loteId, TipoMovimientoLoteCafe.Ingreso,
@@ -490,6 +493,167 @@ public sealed class InventarioCafeEndpointTests
             fechaProduccion = DateTime.UtcNow.AddDays(-1),
         });
         Assert.Equal(HttpStatusCode.Forbidden, missingCsrf.StatusCode);
+    }
+
+    [Fact]
+    public async Task Variedades_CreateListUpdateDeleteAndDuplicates_Work()
+    {
+        await using var factory = new ProyectoCafeApiFactory();
+        using var client = await CreateInventoryClientAsync(factory, "variedades-admin@test.local");
+
+        var create = await client.PostAsJsonAsync("/api/v1/inventario/variedades", new
+        {
+            codigo = "VAR-1",
+            nombre = "Variedad 1",
+        });
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        var createdBody = await create.Content.ReadFromJsonAsync<Dictionary<string, int>>();
+        var variedadId = createdBody!["variedadCafeId"];
+
+        var duplicate = await client.PostAsJsonAsync("/api/v1/inventario/variedades", new
+        {
+            codigo = "VAR-1",
+            nombre = "Otra variedad",
+        });
+        await AssertValidationProblemAsync(duplicate, nameof(UpsertVariedadCafeRequest.Codigo));
+
+        var update = await client.PutAsJsonAsync(
+            $"/api/v1/inventario/variedades/{variedadId}",
+            new { codigo = "VAR-1", nombre = "Variedad Uno", estado = (int)EstadoCatalogoCafe.Inactivo });
+        Assert.Equal(HttpStatusCode.NoContent, update.StatusCode);
+
+        var delete = await client.DeleteAsync($"/api/v1/inventario/variedades/{variedadId}");
+        Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+
+        var list = await client.GetFromJsonAsync<VariedadCafeDto[]>("/api/v1/inventario/variedades");
+        Assert.NotNull(list);
+        Assert.DoesNotContain(list!, x => x.VariedadCafeId == variedadId);
+    }
+
+    [Fact]
+    public async Task TiposTueste_CreateListUpdateDeleteAndDuplicates_Work()
+    {
+        await using var factory = new ProyectoCafeApiFactory();
+        using var client = await CreateInventoryClientAsync(factory, "tipos-tueste-admin@test.local");
+
+        var create = await client.PostAsJsonAsync("/api/v1/inventario/tipos-tueste", new
+        {
+            codigo = "TUESTE-1",
+            nombre = "Tueste medio",
+        });
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        var createdBody = await create.Content.ReadFromJsonAsync<Dictionary<string, int>>();
+        var tipoTuesteId = createdBody!["tipoTuesteCafeId"];
+
+        var duplicate = await client.PostAsJsonAsync("/api/v1/inventario/tipos-tueste", new
+        {
+            codigo = "TUESTE-1",
+            nombre = "Otro tueste",
+        });
+        await AssertValidationProblemAsync(duplicate, nameof(UpsertTipoTuesteCafeRequest.Codigo));
+
+        var update = await client.PutAsJsonAsync(
+            $"/api/v1/inventario/tipos-tueste/{tipoTuesteId}",
+            new { codigo = "TUESTE-1", nombre = "Tueste medio-alto", estado = (int)EstadoCatalogoCafe.Inactivo });
+        Assert.Equal(HttpStatusCode.NoContent, update.StatusCode);
+
+        var delete = await client.DeleteAsync($"/api/v1/inventario/tipos-tueste/{tipoTuesteId}");
+        Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+
+        var list = await client.GetFromJsonAsync<TipoTuesteCafeDto[]>("/api/v1/inventario/tipos-tueste");
+        Assert.NotNull(list);
+        Assert.DoesNotContain(list!, x => x.TipoTuesteCafeId == tipoTuesteId);
+    }
+
+    [Fact]
+    public async Task TiposProceso_CreateListUpdateDeleteAndDuplicates_Work()
+    {
+        await using var factory = new ProyectoCafeApiFactory();
+        using var client = await CreateInventoryClientAsync(factory, "tipos-proceso-admin@test.local");
+
+        var create = await client.PostAsJsonAsync("/api/v1/inventario/tipos-proceso", new
+        {
+            codigo = "PROCESO-1",
+            nombre = "Lavado",
+        });
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        var createdBody = await create.Content.ReadFromJsonAsync<Dictionary<string, int>>();
+        var tipoProcesoId = createdBody!["tipoProcesoCafeId"];
+
+        var duplicate = await client.PostAsJsonAsync("/api/v1/inventario/tipos-proceso", new
+        {
+            codigo = "PROCESO-1",
+            nombre = "Otro proceso",
+        });
+        await AssertValidationProblemAsync(duplicate, nameof(UpsertTipoProcesoCafeRequest.Codigo));
+
+        var update = await client.PutAsJsonAsync(
+            $"/api/v1/inventario/tipos-proceso/{tipoProcesoId}",
+            new { codigo = "PROCESO-1", nombre = "Natural", estado = (int)EstadoCatalogoCafe.Inactivo });
+        Assert.Equal(HttpStatusCode.NoContent, update.StatusCode);
+
+        var delete = await client.DeleteAsync($"/api/v1/inventario/tipos-proceso/{tipoProcesoId}");
+        Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+
+        var list = await client.GetFromJsonAsync<TipoProcesoCafeDto[]>("/api/v1/inventario/tipos-proceso");
+        Assert.NotNull(list);
+        Assert.DoesNotContain(list!, x => x.TipoProcesoCafeId == tipoProcesoId);
+    }
+
+    [Fact]
+    public async Task Lotes_CreateWithCatalogosOptionalFields_ReturnsIds()
+    {
+        await using var factory = new ProyectoCafeApiFactory();
+        using var client = await CreateInventoryClientAsync(factory, "lote-catalogos@test.local");
+
+        var variedadResponse = await client.PostAsJsonAsync("/api/v1/inventario/variedades", new
+        {
+            codigo = "VAR-LOTE",
+            nombre = "Variedad lote",
+        });
+        var variedadId = (await variedadResponse.Content.ReadFromJsonAsync<Dictionary<string, int>>())!["variedadCafeId"];
+
+        var tuesteResponse = await client.PostAsJsonAsync("/api/v1/inventario/tipos-tueste", new
+        {
+            codigo = "TUESTE-LOTE",
+            nombre = "Tueste lote",
+        });
+        var tuesteId = (await tuesteResponse.Content.ReadFromJsonAsync<Dictionary<string, int>>())!["tipoTuesteCafeId"];
+
+        var procesoResponse = await client.PostAsJsonAsync("/api/v1/inventario/tipos-proceso", new
+        {
+            codigo = "PROCESO-LOTE",
+            nombre = "Proceso lote",
+        });
+        var procesoId = (await procesoResponse.Content.ReadFromJsonAsync<Dictionary<string, int>>())!["tipoProcesoCafeId"];
+
+        var loteResponse = await client.PostAsJsonAsync("/api/v1/inventario/lotes", new
+        {
+            codigoLote = "LOTE-CATALOGOS",
+            fechaProduccion = DateTime.UtcNow.AddDays(-1),
+            variedadCafeId = variedadId,
+            tipoTuesteCafeId = tuesteId,
+            tipoProcesoCafeId = procesoId,
+        });
+        Assert.Equal(HttpStatusCode.Created, loteResponse.StatusCode);
+        var loteId = (await loteResponse.Content.ReadFromJsonAsync<Dictionary<string, int>>())!["loteCafeId"];
+
+        var detail = await GetLoteAsync(client, loteId);
+        Assert.Equal(variedadId, detail.VariedadCafeId);
+        Assert.Equal(tuesteId, detail.TipoTuesteCafeId);
+        Assert.Equal(procesoId, detail.TipoProcesoCafeId);
+
+        var nullLoteResponse = await client.PostAsJsonAsync("/api/v1/inventario/lotes", new
+        {
+            codigoLote = "LOTE-SIN-CATALOGOS",
+            fechaProduccion = DateTime.UtcNow.AddDays(-1),
+        });
+        Assert.Equal(HttpStatusCode.Created, nullLoteResponse.StatusCode);
+        var nullLoteId = (await nullLoteResponse.Content.ReadFromJsonAsync<Dictionary<string, int>>())!["loteCafeId"];
+        var nullDetail = await GetLoteAsync(client, nullLoteId);
+        Assert.Null(nullDetail.VariedadCafeId);
+        Assert.Null(nullDetail.TipoTuesteCafeId);
+        Assert.Null(nullDetail.TipoProcesoCafeId);
     }
 
     private static async Task<HttpClient> CreateInventoryClientAsync(

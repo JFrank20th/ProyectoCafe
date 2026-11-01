@@ -19,6 +19,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<PrecioVentaService>();
         services.AddScoped<ClienteService>();
         services.AddScoped<VentaService>();
+services.AddScoped<PagoVentaService>();
 
         services.TryAddSingleton(TimeProvider.System);
 

@@ -14,6 +14,17 @@ export type VentaDetalleHistorial = {
   subtotal: number;
 };
 
+export type PagoVentaHistorial = {
+  pagoVentaId: number;
+  ventaId: number;
+  monto: number;
+  fechaPago: string;
+  metodoPago: string;
+  referencia?: string | null;
+  usuarioId?: number | null;
+  creadoEn: string;
+};
+
 export type VentaHistorial = {
   ventaId: number;
   numeroVenta: number;
@@ -21,11 +32,22 @@ export type VentaHistorial = {
   clienteId?: number | null;
   clienteNombre?: string | null;
   estado: VentaEstado | number;
+  estadoEntrega: number;
+  canceladoEn?: string | null;
+  motivoCancelacion?: string | null;
+  anuladoEn?: string | null;
+  motivoAnulacion?: string | null;
+  estadoPago: number;
+  montoPagado: number;
+  saldoPendiente: number;
   observacion?: string | null;
   total: number;
   creadoEn: string;
   detalles: VentaDetalleHistorial[];
+  pagos: PagoVentaHistorial[];
 };
+
+import { apiFetch } from '@/lib/api/client';
 
 export type MovimientoAsociado = {
   movimientoLoteCafeId: number;
@@ -35,3 +57,17 @@ export type MovimientoAsociado = {
   fechaMovimiento: string;
   referencia?: string | null;
 };
+
+export async function cancelVenta(ventaId: number, motivo: string): Promise<void> {
+  await apiFetch<void>(`/api/v1/ventas/ventas/${ventaId}/cancelar`, {
+    method: 'POST',
+    body: JSON.stringify({ motivo }),
+  });
+}
+
+export async function anulateVenta(ventaId: number, motivo: string): Promise<void> {
+  await apiFetch<void>(`/api/v1/ventas/ventas/${ventaId}/anular`, {
+    method: 'POST',
+    body: JSON.stringify({ motivo }),
+  });
+}

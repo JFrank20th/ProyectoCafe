@@ -40,6 +40,7 @@ type LineaForm = {
   id: string;
   presentacionCafeId: string;
   tipoCafeId: string;
+  loteCafeId: string;
   cantidad: string;
   precioVentaId: string;
 };
@@ -53,6 +54,7 @@ function createEmptyLine(): LineaForm {
     id,
     presentacionCafeId: '',
     tipoCafeId: '',
+    loteCafeId: '',
     cantidad: '',
     precioVentaId: '',
   };
@@ -85,6 +87,7 @@ export function VentaFormDialog({
   const [tiposCafe, setTiposCafe] = useState<TipoCafe[]>([]);
   const [precios, setPrecios] = useState<PrecioVenta[]>([]);
   const [existencias, setExistencias] = useState<ExistenciaCafe[]>([]);
+  const [lotes, setLotes] = useState<LoteCafeResumen[]>([]);
 
   const [clienteId, setClienteId] = useState<string>('');
   const [lineas, setLineas] = useState<LineaForm[]>([createEmptyLine()]);
@@ -95,15 +98,61 @@ export function VentaFormDialog({
   const [success, setSuccess] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const availableStock = useMemo(() => {
+  const stockByLotSku = useMemo(() => {
     const map = new Map<string, number>();
     for (const existencia of existencias) {
       if (existencia.cantidadPaquetes <= 0) continue;
-      const key = `${existencia.presentacionCafeId}-${existencia.tipoCafeId}`;
+      const key = `${existencia.loteCafeId}-${existencia.presentacionCafeId}-${existencia.tipoCafeId}`;
       map.set(key, (map.get(key) ?? 0) + existencia.cantidadPaquetes);
     }
     return map;
   }, [existencias]);
+
+  const requestedByLot = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const linea of lineas) {
+      const cantidad = Number(linea.cantidad.trim());
+      if (!linea.presentacionCafeId || !linea.tipoCafeId || !linea.loteCafeId) continue;
+      if (!Number.isInteger(cantidad) || cantidad <= 0) continue;
+      const key = `${linea.loteCafeId}-${linea.presentacionCafeId}-${linea.tipoCafeId}`;
+      map.set(key, (map.get(key) ?? 0) + cantidad);
+    }
+    return map;
+  }, [lineas]);
+
+  const lotesById = useMemo(
+    () => new Map(lotes.map((lote) => [lote.loteCafeId, lote.codigoLote])),
+    [lotes],
+  );
+
+  function lotesForLine(presentacionId: string, tipoId: string) {
+    const ids = new Set(
+      existencias
+        .filter(
+          (existencia) =>
+            existencia.cantidadPaquetes > 0 &&
+            String(existencia.presentacionCafeId) === presentacionId &&
+            String(existencia.tipoCafeId) === tipoId,
+        )
+        .map((existencia) => existencia.loteCafeId),
+    );
+
+    return [...ids]
+      .map((loteCafeId) => {
+        const existencia = existencias.find(
+          (item) =>
+            item.loteCafeId === loteCafeId &&
+            String(item.presentacionCafeId) === presentacionId &&
+            String(item.tipoCafeId) === tipoId,
+        );
+        return {
+          loteCafeId,
+          codigo: lotesById.get(loteCafeId) ?? String(loteCafeId),
+          cantidad: existencia?.cantidadPaquetes ?? 0,
+        };
+      })
+      .sort((a, b) => a.codigo.localeCompare(b.codigo));
+  }
 
   const activePrecios = useMemo(
     () => precios.filter((precio) => precio.estado === 1),
@@ -151,9 +200,10 @@ export function VentaFormDialog({
       if (canQueryInventory) {
         tasks.push(
           (async () => {
-            const lotes = await apiFetch<LoteCafeResumen[]>('/api/v1/inventario/lotes');
+            const lotesList = await apiFetch<LoteCafeResumen[]>('/api/v1/inventario/lotes');
+            setLotes(lotesList);
             const responses = await Promise.all(
-              lotes.map((lote) =>
+              lotesList.map((lote) =>
                 apiFetch<ExistenciaCafe[]>(
                   `/api/v1/inventario/lotes/${lote.loteCafeId}/existencias`,
                 ),
@@ -198,19 +248,19 @@ export function VentaFormDialog({
   }
 
   const lineErrors = useMemo(() => {
-    const errors: Record<string, { presentacion?: string; tipo?: string; cantidad?: string; precio?: string }> = {};
-
-    const requestedBySku = new Map<string, number>();
-    for (const linea of lineas) {
-      const cantidad = Number(linea.cantidad.trim());
-      if (!linea.presentacionCafeId || !linea.tipoCafeId) continue;
-      if (!Number.isInteger(cantidad) || cantidad <= 0) continue;
-      const key = `${linea.presentacionCafeId}-${linea.tipoCafeId}`;
-      requestedBySku.set(key, (requestedBySku.get(key) ?? 0) + cantidad);
-    }
+    const errors: Record<
+      string,
+      { presentacion?: string; tipo?: string; lote?: string; cantidad?: string; precio?: string }
+    > = {};
 
     for (const linea of lineas) {
-      const lineError: { presentacion?: string; tipo?: string; cantidad?: string; precio?: string } = {};
+      const lineError: {
+        presentacion?: string;
+        tipo?: string;
+        lote?: string;
+        cantidad?: string;
+        precio?: string;
+      } = {};
 
       if (!linea.presentacionCafeId) {
         lineError.presentacion = 'required';
@@ -219,15 +269,33 @@ export function VentaFormDialog({
         lineError.tipo = 'required';
       }
 
+      const loteValido =
+        !!linea.presentacionCafeId &&
+        !!linea.tipoCafeId &&
+        !!linea.loteCafeId &&
+        existencias.some(
+          (existencia) =>
+            existencia.loteCafeId === Number(linea.loteCafeId) &&
+            String(existencia.presentacionCafeId) === linea.presentacionCafeId &&
+            String(existencia.tipoCafeId) === linea.tipoCafeId &&
+            existencia.cantidadPaquetes > 0,
+        );
+
+      if (!linea.loteCafeId) {
+        lineError.lote = 'required';
+      } else if (!loteValido) {
+        lineError.lote = 'required';
+      }
+
       const cantidad = Number(linea.cantidad.trim());
       if (!linea.cantidad.trim()) {
         lineError.cantidad = 'required';
       } else if (!Number.isInteger(cantidad) || cantidad <= 0) {
         lineError.cantidad = 'invalid';
-      } else {
-        const key = `${linea.presentacionCafeId}-${linea.tipoCafeId}`;
-        const disponible = availableStock.get(key) ?? 0;
-        const solicitado = requestedBySku.get(key) ?? 0;
+      } else if (linea.loteCafeId && loteValido) {
+        const key = `${linea.loteCafeId}-${linea.presentacionCafeId}-${linea.tipoCafeId}`;
+        const disponible = stockByLotSku.get(key) ?? 0;
+        const solicitado = requestedByLot.get(key) ?? 0;
         if (solicitado > disponible) {
           lineError.cantidad = 'insufficient';
         }
@@ -251,7 +319,7 @@ export function VentaFormDialog({
     }
 
     return errors;
-  }, [lineas, availableStock, activePrecios]);
+  }, [lineas, existencias, stockByLotSku, requestedByLot, activePrecios]);
 
   const hasErrors = Object.keys(lineErrors).length > 0 || lineas.length === 0;
 
@@ -288,6 +356,7 @@ export function VentaFormDialog({
       fechaVenta: null,
       observacion: null,
       detalles: lineas.map((linea) => ({
+        loteCafeId: Number(linea.loteCafeId),
         presentacionCafeId: Number(linea.presentacionCafeId),
         tipoCafeId: Number(linea.tipoCafeId),
         precioVentaId: Number(linea.precioVentaId),
@@ -370,6 +439,7 @@ export function VentaFormDialog({
                     <TableRow>
                       <TableCell>{tf('presentation')}</TableCell>
                       <TableCell>{tf('coffeeType')}</TableCell>
+                      <TableCell>{tf('lotCode')}</TableCell>
                       <TableCell>{ts('quantityLabel')}</TableCell>
                       <TableCell>{ts('priceLabel')}</TableCell>
                       <TableCell align="right">{ts('unitPriceLabel')}</TableCell>
@@ -408,6 +478,7 @@ export function VentaFormDialog({
                                   updateLine(linea.id, {
                                     presentacionCafeId: event.target.value,
                                     tipoCafeId: '',
+                                    loteCafeId: '',
                                     precioVentaId: '',
                                   })
                                 }
@@ -440,7 +511,7 @@ export function VentaFormDialog({
                                 label={tf('coffeeType')}
                                 value={linea.tipoCafeId}
                                 onChange={(event: SelectChangeEvent) =>
-                                  updateLine(linea.id, { tipoCafeId: event.target.value })
+                                  updateLine(linea.id, { tipoCafeId: event.target.value, loteCafeId: '' })
                                 }
                               >
                                 {tiposForPresentacion(linea.presentacionCafeId).map((tipo) => (
@@ -451,6 +522,55 @@ export function VentaFormDialog({
                               </Select>
                               {errors?.tipo ? (
                                 <FormHelperText>{ts('coffeeTypeRequired')}</FormHelperText>
+                              ) : null}
+                            </FormControl>
+                          </TableCell>
+
+                          <TableCell sx={{ minWidth: 200 }}>
+                            <FormControl
+                              size="small"
+                              fullWidth
+                              error={Boolean(errors?.lote)}
+                              disabled={!linea.presentacionCafeId || !linea.tipoCafeId}
+                            >
+                              <InputLabel id={`lote-${linea.id}`}>{tf('lotCode')}</InputLabel>
+                              <Select
+                                labelId={`lote-${linea.id}`}
+                                label={tf('lotCode')}
+                                value={linea.loteCafeId}
+                                onChange={(event: SelectChangeEvent) =>
+                                  updateLine(linea.id, { loteCafeId: event.target.value })
+                                }
+                              >
+                                {lotesForLine(linea.presentacionCafeId, linea.tipoCafeId).map((lote) => (
+                                  <MenuItem key={lote.loteCafeId} value={String(lote.loteCafeId)}>
+                                    {lote.codigo} ({lote.cantidad})
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                              {linea.loteCafeId && linea.presentacionCafeId && linea.tipoCafeId ? (
+                                (() => {
+                                  const stockKey = `${linea.loteCafeId}-${linea.presentacionCafeId}-${linea.tipoCafeId}`;
+                                  const disponible = stockByLotSku.get(stockKey) ?? 0;
+                                  const solicitado = requestedByLot.get(stockKey) ?? 0;
+                                  const restante = disponible - solicitado;
+                                  const cantidad = Number(linea.cantidad.trim());
+                                  const excede = Number.isInteger(cantidad) && cantidad > 0 && solicitado > disponible;
+                                  return (
+                                    <Typography
+                                      variant="caption"
+                                      color={excede ? 'error' : 'text.secondary'}
+                                      sx={{ display: 'block', mt: 0.5 }}
+                                    >
+                                      {`Disponibles: ${disponible} · Cantidad: ${
+                                        Number.isInteger(cantidad) && cantidad > 0 ? cantidad : 0
+                                      } · Restantes: ${restante}`}
+                                    </Typography>
+                                  );
+                                })()
+                              ) : null}
+                              {errors?.lote ? (
+                                <FormHelperText>{ts('lotRequired')}</FormHelperText>
                               ) : null}
                             </FormControl>
                           </TableCell>

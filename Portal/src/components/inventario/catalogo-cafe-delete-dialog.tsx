@@ -41,6 +41,9 @@ export function CatalogoCafeDeleteDialog({
   const [error, setError] = useState<string | null>(null);
 
   const isPresentacion = kind === 'presentacion';
+  const isVariedad = kind === 'variedad';
+  const isTipoTueste = kind === 'tipoTueste';
+  const isTipoProceso = kind === 'tipoProceso';
 
   useEffect(() => {
     if (!open) return;
@@ -70,7 +73,17 @@ export function CatalogoCafeDeleteDialog({
       setError(
         resolveInventoryError(
           requestError,
-          ti(isPresentacion ? 'errorDeletingPresentacion' : 'errorDeletingTipoCafe'),
+          ti(
+            isPresentacion
+              ? 'errorDeletingPresentacion'
+              : isVariedad
+                ? 'errorDeletingVariedad'
+                : isTipoTueste
+                  ? 'errorDeletingTipoTueste'
+                  : isTipoProceso
+                    ? 'errorDeletingTipoProceso'
+                    : 'errorDeletingTipoCafe',
+          ),
           {
             conflict: ti('conflictError'),
             forbidden: ti('forbiddenError'),
@@ -86,7 +99,15 @@ export function CatalogoCafeDeleteDialog({
   return (
     <Dialog open={open} onClose={closeDialog} fullWidth maxWidth="xs">
       <DialogTitle>
-        {isPresentacion ? ti('deletePresentacionTitle') : ti('deleteTipoCafeTitle')}
+        {isPresentacion
+          ? ti('deletePresentacionTitle')
+          : isVariedad
+            ? ti('deleteVariedadTitle')
+            : isTipoTueste
+              ? ti('deleteTipoTuesteTitle')
+              : isTipoProceso
+                ? ti('deleteTipoProcesoTitle')
+                : ti('deleteTipoCafeTitle')}
       </DialogTitle>
       <DialogContent>
         <Alert severity="warning" sx={{ mb: 2 }}>
@@ -98,10 +119,25 @@ export function CatalogoCafeDeleteDialog({
                 name: item?.nombre ?? '',
                 code: item?.codigo ?? '',
               })
-            : ti('deleteTipoCafeBody', {
-                name: item?.nombre ?? '',
-                code: item?.codigo ?? '',
-              })}
+            : isVariedad
+              ? ti('deleteVariedadBody', {
+                  name: item?.nombre ?? '',
+                  code: item?.codigo ?? '',
+                })
+              : isTipoTueste
+                ? ti('deleteTipoTuesteBody', {
+                    name: item?.nombre ?? '',
+                    code: item?.codigo ?? '',
+                  })
+                : isTipoProceso
+                  ? ti('deleteTipoProcesoBody', {
+                      name: item?.nombre ?? '',
+                      code: item?.codigo ?? '',
+                    })
+                  : ti('deleteTipoCafeBody', {
+                    name: item?.nombre ?? '',
+                    code: item?.codigo ?? '',
+                  })}
         </DialogContentText>
         {error ? (
           <Alert severity="error" sx={{ mt: 2 }}>

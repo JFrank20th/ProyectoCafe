@@ -5,6 +5,7 @@ import { ApiError } from '@/lib/api/client';
 import type { ExistenciaCafe, PresentacionCafe, TipoCafe } from '@/lib/inventario/cafe';
 import {
   buildCreateLotePayload,
+  calcularFechaVencimiento,
   buildMovimientoPayload,
   calcularPesoNetoKg,
   cantidadPaquetesError,
@@ -96,6 +97,9 @@ const validLote: LoteFormValues = {
   fechaEnvasado: '2026-10-02',
   fechaVencimiento: '2027-04-02',
   observacion: ' Lote de prueba ',
+  variedadCafeId: '',
+  tipoTuesteCafeId: '',
+  tipoProcesoCafeId: '',
 };
 
 const today = '2026-10-27';
@@ -127,8 +131,11 @@ test('buildCreateLotePayload normalizes the code and optional text fields', () =
     codigoLote: 'LOTE-2026-010',
     fechaProduccion: '2026-10-01',
     fechaEnvasado: '2026-10-02',
-    fechaVencimiento: '2027-04-02',
+    fechaVencimiento: '2027-01-01',
     observacion: 'Lote de prueba',
+    variedadCafeId: null,
+    tipoTuesteCafeId: null,
+    tipoProcesoCafeId: null,
   });
 
   assert.deepEqual(
@@ -137,13 +144,19 @@ test('buildCreateLotePayload normalizes the code and optional text fields', () =
       fechaEnvasado: '',
       fechaVencimiento: '',
       observacion: '   ',
+      variedadCafeId: '7',
+      tipoTuesteCafeId: '8',
+      tipoProcesoCafeId: '9',
     }),
     {
       codigoLote: 'LOTE-2026-010',
       fechaProduccion: '2026-10-01',
       fechaEnvasado: null,
-      fechaVencimiento: null,
+      fechaVencimiento: '2027-01-01',
       observacion: null,
+      variedadCafeId: 7,
+      tipoTuesteCafeId: 8,
+      tipoProcesoCafeId: 9,
     },
   );
 });
@@ -429,6 +442,14 @@ test('calcularPesoNetoKg rounds to grams and todayIsoUtc returns an ISO date', (
   assert.equal(calcularPesoNetoKg(3, 454), 1.362);
   assert.equal(calcularPesoNetoKg(0, 454), 0);
   assert.match(todayIsoUtc(), /^\d{4}-\d{2}-\d{2}$/);
+});
+
+test('calcularFechaVencimiento adds three calendar months with month-end handling', () => {
+  assert.equal(calcularFechaVencimiento('2026-01-15'), '2026-04-15');
+  assert.equal(calcularFechaVencimiento('2026-10-31'), '2027-01-31');
+  assert.equal(calcularFechaVencimiento('2026-01-31'), '2026-04-30');
+  assert.equal(calcularFechaVencimiento('2024-02-29'), '2024-05-29');
+  assert.equal(calcularFechaVencimiento(''), '');
 });
 
 test('resolveInventoryError maps conflicts, permissions and backend validation messages', () => {

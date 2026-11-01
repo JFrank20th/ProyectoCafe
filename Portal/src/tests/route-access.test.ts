@@ -60,8 +60,8 @@ test('inventory route allows any inventory catalog read permission', () => {
     ],
   );
 
-  assert.deepEqual(getRouteAccess('/dashboard/inventario/lotes/1'), access);
-  assert.deepEqual(getRouteAccess('/dashboard/inventariox'), { access: 'protected' });
+  assert.deepEqual(getRouteAccess('/inventario/CafeTostado/lotes/1'), access);
+  assert.deepEqual(getRouteAccess('/inventario/CafeTostadox'), { access: 'protected' });
   assert.equal(canAccessRoute(['perm:Inventario.Lotes:Ver'], INVENTARIO_CAFE_ROUTE), true);
   assert.equal(
     canAccessRoute(['PERM:INVENTARIO.PRESENTACIONES:VER'], INVENTARIO_CAFE_ROUTE),

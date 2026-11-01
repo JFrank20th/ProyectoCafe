@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useLocale, useTranslations } from '@/hooks/useTranslations';
 import { apiFetch } from '@/lib/api/client';
@@ -32,9 +32,20 @@ import { VentaDetalleDialog } from './venta-detalle-dialog';
 export type VentasHistorialPanelProps = {
   canView: boolean;
   canQueryMovements: boolean;
+  canRegisterPayments?: boolean;
+  canUpdateDelivery?: boolean;
+  canCancelSale?: boolean;
+  canAnulateSale?: boolean;
 };
 
-export function VentasHistorialPanel({ canView, canQueryMovements }: VentasHistorialPanelProps) {
+export function VentasHistorialPanel({
+  canView,
+  canQueryMovements,
+  canRegisterPayments = false,
+  canUpdateDelivery = false,
+  canCancelSale = false,
+  canAnulateSale = false,
+}: VentasHistorialPanelProps) {
   const tc = useTranslations('common');
   const tf = useTranslations('fields');
   const ts = useTranslations('sales');
@@ -48,6 +59,8 @@ export function VentasHistorialPanel({ canView, canQueryMovements }: VentasHisto
   const [numeroFiltro, setNumeroFiltro] = useState('');
   const [clienteFiltro, setClienteFiltro] = useState<string>('all');
   const [estadoFiltro, setEstadoFiltro] = useState<string>('all');
+  const [estadoPagoFiltro, setEstadoPagoFiltro] = useState<string>('all');
+  const [estadoEntregaFiltro, setEstadoEntregaFiltro] = useState<string>('all');
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
 
@@ -59,7 +72,17 @@ export function VentasHistorialPanel({ canView, canQueryMovements }: VentasHisto
     setLoading(true);
     setError(null);
     try {
-      const list = await apiFetch<VentaHistorial[]>('/api/v1/ventas/ventas');
+      const params = new URLSearchParams();
+      if (numeroFiltro.trim()) params.set('numeroVenta', numeroFiltro.trim());
+      if (clienteFiltro !== 'all') params.set('clienteId', clienteFiltro);
+      if (estadoFiltro !== 'all') params.set('estado', estadoFiltro);
+      if (estadoPagoFiltro !== 'all') params.set('estadoPago', estadoPagoFiltro);
+      if (estadoEntregaFiltro !== 'all') params.set('estadoEntrega', estadoEntregaFiltro);
+      if (fechaDesde) params.set('fechaDesde', fechaDesde);
+      if (fechaHasta) params.set('fechaHasta', fechaHasta);
+      const query = params.toString();
+      const url = query ? `/api/v1/ventas/ventas?${query}` : '/api/v1/ventas/ventas';
+      const list = await apiFetch<VentaHistorial[]>(url);
       setItems(list);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : ts('errorLoadingVentas'));
@@ -79,43 +102,33 @@ export function VentasHistorialPanel({ canView, canQueryMovements }: VentasHisto
 
   useEffect(() => {
     void loadVentas();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canView, numeroFiltro, clienteFiltro, estadoFiltro, estadoPagoFiltro, estadoEntregaFiltro, fechaDesde, fechaHasta]);
+
+  useEffect(() => {
     void loadClientes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canView]);
 
-  const filteredItems = useMemo(() => {
-    return items.filter((venta) => {
-      if (numeroFiltro.trim() && !String(venta.numeroVenta).includes(numeroFiltro.trim())) {
-        return false;
-      }
-
-      if (clienteFiltro !== 'all' && String(venta.clienteId ?? '') !== clienteFiltro) {
-        return false;
-      }
-
-      if (estadoFiltro !== 'all' && String(venta.estado) !== estadoFiltro) {
-        return false;
-      }
-
-      if (fechaDesde) {
-        const desde = new Date(fechaDesde);
-        if (new Date(venta.fechaVenta) < desde) return false;
-      }
-
-      if (fechaHasta) {
-        const hasta = new Date(fechaHasta);
-        hasta.setHours(23, 59, 59, 999);
-        if (new Date(venta.fechaVenta) > hasta) return false;
-      }
-
-      return true;
-    });
-  }, [items, numeroFiltro, clienteFiltro, estadoFiltro, fechaDesde, fechaHasta]);
+  const filteredItems = items;
 
   function estadoLabel(estado: number) {
     if (estado === 1) return ts('statusRegistered');
     if (estado === 2) return ts('statusCancelled');
     return ts('statusAnnulled');
+  }
+
+  function estadoPagoLabel(estado: number) {
+    if (estado === 2) return ts('paymentStatusPartial');
+    if (estado === 3) return ts('paymentStatusPaid');
+    return ts('paymentStatusPending');
+  }
+
+  function estadoEntregaLabel(estado: number) {
+    if (estado === 2) return ts('deliveryStatusInPreparation');
+    if (estado === 3) return ts('deliveryStatusReadyToDeliver');
+    if (estado === 4) return ts('deliveryStatusDelivered');
+    return ts('deliveryStatusPendingPreparation');
   }
 
   function openDetail(venta: VentaHistorial) {
@@ -189,6 +202,37 @@ export function VentasHistorialPanel({ canView, canQueryMovements }: VentasHisto
               </Select>
             </FormControl>
 
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 180 } }}>
+              <InputLabel id="historial-estado-pago-label">{ts('paymentStatusLabel')}</InputLabel>
+              <Select
+                labelId="historial-estado-pago-label"
+                label={ts('paymentStatusLabel')}
+                value={estadoPagoFiltro}
+                onChange={(event: SelectChangeEvent) => setEstadoPagoFiltro(event.target.value)}
+              >
+                <MenuItem value="all">{ts('allOption')}</MenuItem>
+                <MenuItem value="1">{ts('paymentStatusPending')}</MenuItem>
+                <MenuItem value="2">{ts('paymentStatusPartial')}</MenuItem>
+                <MenuItem value="3">{ts('paymentStatusPaid')}</MenuItem>
+              </Select>
+            </FormControl>
+
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 200 } }}>
+              <InputLabel id="historial-estado-entrega-label">{ts('deliveryStatusLabel')}</InputLabel>
+              <Select
+                labelId="historial-estado-entrega-label"
+                label={ts('deliveryStatusLabel')}
+                value={estadoEntregaFiltro}
+                onChange={(event: SelectChangeEvent) => setEstadoEntregaFiltro(event.target.value)}
+              >
+                <MenuItem value="all">{ts('allOption')}</MenuItem>
+                <MenuItem value="1">{ts('deliveryStatusPendingPreparation')}</MenuItem>
+                <MenuItem value="2">{ts('deliveryStatusInPreparation')}</MenuItem>
+                <MenuItem value="3">{ts('deliveryStatusReadyToDeliver')}</MenuItem>
+                <MenuItem value="4">{ts('deliveryStatusDelivered')}</MenuItem>
+              </Select>
+            </FormControl>
+
             <TextField
               size="small"
               type="date"
@@ -208,6 +252,21 @@ export function VentasHistorialPanel({ canView, canQueryMovements }: VentasHisto
               slotProps={{ inputLabel: { shrink: true } }}
               sx={{ minWidth: { xs: '100%', md: 170 } }}
             />
+
+            <Button
+              variant="text"
+              onClick={() => {
+                setNumeroFiltro('');
+                setClienteFiltro('all');
+                setEstadoFiltro('all');
+                setEstadoPagoFiltro('all');
+                setEstadoEntregaFiltro('all');
+                setFechaDesde('');
+                setFechaHasta('');
+              }}
+            >
+              {ts('clearFiltersLabel')}
+            </Button>
           </Stack>
 
           {loading ? (
@@ -218,7 +277,7 @@ export function VentasHistorialPanel({ canView, canQueryMovements }: VentasHisto
             <Alert severity="info">{ts('noSalesHistory')}</Alert>
           ) : (
             <TableContainer>
-              <Table size="small" sx={{ minWidth: 820 }}>
+              <Table size="small" sx={{ minWidth: 1180 }}>
                 <TableHead>
                   <TableRow>
                     <TableCell>{ts('saleNumberLabel')}</TableCell>
@@ -226,7 +285,11 @@ export function VentasHistorialPanel({ canView, canQueryMovements }: VentasHisto
                     <TableCell>{ts('clientLabel')}</TableCell>
                     <TableCell align="right">{ts('productsCountLabel')}</TableCell>
                     <TableCell align="right">{ts('totalLabel')}</TableCell>
+                    <TableCell align="right">{ts('paidLabel')}</TableCell>
+                    <TableCell align="right">{ts('balanceLabel')}</TableCell>
                     <TableCell>{tf('status')}</TableCell>
+                    <TableCell>{ts('paymentStatusLabel')}</TableCell>
+                    <TableCell>{ts('deliveryStatusLabel')}</TableCell>
                     <TableCell align="right">{tf('actions')}</TableCell>
                   </TableRow>
                 </TableHead>
@@ -244,6 +307,20 @@ export function VentasHistorialPanel({ canView, canQueryMovements }: VentasHisto
                           maximumFractionDigits: 0,
                         }).format(venta.total)}
                       </TableCell>
+                      <TableCell align="right">
+                        {new Intl.NumberFormat(locale, {
+                          style: 'currency',
+                          currency: 'COP',
+                          maximumFractionDigits: 0,
+                        }).format(venta.montoPagado)}
+                      </TableCell>
+                      <TableCell align="right">
+                        {new Intl.NumberFormat(locale, {
+                          style: 'currency',
+                          currency: 'COP',
+                          maximumFractionDigits: 0,
+                        }).format(venta.saldoPendiente)}
+                      </TableCell>
                       <TableCell>
                         <Chip
                           size="small"
@@ -251,6 +328,8 @@ export function VentasHistorialPanel({ canView, canQueryMovements }: VentasHisto
                           label={estadoLabel(venta.estado)}
                         />
                       </TableCell>
+                      <TableCell>{estadoPagoLabel(venta.estadoPago)}</TableCell>
+                      <TableCell>{estadoEntregaLabel(venta.estadoEntrega)}</TableCell>
                       <TableCell align="right">
                         <Button size="small" variant="outlined" onClick={() => openDetail(venta)}>
                           {ts('viewDetailLabel')}
@@ -269,6 +348,11 @@ export function VentasHistorialPanel({ canView, canQueryMovements }: VentasHisto
         open={detailOpen}
         venta={selectedVenta}
         canQueryMovements={canQueryMovements}
+        canRegisterPayments={canRegisterPayments}
+        canUpdateDelivery={canUpdateDelivery}
+        canCancelSale={canCancelSale}
+        canAnulateSale={canAnulateSale}
+        onUpdated={() => void loadVentas()}
         onClose={() => setDetailOpen(false)}
       />
     </Card>

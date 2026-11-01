@@ -20,6 +20,9 @@ public static class InventarioCafeEndpoints
         MapMovimientos(group);
         MapPresentaciones(group);
         MapTiposCafe(group);
+        MapVariedades(group);
+        MapTiposTueste(group);
+        MapTiposProceso(group);
 
         return endpoints;
     }
@@ -193,6 +196,216 @@ public static class InventarioCafeEndpoints
         })
         .RequireAuthorization(Permissions.Policy(
             Permissions.Modulos.InventarioPresentaciones,
+            Permissions.Actions.Eliminar));
+    }
+
+    private static void MapVariedades(IEndpointRouteBuilder group)
+    {
+        group.MapGet("/variedades", async (
+            [FromServices] CatalogoCafeService service,
+            CancellationToken ct) =>
+        {
+            var variedades = await service.GetVariedadesAsync(ct);
+            return Results.Ok(variedades);
+        })
+        .RequireAuthorization(Permissions.Policy(
+            Permissions.Modulos.InventarioVariedades,
+            Permissions.Actions.Ver));
+
+        group.MapGet("/variedades/{id:int}", async (
+            int id,
+            [FromServices] CatalogoCafeService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetVariedadAsync(id, ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : Failure(result);
+        })
+        .RequireAuthorization(Permissions.Policy(
+            Permissions.Modulos.InventarioVariedades,
+            Permissions.Actions.Ver));
+
+        group.MapPost("/variedades", async (
+            [FromBody] UpsertVariedadCafeRequest request,
+            [FromServices] CatalogoCafeService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.CreateVariedadAsync(request, ct);
+            if (!result.IsSuccess)
+            {
+                return Failure(result);
+            }
+
+            return Results.Created(
+                $"/api/v1/inventario/variedades/{result.Value}",
+                new { variedadCafeId = result.Value });
+        })
+        .RequireAuthorization(Permissions.Policy(
+            Permissions.Modulos.InventarioVariedades,
+            Permissions.Actions.Crear));
+
+        group.MapPut("/variedades/{id:int}", async (
+            int id,
+            [FromBody] UpsertVariedadCafeRequest request,
+            [FromServices] CatalogoCafeService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.UpdateVariedadAsync(id, request, ct);
+            return result.IsSuccess ? Results.NoContent() : Failure(result);
+        })
+        .RequireAuthorization(Permissions.Policy(
+            Permissions.Modulos.InventarioVariedades,
+            Permissions.Actions.Editar));
+
+        group.MapDelete("/variedades/{id:int}", async (
+            int id,
+            [FromServices] CatalogoCafeService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.DeleteVariedadAsync(id, ct);
+            return result.IsSuccess ? Results.NoContent() : Failure(result);
+        })
+        .RequireAuthorization(Permissions.Policy(
+            Permissions.Modulos.InventarioVariedades,
+            Permissions.Actions.Eliminar));
+    }
+
+    private static void MapTiposTueste(IEndpointRouteBuilder group)
+    {
+        group.MapGet("/tipos-tueste", async (
+            [FromServices] CatalogoCafeService service,
+            CancellationToken ct) =>
+        {
+            var tiposTueste = await service.GetTiposTuesteAsync(ct);
+            return Results.Ok(tiposTueste);
+        })
+        .RequireAuthorization(Permissions.Policy(
+            Permissions.Modulos.InventarioTiposTueste,
+            Permissions.Actions.Ver));
+
+        group.MapGet("/tipos-tueste/{id:int}", async (
+            int id,
+            [FromServices] CatalogoCafeService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetTipoTuesteAsync(id, ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : Failure(result);
+        })
+        .RequireAuthorization(Permissions.Policy(
+            Permissions.Modulos.InventarioTiposTueste,
+            Permissions.Actions.Ver));
+
+        group.MapPost("/tipos-tueste", async (
+            [FromBody] UpsertTipoTuesteCafeRequest request,
+            [FromServices] CatalogoCafeService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.CreateTipoTuesteAsync(request, ct);
+            if (!result.IsSuccess)
+            {
+                return Failure(result);
+            }
+
+            return Results.Created(
+                $"/api/v1/inventario/tipos-tueste/{result.Value}",
+                new { tipoTuesteCafeId = result.Value });
+        })
+        .RequireAuthorization(Permissions.Policy(
+            Permissions.Modulos.InventarioTiposTueste,
+            Permissions.Actions.Crear));
+
+        group.MapPut("/tipos-tueste/{id:int}", async (
+            int id,
+            [FromBody] UpsertTipoTuesteCafeRequest request,
+            [FromServices] CatalogoCafeService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.UpdateTipoTuesteAsync(id, request, ct);
+            return result.IsSuccess ? Results.NoContent() : Failure(result);
+        })
+        .RequireAuthorization(Permissions.Policy(
+            Permissions.Modulos.InventarioTiposTueste,
+            Permissions.Actions.Editar));
+
+        group.MapDelete("/tipos-tueste/{id:int}", async (
+            int id,
+            [FromServices] CatalogoCafeService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.DeleteTipoTuesteAsync(id, ct);
+            return result.IsSuccess ? Results.NoContent() : Failure(result);
+        })
+        .RequireAuthorization(Permissions.Policy(
+            Permissions.Modulos.InventarioTiposTueste,
+            Permissions.Actions.Eliminar));
+    }
+
+    private static void MapTiposProceso(IEndpointRouteBuilder group)
+    {
+        group.MapGet("/tipos-proceso", async (
+            [FromServices] CatalogoCafeService service,
+            CancellationToken ct) =>
+        {
+            var tiposProceso = await service.GetTiposProcesoAsync(ct);
+            return Results.Ok(tiposProceso);
+        })
+        .RequireAuthorization(Permissions.Policy(
+            Permissions.Modulos.InventarioTiposProceso,
+            Permissions.Actions.Ver));
+
+        group.MapGet("/tipos-proceso/{id:int}", async (
+            int id,
+            [FromServices] CatalogoCafeService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetTipoProcesoAsync(id, ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : Failure(result);
+        })
+        .RequireAuthorization(Permissions.Policy(
+            Permissions.Modulos.InventarioTiposProceso,
+            Permissions.Actions.Ver));
+
+        group.MapPost("/tipos-proceso", async (
+            [FromBody] UpsertTipoProcesoCafeRequest request,
+            [FromServices] CatalogoCafeService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.CreateTipoProcesoAsync(request, ct);
+            if (!result.IsSuccess)
+            {
+                return Failure(result);
+            }
+
+            return Results.Created(
+                $"/api/v1/inventario/tipos-proceso/{result.Value}",
+                new { tipoProcesoCafeId = result.Value });
+        })
+        .RequireAuthorization(Permissions.Policy(
+            Permissions.Modulos.InventarioTiposProceso,
+            Permissions.Actions.Crear));
+
+        group.MapPut("/tipos-proceso/{id:int}", async (
+            int id,
+            [FromBody] UpsertTipoProcesoCafeRequest request,
+            [FromServices] CatalogoCafeService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.UpdateTipoProcesoAsync(id, request, ct);
+            return result.IsSuccess ? Results.NoContent() : Failure(result);
+        })
+        .RequireAuthorization(Permissions.Policy(
+            Permissions.Modulos.InventarioTiposProceso,
+            Permissions.Actions.Editar));
+
+        group.MapDelete("/tipos-proceso/{id:int}", async (
+            int id,
+            [FromServices] CatalogoCafeService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.DeleteTipoProcesoAsync(id, ct);
+            return result.IsSuccess ? Results.NoContent() : Failure(result);
+        })
+        .RequireAuthorization(Permissions.Policy(
+            Permissions.Modulos.InventarioTiposProceso,
             Permissions.Actions.Eliminar));
     }
 

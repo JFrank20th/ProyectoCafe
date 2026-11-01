@@ -45,7 +45,7 @@ import {
   type MovimientoFormValues,
 } from '@/lib/inventario/operations';
 
-const TIPOS_MOVIMIENTO: readonly TipoMovimientoLoteCafe[] = [1, 2, 3, 4];
+const TIPOS_MOVIMIENTO: readonly TipoMovimientoLoteCafe[] = [3, 4];
 
 export type MovimientoDialogProps = {
   open: boolean;
@@ -85,7 +85,7 @@ export function MovimientoDialog({
   const ti = useTranslations('inventory');
   const locale = useLocale();
 
-  const [tipoMovimiento, setTipoMovimiento] = useState<TipoMovimientoLoteCafe>(1);
+  const [tipoMovimiento, setTipoMovimiento] = useState<TipoMovimientoLoteCafe>(3);
   const [presentacionCafeId, setPresentacionCafeId] = useState('');
   const [tipoCafeId, setTipoCafeId] = useState('');
   const [cantidad, setCantidad] = useState('');

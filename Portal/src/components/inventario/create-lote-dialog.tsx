@@ -30,9 +30,20 @@ import Typography from '@mui/material/Typography';
 
 import { useLocale, useTranslations } from '@/hooks/useTranslations';
 import { apiFetch } from '@/lib/api/client';
-import { formatGrams, formatKg, formatNumber, isCatalogoActivo, type PresentacionCafe, type TipoCafe } from '@/lib/inventario/cafe';
+import {
+  formatGrams,
+  formatKg,
+  formatNumber,
+  isCatalogoActivo,
+  type PresentacionCafe,
+  type TipoCafe,
+  type VariedadCafe,
+  type TipoTuesteCafe,
+  type TipoProcesoCafe,
+} from '@/lib/inventario/cafe';
 import {
   buildCreateLotePayload,
+  calcularFechaVencimiento,
   LOTE_CODE_MAX_LENGTH,
   OBSERVACION_MAX_LENGTH,
   resolveIngresoLineas,
@@ -69,6 +80,9 @@ export type CreateLoteDialogProps = {
   canLoadCatalogos: boolean;
   presentaciones: readonly PresentacionCafe[];
   tiposCafe: readonly TipoCafe[];
+  variedades: readonly VariedadCafe[];
+  tiposTueste: readonly TipoTuesteCafe[];
+  tiposProceso: readonly TipoProcesoCafe[];
   catalogsLoading: boolean;
   catalogsError: string | null;
 };
@@ -81,6 +95,9 @@ export function CreateLoteDialog({
   canLoadCatalogos,
   presentaciones,
   tiposCafe,
+  variedades,
+  tiposTueste,
+  tiposProceso,
   catalogsLoading,
   catalogsError,
 }: CreateLoteDialogProps) {
@@ -91,9 +108,13 @@ export function CreateLoteDialog({
 
   const [codigoLote, setCodigoLote] = useState('');
   const [fechaProduccion, setFechaProduccion] = useState('');
-  const [fechaEnvasado, setFechaEnvasado] = useState('');
-  const [fechaVencimiento, setFechaVencimiento] = useState('');
+  // Fecha de envasado se conserva internamente por compatibilidad, pero no se captura en la UI.
+  const fechaEnvasado = '';
+  const fechaVencimiento = calcularFechaVencimiento(fechaProduccion);
   const [observacion, setObservacion] = useState('');
+  const [variedadCafeId, setVariedadCafeId] = useState('');
+  const [tipoTuesteCafeId, setTipoTuesteCafeId] = useState('');
+  const [tipoProcesoCafeId, setTipoProcesoCafeId] = useState('');
   const [lineas, setLineas] = useState<IngresoLineaInput[]>([]);
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -108,6 +129,18 @@ export function CreateLoteDialog({
   const activeTiposCafe = useMemo(
     () => tiposCafe.filter((tipoCafe) => isCatalogoActivo(tipoCafe.estado)),
     [tiposCafe],
+  );
+  const activeVariedades = useMemo(
+    () => variedades.filter((variedad) => isCatalogoActivo(variedad.estado)),
+    [variedades],
+  );
+  const activeTiposTueste = useMemo(
+    () => tiposTueste.filter((tipoTueste) => isCatalogoActivo(tipoTueste.estado)),
+    [tiposTueste],
+  );
+  const activeTiposProceso = useMemo(
+    () => tiposProceso.filter((tipoProceso) => isCatalogoActivo(tipoProceso.estado)),
+    [tiposProceso],
   );
   const hasInactiveCatalogs =
     activePresentaciones.length !== presentaciones.length ||
@@ -126,6 +159,9 @@ export function CreateLoteDialog({
     fechaEnvasado,
     fechaVencimiento,
     observacion,
+    variedadCafeId,
+    tipoTuesteCafeId,
+    tipoProcesoCafeId,
   };
   const lotErrors = submitted ? validateCreateLoteInput(values, todayIso) : {};
   const lineResolution = useMemo(
@@ -138,9 +174,12 @@ export function CreateLoteDialog({
 
     setCodigoLote('');
     setFechaProduccion(todayIsoUtc());
-    setFechaEnvasado('');
-    setFechaVencimiento('');
+    // setFechaEnvasado('');
+    // fechaVencimiento se calcula automáticamente.
     setObservacion('');
+    setVariedadCafeId('');
+    setTipoTuesteCafeId('');
+    setTipoProcesoCafeId('');
     setLineas(canCreateMovimiento && canLoadCatalogos ? [createEmptyLine()] : []);
     setSubmitted(false);
     setSaving(false);
@@ -261,7 +300,7 @@ export function CreateLoteDialog({
                   tipoCafeId: line.tipoCafe.tipoCafeId,
                   cantidadPaquetes: line.cantidadPaquetes,
                   referencia: null,
-                  observacion: null,
+                  observacion: payload.observacion,
                 }),
               },
             );
@@ -345,25 +384,12 @@ export function CreateLoteDialog({
 
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <TextField
-              label={tf('packagingDate')}
-              type="date"
-              value={fechaEnvasado}
-              onChange={(event) => setFechaEnvasado(event.target.value)}
-              error={Boolean(lotErrors.fechaEnvasado)}
-              helperText={lotHelperText('fechaEnvasado', lotErrors.fechaEnvasado)}
-              fullWidth
-              slotProps={{ inputLabel: { shrink: true } }}
-            />
-
-            <TextField
               label={tf('expirationDate')}
               type="date"
               value={fechaVencimiento}
-              onChange={(event) => setFechaVencimiento(event.target.value)}
-              error={Boolean(lotErrors.fechaVencimiento)}
-              helperText={lotHelperText('fechaVencimiento', lotErrors.fechaVencimiento)}
               fullWidth
               slotProps={{ inputLabel: { shrink: true } }}
+              inputProps={{ readOnly: true }}
             />
           </Stack>
 
@@ -381,6 +407,59 @@ export function CreateLoteDialog({
             minRows={2}
             slotProps={{ htmlInput: { maxLength: OBSERVACION_MAX_LENGTH } }}
           />
+
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <FormControl size="small" fullWidth>
+              <InputLabel id="variedad-lote-label">{ti('variedadLabel')}</InputLabel>
+              <Select
+                labelId="variedad-lote-label"
+                label={ti('variedadLabel')}
+                value={variedadCafeId}
+                onChange={(event: SelectChangeEvent) => setVariedadCafeId(event.target.value)}
+              >
+                <MenuItem value="">{tc('noneOption')}</MenuItem>
+                {activeVariedades.map((variedad) => (
+                  <MenuItem key={variedad.variedadCafeId} value={String(variedad.variedadCafeId)}>
+                    {variedad.nombre}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl size="small" fullWidth>
+              <InputLabel id="tipo-tueste-lote-label">{ti('tipoTuesteLabel')}</InputLabel>
+              <Select
+                labelId="tipo-tueste-lote-label"
+                label={ti('tipoTuesteLabel')}
+                value={tipoTuesteCafeId}
+                onChange={(event: SelectChangeEvent) => setTipoTuesteCafeId(event.target.value)}
+              >
+                <MenuItem value="">{tc('noneOption')}</MenuItem>
+                {activeTiposTueste.map((tipoTueste) => (
+                  <MenuItem key={tipoTueste.tipoTuesteCafeId} value={String(tipoTueste.tipoTuesteCafeId)}>
+                    {tipoTueste.nombre}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl size="small" fullWidth>
+              <InputLabel id="tipo-proceso-lote-label">{ti('tipoProcesoLabel')}</InputLabel>
+              <Select
+                labelId="tipo-proceso-lote-label"
+                label={ti('tipoProcesoLabel')}
+                value={tipoProcesoCafeId}
+                onChange={(event: SelectChangeEvent) => setTipoProcesoCafeId(event.target.value)}
+              >
+                <MenuItem value="">{tc('noneOption')}</MenuItem>
+                {activeTiposProceso.map((tipoProceso) => (
+                  <MenuItem key={tipoProceso.tipoProcesoCafeId} value={String(tipoProceso.tipoProcesoCafeId)}>
+                    {tipoProceso.nombre}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Stack>
 
           <Typography variant="subtitle2">{ti('entryLinesTitle')}</Typography>
 

@@ -69,6 +69,33 @@ test('filterLotes combines code search and lot status', () => {
   assert.deepEqual(filterLotes(lotes, '', 2).map((lote) => lote.loteCafeId), [2]);
 });
 
+test('filterLotes filters by production date range', () => {
+  assert.deepEqual(
+    filterLotes(lotes, '', 'all', '2026-02-01', null).map((lote) => lote.loteCafeId),
+    [2, 3],
+  );
+  assert.deepEqual(
+    filterLotes(lotes, '', 'all', null, '2026-02-15').map((lote) => lote.loteCafeId),
+    [1, 2],
+  );
+  assert.deepEqual(
+    filterLotes(lotes, '', 'all', '2026-02-01', '2026-02-15').map((lote) => lote.loteCafeId),
+    [2],
+  );
+  assert.deepEqual(filterLotes(lotes, '', 'all', '', '').map((lote) => lote.loteCafeId), [1, 2, 3]);
+});
+
+test('filterLotes combines code, status and production dates', () => {
+  assert.deepEqual(
+    filterLotes(lotes, 'LOTE-2026', 1, '2026-01-01', '2026-01-31').map((lote) => lote.loteCafeId),
+    [1],
+  );
+  assert.deepEqual(
+    filterLotes(lotes, 'LOTE-2026', 2, '2026-03-01', '2026-03-31').map((lote) => lote.loteCafeId),
+    [],
+  );
+});
+
 test('lot status helpers are exhaustive and map to chip colors', () => {
   assert.equal(estadoLoteKey(1), 'lotStateActive');
   assert.equal(estadoLoteKey(2), 'lotStateAgotado');

@@ -25,6 +25,33 @@ export type TipoCafe = {
   actualizadoEn?: string | null;
 };
 
+export type VariedadCafe = {
+  variedadCafeId: number;
+  codigo: string;
+  nombre: string;
+  estado: EstadoCatalogoCafe;
+  creadoEn: string;
+  actualizadoEn?: string | null;
+};
+
+export type TipoTuesteCafe = {
+  tipoTuesteCafeId: number;
+  codigo: string;
+  nombre: string;
+  estado: EstadoCatalogoCafe;
+  creadoEn: string;
+  actualizadoEn?: string | null;
+};
+
+export type TipoProcesoCafe = {
+  tipoProcesoCafeId: number;
+  codigo: string;
+  nombre: string;
+  estado: EstadoCatalogoCafe;
+  creadoEn: string;
+  actualizadoEn?: string | null;
+};
+
 export type LoteCafeResumen = {
   loteCafeId: number;
   codigoLote: string;
@@ -35,6 +62,12 @@ export type LoteCafeResumen = {
   observacion?: string | null;
   creadoEn: string;
   actualizadoEn?: string | null;
+  variedadCafeId?: number | null;
+  variedadCafeNombre?: string | null;
+  tipoTuesteCafeId?: number | null;
+  tipoTuesteCafeNombre?: string | null;
+  tipoProcesoCafeId?: number | null;
+  tipoProcesoCafeNombre?: string | null;
   totalPaquetes: number;
   totalPesoNetoKg: number;
 };
@@ -78,19 +111,66 @@ export type MovimientoCafe = {
 
 export type ChipColor = 'default' | 'info' | 'success' | 'warning' | 'error';
 
+export type LoteFiltroOptions = {
+  query?: string;
+  codigo?: string;
+  estado?: EstadoLoteFiltro;
+  fechaDesde?: string | null;
+  fechaHasta?: string | null;
+  fechaProduccionDesde?: string | null;
+  fechaProduccionHasta?: string | null;
+  from?: string | null;
+  to?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+};
+
 export function filterLotes(
   lotes: readonly LoteCafeResumen[],
-  query: string,
-  estado: EstadoLoteFiltro,
+  queryOrFilters: string | LoteFiltroOptions = '',
+  estado: EstadoLoteFiltro = 'all',
+  fechaDesde?: string | null,
+  fechaHasta?: string | null,
 ): LoteCafeResumen[] {
-  const normalizedQuery = query.trim().toLowerCase();
+  const filters =
+    typeof queryOrFilters === 'string'
+      ? {
+          query: queryOrFilters,
+          estado,
+          fechaDesde,
+          fechaHasta,
+        }
+      : (queryOrFilters ?? {});
+
+  const normalizedQuery = String(filters.query ?? filters.codigo ?? '')
+    .trim()
+    .toLowerCase();
+  const normalizedEstado = (filters.estado ?? estado ?? 'all') as EstadoLoteFiltro;
+  const normalizedDesde = filters.fechaDesde ?? filters.fechaProduccionDesde ?? filters.from ?? filters.startDate;
+  const normalizedHasta = filters.fechaHasta ?? filters.fechaProduccionHasta ?? filters.to ?? filters.endDate;
 
   return lotes.filter((lote) => {
-    if (estado !== 'all' && lote.estado !== estado) {
+    if (normalizedEstado !== 'all' && lote.estado !== normalizedEstado) {
       return false;
     }
 
-    return !normalizedQuery || lote.codigoLote.toLowerCase().includes(normalizedQuery);
+    if (
+      normalizedQuery &&
+      !lote.codigoLote.toLowerCase().includes(normalizedQuery)
+    ) {
+      return false;
+    }
+
+    const fechaProduccion = lote.fechaProduccion?.slice(0, 10) ?? '';
+    if (normalizedDesde && fechaProduccion < normalizedDesde) {
+      return false;
+    }
+
+    if (normalizedHasta && fechaProduccion > normalizedHasta) {
+      return false;
+    }
+
+    return true;
   });
 }
 

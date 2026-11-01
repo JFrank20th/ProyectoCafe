@@ -22,9 +22,11 @@ public sealed class VentaService(
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly TimeProvider _timeProvider = timeProvider;
 
-    public async Task<IReadOnlyList<VentaDto>> GetVentasAsync(CancellationToken ct)
+    public async Task<IReadOnlyList<VentaDto>> GetVentasAsync(VentaFiltro? filtro, CancellationToken ct)
     {
-        var list = await _ventas.ListAsync(ct);
+        var list = filtro is null
+            ? await _ventas.ListAsync(ct)
+            : await _ventas.ListFilteredAsync(filtro, ct);
         return list.Select(Map).ToArray();
     }
 
@@ -38,6 +40,7 @@ public sealed class VentaService(
 
     public async Task<OperationResult<int>> CreateVentaAsync(
         CreateVentaRequest request,
+        int? usuarioId,
         CancellationToken ct)
     {
         var now = _timeProvider.GetUtcNow().UtcDateTime;
@@ -77,6 +80,7 @@ public sealed class VentaService(
         }
 
         var detalles = new List<VentaDetalle>();
+        var loteIds = new List<int>();
         decimal total = 0m;
 
         foreach (var detalleRequest in request.Detalles)
@@ -86,6 +90,13 @@ public sealed class VentaService(
                 return OperationResult<int>.Validation(Error(
                     nameof(CreateVentaDetalleRequest.CantidadPaquetes),
                     "La cantidad debe ser mayor que cero."));
+            }
+
+            if (detalleRequest.LoteCafeId <= 0)
+            {
+                return OperationResult<int>.Validation(Error(
+                    nameof(CreateVentaDetalleRequest.LoteCafeId),
+                    "El lote es requerido."));
             }
 
             var presentacion = await _catalogos.FindPresentacionAsync(detalleRequest.PresentacionCafeId, ct);
@@ -135,6 +146,8 @@ public sealed class VentaService(
                 Subtotal = subtotal,
                 CreadoEn = now,
             });
+
+            loteIds.Add(detalleRequest.LoteCafeId);
         }
 
         try
@@ -143,72 +156,55 @@ public sealed class VentaService(
             {
                 var numeroVenta = await _ventas.GetNextNumeroAsync(token);
 
-                var lotes = await _lotes.ListLotesAsync(token);
-                var lotesOrdenados = lotes
-                    .Where(lote => lote.Estado == EstadoLoteCafe.Activo)
-                    .OrderBy(lote => lote.FechaProduccion)
-                    .ThenBy(lote => lote.LoteCafeId)
-                    .ToArray();
-
                 var lotesAfectados = new HashSet<int>();
 
-                foreach (var detalle in detalles)
+                for (var index = 0; index < detalles.Count; index++)
                 {
-                    var remaining = detalle.CantidadPaquetes;
+                    var detalle = detalles[index];
+                    var loteCafeId = loteIds[index];
 
-                    foreach (var loteResumen in lotesOrdenados)
+                    var lote = await _lotes.FindLoteAsync(loteCafeId, token);
+                    if (lote is null || lote.Estado != EstadoLoteCafe.Activo)
                     {
-                        if (remaining <= 0)
-                        {
-                            break;
-                        }
-
-                        var existencia = await _lotes.FindExistenciaAsync(
-                            loteResumen.LoteCafeId,
-                            detalle.PresentacionCafeId,
-                            detalle.TipoCafeId,
-                            token);
-
-                        if (existencia is null || existencia.CantidadPaquetes <= 0)
-                        {
-                            continue;
-                        }
-
-                        var take = Math.Min(remaining, existencia.CantidadPaquetes);
-                        if (take <= 0)
-                        {
-                            continue;
-                        }
-
-                        existencia.CantidadPaquetes -= take;
-                        existencia.ActualizadoEn = now;
-
-                        var movimiento = new MovimientoLoteCafe
-                        {
-                            LoteCafeExistencia = existencia,
-                            TipoMovimiento = TipoMovimientoLoteCafe.Salida,
-                            CantidadPaquetes = take,
-                            PesoNetoKg = Math.Round(
-                                (decimal)take * existencia.PesoUnitarioGramos / 1000m,
-                                3,
-                                MidpointRounding.AwayFromZero),
-                            FechaMovimiento = fechaVenta,
-                            Referencia = $"VENTA-{numeroVenta}",
-                            Observacion = $"Venta {numeroVenta} - {detalle.PresentacionCafe?.Nombre ?? string.Empty} / {detalle.TipoCafe?.Nombre ?? string.Empty}",
-                            CreadoEn = now,
-                        };
-
-                        await _lotes.AddMovimientoAsync(movimiento, token);
-                        lotesAfectados.Add(loteResumen.LoteCafeId);
-                        remaining -= take;
+                        return OperationResult<int>.Validation(Error(
+                            nameof(CreateVentaDetalleRequest.LoteCafeId),
+                            "El lote no existe o no está activo."));
                     }
 
-                    if (remaining > 0)
+                    var existencia = await _lotes.FindExistenciaAsync(
+                        loteCafeId,
+                        detalle.PresentacionCafeId,
+                        detalle.TipoCafeId,
+                        token);
+
+                    if (existencia is null || existencia.CantidadPaquetes < detalle.CantidadPaquetes)
                     {
                         return OperationResult<int>.Validation(Error(
                             nameof(CreateVentaDetalleRequest.CantidadPaquetes),
-                            "No hay existencias suficientes para completar la venta."));
+                            "No hay existencias suficientes en el lote seleccionado."));
                     }
+
+                    existencia.CantidadPaquetes -= detalle.CantidadPaquetes;
+                    existencia.ActualizadoEn = now;
+
+                    var movimiento = new MovimientoLoteCafe
+                    {
+                        LoteCafeExistencia = existencia,
+                        TipoMovimiento = TipoMovimientoLoteCafe.Salida,
+                        CantidadPaquetes = detalle.CantidadPaquetes,
+                        PesoNetoKg = Math.Round(
+                            (decimal)detalle.CantidadPaquetes * existencia.PesoUnitarioGramos / 1000m,
+                            3,
+                            MidpointRounding.AwayFromZero),
+                        FechaMovimiento = fechaVenta,
+                        Referencia = $"VENTA-{numeroVenta}",
+                        Observacion = $"Venta {numeroVenta} - {detalle.PresentacionCafe?.Nombre ?? string.Empty} / {detalle.TipoCafe?.Nombre ?? string.Empty}",
+                        UsuarioId = usuarioId,
+                        CreadoEn = now,
+                    };
+
+                    await _lotes.AddMovimientoAsync(movimiento, token);
+                    lotesAfectados.Add(loteCafeId);
                 }
 
                 foreach (var loteId in lotesAfectados)
@@ -246,6 +242,7 @@ public sealed class VentaService(
                     ClienteId = request.ClienteId,
                     Cliente = cliente,
                     Estado = EstadoVenta.Registrada,
+                    EstadoEntrega = EstadoEntregaVenta.PendientePreparacion,
                     Observacion = NormalizeOptional(request.Observacion),
                     Total = total,
                     CreadoEn = now,
@@ -264,6 +261,218 @@ public sealed class VentaService(
         }
     }
 
+    public async Task<OperationResult> UpdateEstadoEntregaAsync(
+        int ventaId,
+        EstadoEntregaVenta estadoEntrega,
+        CancellationToken ct)
+    {
+        if (!Enum.IsDefined(estadoEntrega))
+        {
+            return OperationResult.Validation(Error(
+                nameof(UpdateEstadoEntregaVentaRequest.EstadoEntrega),
+                "El estado de entrega no es válido."));
+        }
+
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+
+        try
+        {
+            return await _unitOfWork.ExecuteInTransactionAsync(async token =>
+            {
+                var venta = await _ventas.FindAsync(ventaId, token);
+                if (venta is null)
+                {
+                    return OperationResult.NotFound();
+                }
+
+                if (venta.Estado is EstadoVenta.Cancelada or EstadoVenta.Anulada)
+                {
+                    return OperationResult.Validation(Error(
+                        nameof(UpdateEstadoEntregaVentaRequest.EstadoEntrega),
+                        "No se puede actualizar la entrega de una venta cancelada o anulada."));
+                }
+
+                venta.EstadoEntrega = estadoEntrega;
+                venta.ActualizadoEn = now;
+
+                await _unitOfWork.SaveChangesAsync(token);
+                return OperationResult.Success();
+            }, ct);
+        }
+        catch (ConcurrencyConflictException)
+        {
+            return OperationResult.Conflict();
+        }
+    }
+
+    public async Task<OperationResult> CancelVentaAsync(
+        int ventaId,
+        string motivo,
+        int? usuarioId,
+        CancellationToken ct)
+    {
+        return await ChangeSaleStatusAsync(
+            ventaId,
+            EstadoVenta.Cancelada,
+            motivo,
+            usuarioId,
+            "CANCELACION",
+            ct);
+    }
+
+    public async Task<OperationResult> AnulateVentaAsync(
+        int ventaId,
+        string motivo,
+        int? usuarioId,
+        CancellationToken ct)
+    {
+        return await ChangeSaleStatusAsync(
+            ventaId,
+            EstadoVenta.Anulada,
+            motivo,
+            usuarioId,
+            "ANULACION",
+            ct);
+    }
+
+    private async Task<OperationResult> ChangeSaleStatusAsync(
+        int ventaId,
+        EstadoVenta nuevoEstado,
+        string motivo,
+        int? usuarioId,
+        string referenciaPrefijo,
+        CancellationToken ct)
+    {
+        var motivoNormalizado = (motivo ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(motivoNormalizado))
+        {
+            return OperationResult.Validation(Error(
+                nameof(motivo),
+                "El motivo es requerido."));
+        }
+
+        if (motivoNormalizado.Length > 250)
+        {
+            return OperationResult.Validation(Error(
+                nameof(motivo),
+                "El motivo no puede exceder 250 caracteres."));
+        }
+
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+
+        try
+        {
+            return await _unitOfWork.ExecuteInTransactionAsync(async token =>
+            {
+                var venta = await _ventas.FindAsync(ventaId, token);
+                if (venta is null)
+                {
+                    return OperationResult.NotFound();
+                }
+
+                if (venta.Estado != EstadoVenta.Registrada)
+                {
+                    return OperationResult.Validation(Error(
+                        nameof(EstadoVenta),
+                        "La venta ya está cancelada o anulada."));
+                }
+
+                if (venta.EstadoEntrega == EstadoEntregaVenta.Entregada)
+                {
+                    return OperationResult.Validation(Error(
+                        nameof(EstadoEntregaVenta),
+                        "No se puede cancelar o anular una venta entregada."));
+                }
+
+                var movimientos = await _lotes.ListMovimientosByReferenciaAsync(
+                    $"VENTA-{venta.NumeroVenta}",
+                    TipoMovimientoLoteCafe.Salida,
+                    token);
+
+                if (movimientos.Count == 0)
+                {
+                    return OperationResult.Validation(Error(
+                        nameof(Venta.NumeroVenta),
+                        "No se encontraron movimientos de salida asociados a la venta."));
+                }
+
+                var lotesAfectados = new HashSet<int>();
+
+                foreach (var movimiento in movimientos)
+                {
+                    var existencia = movimiento.LoteCafeExistencia;
+                    if (existencia is null)
+                    {
+                        return OperationResult.Validation(Error(
+                            nameof(MovimientoLoteCafe.LoteCafeExistenciaId),
+                            "No se pudo identificar la existencia original de la venta."));
+                    }
+
+                    existencia.CantidadPaquetes += movimiento.CantidadPaquetes;
+                    existencia.ActualizadoEn = now;
+
+                    var movimientoInverso = new MovimientoLoteCafe
+                    {
+                        LoteCafeExistencia = existencia,
+                        TipoMovimiento = TipoMovimientoLoteCafe.AjustePositivo,
+                        CantidadPaquetes = movimiento.CantidadPaquetes,
+                        PesoNetoKg = movimiento.PesoNetoKg,
+                        FechaMovimiento = now,
+                        Referencia = $"{referenciaPrefijo}-VENTA-{venta.NumeroVenta}",
+                        Observacion = $"{referenciaPrefijo} de venta {venta.NumeroVenta}",
+                        UsuarioId = usuarioId,
+                        CreadoEn = now,
+                    };
+
+                    await _lotes.AddMovimientoAsync(movimientoInverso, token);
+                    lotesAfectados.Add(existencia.LoteCafeId);
+                }
+
+                foreach (var loteId in lotesAfectados)
+                {
+                    var lote = await _lotes.FindLoteAsync(loteId, token);
+                    if (lote is null)
+                    {
+                        continue;
+                    }
+
+                    if (lote.Estado == EstadoLoteCafe.Agotado)
+                    {
+                        // La restauracion de esta operacion siempre devuelve paquetes
+                        // al lote, por lo que un lote agotado vuelve a estar activo.
+                        lote.Estado = EstadoLoteCafe.Activo;
+                    }
+
+                    lote.ActualizadoEn = now;
+                }
+
+                if (nuevoEstado == EstadoVenta.Cancelada)
+                {
+                    venta.Estado = EstadoVenta.Cancelada;
+                    venta.CanceladoEn = now;
+                    venta.CanceladoPorUsuarioId = usuarioId;
+                    venta.MotivoCancelacion = motivoNormalizado;
+                }
+                else
+                {
+                    venta.Estado = EstadoVenta.Anulada;
+                    venta.AnuladoEn = now;
+                    venta.AnuladoPorUsuarioId = usuarioId;
+                    venta.MotivoAnulacion = motivoNormalizado;
+                }
+
+                venta.ActualizadoEn = now;
+
+                await _unitOfWork.SaveChangesAsync(token);
+                return OperationResult.Success();
+            }, ct);
+        }
+        catch (ConcurrencyConflictException)
+        {
+            return OperationResult.Conflict();
+        }
+    }
+
     private static string? NormalizeOptional(string? value)
     {
         var normalized = (value ?? string.Empty).Trim();
@@ -279,6 +488,14 @@ public sealed class VentaService(
             ClienteId = venta.ClienteId,
             ClienteNombre = venta.Cliente?.Nombre,
             Estado = venta.Estado,
+            EstadoEntrega = venta.EstadoEntrega,
+            CanceladoEn = venta.CanceladoEn,
+            MotivoCancelacion = venta.MotivoCancelacion,
+            AnuladoEn = venta.AnuladoEn,
+            MotivoAnulacion = venta.MotivoAnulacion,
+            EstadoPago = venta.EstadoPago,
+            MontoPagado = venta.MontoPagado,
+            SaldoPendiente = venta.SaldoPendiente,
             Observacion = venta.Observacion,
             Total = venta.Total,
             CreadoEn = venta.CreadoEn,
@@ -295,6 +512,17 @@ public sealed class VentaService(
                 CantidadPaquetes = detail.CantidadPaquetes,
                 PrecioUnitario = detail.PrecioUnitario,
                 Subtotal = detail.Subtotal,
+            }).ToList(),
+            Pagos = venta.Pagos.Select(pago => new PagoVentaDto
+            {
+                PagoVentaId = pago.PagoVentaId,
+                VentaId = pago.VentaId,
+                Monto = pago.Monto,
+                FechaPago = pago.FechaPago,
+                MetodoPago = pago.MetodoPago,
+                Referencia = pago.Referencia,
+                UsuarioId = pago.UsuarioId,
+                CreadoEn = pago.CreadoEn,
             }).ToList(),
         };
 

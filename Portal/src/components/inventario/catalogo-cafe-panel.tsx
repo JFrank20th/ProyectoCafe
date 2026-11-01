@@ -55,12 +55,45 @@ export function CatalogoCafePanel({
   const locale = useLocale();
 
   const isPresentacion = kind === 'presentacion';
-  const title = isPresentacion ? ti('presentacionesTitle') : ti('tiposCafeTitle');
+  const isVariedad = kind === 'variedad';
+  const isTipoTueste = kind === 'tipoTueste';
+  const isTipoProceso = kind === 'tipoProceso';
+  const title = isPresentacion
+    ? ti('presentacionesTitle')
+    : isVariedad
+      ? ti('variedadesTitle')
+      : isTipoTueste
+        ? ti('tiposTuesteTitle')
+        : isTipoProceso
+          ? ti('tiposProcesoTitle')
+          : ti('tiposCafeTitle');
   const countLabel = isPresentacion
     ? ti('presentacionesCount', { count: items.length })
-    : ti('tiposCafeCount', { count: items.length });
-  const createLabel = isPresentacion ? ti('newPresentacion') : ti('newTipoCafe');
-  const emptyMessage = isPresentacion ? ti('noPresentaciones') : ti('noTiposCafe');
+    : isVariedad
+      ? ti('variedadesCount', { count: items.length })
+      : isTipoTueste
+        ? ti('tiposTuesteCount', { count: items.length })
+        : isTipoProceso
+          ? ti('tiposProcesoCount', { count: items.length })
+          : ti('tiposCafeCount', { count: items.length });
+  const createLabel = isPresentacion
+    ? ti('newPresentacion')
+    : isVariedad
+      ? ti('newVariedad')
+      : isTipoTueste
+        ? ti('newTipoTueste')
+        : isTipoProceso
+          ? ti('newTipoProceso')
+          : ti('newTipoCafe');
+  const emptyMessage = isPresentacion
+    ? ti('noPresentaciones')
+    : isVariedad
+      ? ti('noVariedades')
+      : isTipoTueste
+        ? ti('noTiposTueste')
+        : isTipoProceso
+          ? ti('noTiposProceso')
+          : ti('noTiposCafe');
   const hasActions = canEdit || canDelete;
 
   return (

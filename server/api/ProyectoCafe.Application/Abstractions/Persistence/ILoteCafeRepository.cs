@@ -17,6 +17,9 @@ public sealed class LoteCafeResumenRow
     public string? Observacion { get; set; }
     public required DateTime CreadoEn { get; set; }
     public DateTime? ActualizadoEn { get; set; }
+    public int? VariedadCafeId { get; set; }
+    public int? TipoTuesteCafeId { get; set; }
+    public int? TipoProcesoCafeId { get; set; }
     public int TotalPaquetes { get; set; }
     public decimal TotalPesoNetoKg { get; set; }
 }
@@ -89,6 +92,11 @@ public interface ILoteCafeRepository
     Task AddMovimientoAsync(MovimientoLoteCafe movimiento, CancellationToken ct);
 
     Task<IReadOnlyList<MovimientoCafeRow>> ListMovimientosAsync(int loteCafeId, CancellationToken ct);
+
+    Task<IReadOnlyList<MovimientoLoteCafe>> ListMovimientosByReferenciaAsync(
+        string referencia,
+        TipoMovimientoLoteCafe? tipoMovimiento = null,
+        CancellationToken ct = default);
 
     Task<int> GetTotalPaquetesAsync(int loteCafeId, CancellationToken ct);
 }

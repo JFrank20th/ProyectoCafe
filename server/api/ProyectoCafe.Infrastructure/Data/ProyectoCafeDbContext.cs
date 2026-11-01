@@ -16,6 +16,12 @@ public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext
 
     public DbSet<PresentacionCafe> PresentacionesCafe => Set<PresentacionCafe>();
     public DbSet<TipoCafe> TiposCafe => Set<TipoCafe>();
+
+    public DbSet<VariedadCafe> VariedadesCafe => Set<VariedadCafe>();
+
+    public DbSet<TipoTuesteCafe> TiposTuesteCafe => Set<TipoTuesteCafe>();
+
+    public DbSet<TipoProcesoCafe> TiposProcesoCafe => Set<TipoProcesoCafe>();
     public DbSet<LoteCafeTerminado> LotesCafeTerminado => Set<LoteCafeTerminado>();
     public DbSet<LoteCafeExistencia> LotesCafeExistencias => Set<LoteCafeExistencia>();
     public DbSet<MovimientoLoteCafe> MovimientosLoteCafe => Set<MovimientoLoteCafe>();
@@ -27,6 +33,8 @@ public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext
     public DbSet<Venta> Ventas => Set<Venta>();
 
     public DbSet<VentaDetalle> VentaDetalles => Set<VentaDetalle>();
+
+    public DbSet<PagoVenta> PagosVenta => Set<PagoVenta>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -222,6 +230,129 @@ public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext
                 .IsRowVersion();
         });
 
+        modelBuilder.Entity<VariedadCafe>(entity =>
+        {
+            entity.ToTable("VariedadesCafe", schema: "Inventario");
+            entity.HasKey(x => x.VariedadCafeId);
+
+            entity.Property(x => x.VariedadCafeId)
+                .ValueGeneratedOnAdd();
+
+            entity.Property(x => x.Codigo)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.HasIndex(x => x.Codigo)
+                .IsUnique()
+                .HasDatabaseName("UQ_Inventario_VariedadesCafe_Codigo");
+
+            entity.Property(x => x.Nombre)
+                .HasMaxLength(80)
+                .IsRequired();
+
+            entity.HasIndex(x => x.Nombre)
+                .IsUnique()
+                .HasDatabaseName("UQ_Inventario_VariedadesCafe_Nombre");
+
+            entity.Property(x => x.Estado)
+                .HasDefaultValue(EstadoCatalogoCafe.Activo)
+                .IsRequired();
+
+            entity.Property(x => x.CreadoEn)
+                .HasColumnType("datetime2(7)")
+                .HasDefaultValueSql("sysdatetime()")
+                .ValueGeneratedOnAdd()
+                .IsRequired();
+
+            entity.Property(x => x.ActualizadoEn)
+                .HasColumnType("datetime2(7)");
+
+            entity.Property(x => x.RowVersion)
+                .IsRowVersion();
+        });
+
+        modelBuilder.Entity<TipoTuesteCafe>(entity =>
+        {
+            entity.ToTable("TiposTuesteCafe", schema: "Inventario");
+            entity.HasKey(x => x.TipoTuesteCafeId);
+
+            entity.Property(x => x.TipoTuesteCafeId)
+                .ValueGeneratedOnAdd();
+
+            entity.Property(x => x.Codigo)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.HasIndex(x => x.Codigo)
+                .IsUnique()
+                .HasDatabaseName("UQ_Inventario_TiposTuesteCafe_Codigo");
+
+            entity.Property(x => x.Nombre)
+                .HasMaxLength(80)
+                .IsRequired();
+
+            entity.HasIndex(x => x.Nombre)
+                .IsUnique()
+                .HasDatabaseName("UQ_Inventario_TiposTuesteCafe_Nombre");
+
+            entity.Property(x => x.Estado)
+                .HasDefaultValue(EstadoCatalogoCafe.Activo)
+                .IsRequired();
+
+            entity.Property(x => x.CreadoEn)
+                .HasColumnType("datetime2(7)")
+                .HasDefaultValueSql("sysdatetime()")
+                .ValueGeneratedOnAdd()
+                .IsRequired();
+
+            entity.Property(x => x.ActualizadoEn)
+                .HasColumnType("datetime2(7)");
+
+            entity.Property(x => x.RowVersion)
+                .IsRowVersion();
+        });
+
+        modelBuilder.Entity<TipoProcesoCafe>(entity =>
+        {
+            entity.ToTable("TiposProcesoCafe", schema: "Inventario");
+            entity.HasKey(x => x.TipoProcesoCafeId);
+
+            entity.Property(x => x.TipoProcesoCafeId)
+                .ValueGeneratedOnAdd();
+
+            entity.Property(x => x.Codigo)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.HasIndex(x => x.Codigo)
+                .IsUnique()
+                .HasDatabaseName("UQ_Inventario_TiposProcesoCafe_Codigo");
+
+            entity.Property(x => x.Nombre)
+                .HasMaxLength(80)
+                .IsRequired();
+
+            entity.HasIndex(x => x.Nombre)
+                .IsUnique()
+                .HasDatabaseName("UQ_Inventario_TiposProcesoCafe_Nombre");
+
+            entity.Property(x => x.Estado)
+                .HasDefaultValue(EstadoCatalogoCafe.Activo)
+                .IsRequired();
+
+            entity.Property(x => x.CreadoEn)
+                .HasColumnType("datetime2(7)")
+                .HasDefaultValueSql("sysdatetime()")
+                .ValueGeneratedOnAdd()
+                .IsRequired();
+
+            entity.Property(x => x.ActualizadoEn)
+                .HasColumnType("datetime2(7)");
+
+            entity.Property(x => x.RowVersion)
+                .IsRowVersion();
+        });
+
         modelBuilder.Entity<LoteCafeTerminado>(entity =>
         {
             entity.ToTable("LotesCafeTerminado", schema: "Inventario", table =>
@@ -274,6 +405,30 @@ public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext
 
             entity.HasIndex(x => new { x.Estado, x.FechaProduccion })
                 .HasDatabaseName("IX_Inventario_LotesCafeTerminado_Estado_FechaProduccion");
+
+            entity.HasIndex(x => x.VariedadCafeId)
+                .HasDatabaseName("IX_Inventario_LotesCafeTerminado_VariedadCafeId");
+
+            entity.HasIndex(x => x.TipoTuesteCafeId)
+                .HasDatabaseName("IX_Inventario_LotesCafeTerminado_TipoTuesteCafeId");
+
+            entity.HasIndex(x => x.TipoProcesoCafeId)
+                .HasDatabaseName("IX_Inventario_LotesCafeTerminado_TipoProcesoCafeId");
+
+            entity.HasOne<VariedadCafe>()
+                .WithMany()
+                .HasForeignKey(x => x.VariedadCafeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<TipoTuesteCafe>()
+                .WithMany()
+                .HasForeignKey(x => x.TipoTuesteCafeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<TipoProcesoCafe>()
+                .WithMany()
+                .HasForeignKey(x => x.TipoProcesoCafeId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<LoteCafeExistencia>(entity =>
@@ -523,6 +678,31 @@ public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext
                 .HasDefaultValue(EstadoVenta.Registrada)
                 .IsRequired();
 
+            entity.Property(x => x.EstadoEntrega)
+                .HasDefaultValue(EstadoEntregaVenta.PendientePreparacion)
+                .IsRequired();
+
+            entity.Property(x => x.MotivoCancelacion)
+                .HasMaxLength(250);
+
+            entity.Property(x => x.MotivoAnulacion)
+                .HasMaxLength(250);
+
+            entity.HasOne<Usuario>()
+                .WithMany()
+                .HasForeignKey(x => x.CanceladoPorUsuarioId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<Usuario>()
+                .WithMany()
+                .HasForeignKey(x => x.AnuladoPorUsuarioId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasMany(x => x.Pagos)
+                .WithOne(x => x.Venta)
+                .HasForeignKey(x => x.VentaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             entity.Property(x => x.Observacion)
                 .HasMaxLength(250);
 
@@ -595,6 +775,54 @@ public sealed class ProyectoCafeDbContext(DbContextOptions<ProyectoCafeDbContext
                 .HasDefaultValueSql("sysdatetime()")
                 .ValueGeneratedOnAdd()
                 .IsRequired();
+        });
+
+        modelBuilder.Entity<PagoVenta>(entity =>
+        {
+            entity.ToTable("PagosVenta", schema: "Ventas", table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_Ventas_PagosVenta_Monto",
+                    "[Monto] > 0");
+            });
+            entity.HasKey(x => x.PagoVentaId);
+
+            entity.Property(x => x.PagoVentaId)
+                .ValueGeneratedOnAdd();
+
+            entity.Property(x => x.VentaId)
+                .IsRequired();
+
+            entity.HasOne(x => x.Venta)
+                .WithMany(x => x.Pagos)
+                .HasForeignKey(x => x.VentaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.Property(x => x.Monto)
+                .HasColumnType("decimal(18,2)")
+                .IsRequired();
+
+            entity.Property(x => x.FechaPago)
+                .HasColumnType("datetime2(7)")
+                .IsRequired();
+
+            entity.Property(x => x.MetodoPago)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(x => x.Referencia)
+                .HasMaxLength(100);
+
+            entity.Property(x => x.UsuarioId);
+
+            entity.Property(x => x.CreadoEn)
+                .HasColumnType("datetime2(7)")
+                .HasDefaultValueSql("sysdatetime()")
+                .ValueGeneratedOnAdd()
+                .IsRequired();
+
+            entity.HasIndex(x => x.VentaId)
+                .HasDatabaseName("IX_Ventas_PagosVenta_VentaId");
         });
     }
 }

@@ -45,6 +45,11 @@ export default function VentasPage() {
   const canQueryMovements =
     has('Inventario.Lotes', 'Ver') && has('Inventario.Movimientos', 'Ver');
 
+  const canRegisterPayments = has('Ventas.Ventas', 'Crear');
+  const canUpdateDelivery = has('Ventas.Ventas', 'Editar');
+  const canCancelSale = has('Ventas.Ventas', 'Cancelar');
+  const canAnulateSale = has('Ventas.Ventas', 'Anular');
+
   const canAccessVentas = canViewVentas || canViewPrecios || canViewClientes;
 
   const [activeTab, setActiveTab] = useState<SalesTab | null>(null);
@@ -127,6 +132,10 @@ export default function VentasPage() {
           <VentasHistorialPanel
             canView={canViewVentas}
             canQueryMovements={canQueryMovements}
+            canRegisterPayments={canRegisterPayments}
+            canUpdateDelivery={canUpdateDelivery}
+            canCancelSale={canCancelSale}
+            canAnulateSale={canAnulateSale}
           />
         </Stack>
       ) : null}

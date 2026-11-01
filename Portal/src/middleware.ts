@@ -45,7 +45,22 @@ function apiError(
  * El guard del cliente (AppShell/SessionGuard) se conserva como complemento.
  */
 export async function middleware(request: NextRequest) {
-  const access = getRouteAccess(request.nextUrl.pathname);
+  const pathname = request.nextUrl.pathname;
+
+  // Compatibilidad con la ruta anterior del módulo de inventario.
+  if (
+    pathname === '/dashboard/inventario' ||
+    pathname.startsWith('/dashboard/inventario/')
+  ) {
+    const redirected = request.nextUrl.clone();
+    redirected.pathname = pathname.replace(
+      /^\/dashboard\/inventario/,
+      '/inventario/CafeTostado',
+    );
+    return NextResponse.redirect(redirected);
+  }
+
+  const access = getRouteAccess(pathname);
 
   if (access.access === 'public') {
     return NextResponse.next();
