@@ -401,7 +401,12 @@ public sealed class LoteCafeService(
         // No se confía en el valor enviado por el cliente.
 
         var observacion = NormalizeOptionalText(request.Observacion);
-        if (observacion is { Length: > 250 })
+        if (string.IsNullOrWhiteSpace(observacion))
+        {
+            AddError(errors, nameof(CreateLoteCafeRequest.Observacion),
+                "La observación es requerida.");
+        }
+        else if (observacion.Length > 250)
         {
             AddError(errors, nameof(CreateLoteCafeRequest.Observacion),
                 "La observación no puede exceder 250 caracteres.");
@@ -411,43 +416,34 @@ public sealed class LoteCafeService(
             data.Observacion = observacion;
         }
 
-        if (request.VariedadCafeId.HasValue)
+        if (!request.VariedadCafeId.HasValue || request.VariedadCafeId.Value <= 0)
         {
-            if (request.VariedadCafeId.Value <= 0)
-            {
-                AddError(errors, nameof(CreateLoteCafeRequest.VariedadCafeId),
-                    "La variedad no es válida.");
-            }
-            else
-            {
-                data.VariedadCafeId = request.VariedadCafeId.Value;
-            }
+            AddError(errors, nameof(CreateLoteCafeRequest.VariedadCafeId),
+                "La variedad es requerida.");
+        }
+        else
+        {
+            data.VariedadCafeId = request.VariedadCafeId.Value;
         }
 
-        if (request.TipoTuesteCafeId.HasValue)
+        if (!request.TipoTuesteCafeId.HasValue || request.TipoTuesteCafeId.Value <= 0)
         {
-            if (request.TipoTuesteCafeId.Value <= 0)
-            {
-                AddError(errors, nameof(CreateLoteCafeRequest.TipoTuesteCafeId),
-                    "El tipo de tueste no es válido.");
-            }
-            else
-            {
-                data.TipoTuesteCafeId = request.TipoTuesteCafeId.Value;
-            }
+            AddError(errors, nameof(CreateLoteCafeRequest.TipoTuesteCafeId),
+                "El tipo de tueste es requerido.");
+        }
+        else
+        {
+            data.TipoTuesteCafeId = request.TipoTuesteCafeId.Value;
         }
 
-        if (request.TipoProcesoCafeId.HasValue)
+        if (!request.TipoProcesoCafeId.HasValue || request.TipoProcesoCafeId.Value <= 0)
         {
-            if (request.TipoProcesoCafeId.Value <= 0)
-            {
-                AddError(errors, nameof(CreateLoteCafeRequest.TipoProcesoCafeId),
-                    "El tipo de proceso no es válido.");
-            }
-            else
-            {
-                data.TipoProcesoCafeId = request.TipoProcesoCafeId.Value;
-            }
+            AddError(errors, nameof(CreateLoteCafeRequest.TipoProcesoCafeId),
+                "El tipo de proceso es requerido.");
+        }
+        else
+        {
+            data.TipoProcesoCafeId = request.TipoProcesoCafeId.Value;
         }
 
         return errors.Count == 0;

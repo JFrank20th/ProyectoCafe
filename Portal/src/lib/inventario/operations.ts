@@ -196,8 +196,21 @@ export function validateCreateLoteInput(
     }
   }
 
-  if (input.observacion.trim().length > OBSERVACION_MAX_LENGTH) {
+  const observacion = input.observacion.trim();
+  if (!observacion) {
+    errors.observacion = 'required';
+  } else if (observacion.length > OBSERVACION_MAX_LENGTH) {
     errors.observacion = 'maxLength';
+  }
+
+  if (!input.variedadCafeId.trim()) {
+    errors.variedadCafeId = 'required';
+  }
+  if (!input.tipoTuesteCafeId.trim()) {
+    errors.tipoTuesteCafeId = 'required';
+  }
+  if (!input.tipoProcesoCafeId.trim()) {
+    errors.tipoProcesoCafeId = 'required';
   }
 
   return errors;

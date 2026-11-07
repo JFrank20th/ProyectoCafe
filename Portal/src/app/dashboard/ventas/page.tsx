@@ -18,7 +18,7 @@ import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 
-type SalesTab = 'ventas' | 'precios' | 'clientes';
+type SalesTab = 'ventas' | 'historial' | 'precios' | 'clientes';
 
 export default function VentasPage() {
   const nav = useTranslations('navigation');
@@ -57,7 +57,10 @@ export default function VentasPage() {
 
   const availableTabs = useMemo<SalesTab[]>(() => {
     const tabs: SalesTab[] = [];
-    if (canViewVentas) tabs.push('ventas');
+    if (canViewVentas) {
+      tabs.push('ventas');
+      tabs.push('historial');
+    }
     if (canViewPrecios) tabs.push('precios');
     if (canViewClientes) tabs.push('clientes');
     return tabs;
@@ -117,6 +120,7 @@ export default function VentasPage() {
             allowScrollButtonsMobile
           >
             {canViewVentas ? <Tab value="ventas" label={ts('tabVentas')} /> : null}
+            {canViewVentas ? <Tab value="historial" label={ts('tabHistorial')} /> : null}
             {canViewPrecios ? <Tab value="precios" label={ts('tabPrecios')} /> : null}
             {canViewClientes ? <Tab value="clientes" label={ts('tabClientes')} /> : null}
           </Tabs>
@@ -129,15 +133,18 @@ export default function VentasPage() {
             canQuery={canQueryInventory}
             canLoadCatalogs={canLoadInventoryCatalogs}
           />
-          <VentasHistorialPanel
-            canView={canViewVentas}
-            canQueryMovements={canQueryMovements}
-            canRegisterPayments={canRegisterPayments}
-            canUpdateDelivery={canUpdateDelivery}
-            canCancelSale={canCancelSale}
-            canAnulateSale={canAnulateSale}
-          />
         </Stack>
+      ) : null}
+
+      {effectiveTab === 'historial' ? (
+        <VentasHistorialPanel
+          canView={canViewVentas}
+          canQueryMovements={canQueryMovements}
+          canRegisterPayments={canRegisterPayments}
+          canUpdateDelivery={canUpdateDelivery}
+          canCancelSale={canCancelSale}
+          canAnulateSale={canAnulateSale}
+        />
       ) : null}
 
       {effectiveTab === 'precios' ? (

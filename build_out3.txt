@@ -1,0 +1,40 @@
+
+> proyecto-cafe-portal@1.0.0 build
+> next build
+
+   Ôû▓ Next.js 15.5.15
+   - Environments: .env.local
+   - Experiments (use with caution):
+     Ô¿» devtoolSegmentExplorer
+
+   Creating an optimized production build ...
+Browserslist: browsers data (caniuse-lite) is 7 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ Ô£ô Compiled successfully in 7.1s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/2) ...
+ Ô£ô Generating static pages (2/2)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+Ôöî ãÆ /                                      143 B         102 kB
+Ôö£ ãÆ /_not-found                            998 B         103 kB
+Ôö£ ãÆ /acceso-denegado                     1.36 kB         128 kB
+Ôö£ ãÆ /administracion/roles                5.92 kB         210 kB
+Ôö£ ãÆ /administracion/usuarios             7.14 kB         206 kB
+Ôö£ ãÆ /dashboard                             143 B         102 kB
+Ôö£ ãÆ /dashboard/ventas                    14.1 kB         223 kB
+Ôö£ ãÆ /inventario/CafeTostado              15.3 kB         224 kB
+Ôö£ ãÆ /login                               3.51 kB         201 kB
+Ôöö ãÆ /register                            3.55 kB         202 kB
++ First Load JS shared by all             102 kB
+  Ôö£ chunks/255-249e483089def0f6.js       45.7 kB
+  Ôö£ chunks/4bd1b696-409494caf8c83275.js  54.2 kB
+  Ôöö other shared chunks (total)          2.01 kB
+
+
+ãÆ  (Dynamic)  server-rendered on demand
+

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -556,16 +557,22 @@ export function VentaFormDialog({
                                   const restante = disponible - solicitado;
                                   const cantidad = Number(linea.cantidad.trim());
                                   const excede = Number.isInteger(cantidad) && cantidad > 0 && solicitado > disponible;
+                                  const cantidadMostrada = Number.isInteger(cantidad) && cantidad > 0 ? cantidad : 0;
                                   return (
-                                    <Typography
-                                      variant="caption"
-                                      color={excede ? 'error' : 'text.secondary'}
-                                      sx={{ display: 'block', mt: 0.5 }}
-                                    >
-                                      {`Disponibles: ${disponible} · Cantidad: ${
-                                        Number.isInteger(cantidad) && cantidad > 0 ? cantidad : 0
-                                      } · Restantes: ${restante}`}
-                                    </Typography>
+                                    <Box sx={{ mt: 0.75, display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 1, width: '100%' }}>
+                                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 0.25, px: 1, py: 0.5, borderRadius: 1, bgcolor: 'action.hover', minHeight: 44 }}>
+                                        <Typography variant="caption" color="text.secondary">Disponibles</Typography>
+                                        <Typography variant="caption" fontWeight={600}>{disponible}</Typography>
+                                      </Box>
+                                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 0.25, px: 1, py: 0.5, borderRadius: 1, bgcolor: 'action.hover', minHeight: 44 }}>
+                                        <Typography variant="caption" color="text.secondary">Cantidad</Typography>
+                                        <Typography variant="caption" fontWeight={600}>{cantidadMostrada}</Typography>
+                                      </Box>
+                                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 0.25, px: 1, py: 0.5, borderRadius: 1, bgcolor: excede ? 'error.light' : 'success.light', color: excede ? 'error.contrastText' : 'success.contrastText', minHeight: 44 }}>
+                                        <Typography variant="caption" sx={{ opacity: 0.9 }}>Restantes</Typography>
+                                        <Typography variant="caption" fontWeight={700}>{restante}</Typography>
+                                      </Box>
+                                    </Box>
                                   );
                                 })()
                               ) : null}

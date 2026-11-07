@@ -346,6 +346,7 @@
   "sales": {
     "subtitle": "Structure initiale du module de ventes.",
     "tabVentas": "Ventes",
+    "tabHistorial": "Historique des ventes",
     "tabPrecios": "Prix",
     "tabClientes": "Clients",
     "ventasTitle": "Ventes",
@@ -463,7 +464,9 @@
     "referenceLabel": "Référence",
     "errorLoadingMovements": "Les mouvements associés n’ont pas pu être chargés.",
     "cancelSale": "Annuler la vente",
+    "cancelSaleHint": "À utiliser lorsque l'opération commerciale n'est pas menée à terme (ex. : le client renonce à l'achat).",
     "anulateSale": "Annuler administrativement",
+    "anulateSaleHint": "À utiliser pour corriger des erreurs administratives, des doublons ou des ventes enregistrées incorrectement.",
     "cancelReason": "Motif d’annulation",
     "anulateReason": "Motif d’annulation administrative",
     "reasonRequired": "Le motif est obligatoire.",
@@ -501,6 +504,9 @@
     "balanceLabel": "Solde",
     "allOption": "Tous",
     "clearFiltersLabel": "Effacer",
-    "deliveryUpdatedSuccess": "Statut de livraison mis à jour."
+    "deliveryUpdatedSuccess": "Statut de livraison mis à jour.",
+    "tabSummaryLabel": "Résumé de la vente",
+    "tabPaymentsLabel": "Paiements",
+    "tabManagementLabel": "Gestion"
   }
 }

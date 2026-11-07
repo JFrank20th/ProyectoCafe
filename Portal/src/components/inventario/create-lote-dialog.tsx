@@ -212,9 +212,13 @@ export function CreateLoteDialog({
 
     switch (error) {
       case 'required':
-        return field === 'codigoLote'
-          ? ti('lotCodeRequired')
-          : ti('productionDateRequired');
+        if (field === 'codigoLote') return ti('lotCodeRequired');
+        if (field === 'fechaProduccion') return ti('productionDateRequired');
+        if (field === 'observacion') return ti('observationRequired');
+        if (field === 'variedadCafeId') return ti('variedadRequired');
+        if (field === 'tipoTuesteCafeId') return ti('tipoTuesteRequired');
+        if (field === 'tipoProcesoCafeId') return ti('tipoProcesoRequired');
+        return undefined;
       case 'maxLength':
         return field === 'observacion'
           ? ti('observationTooLong', { max: OBSERVACION_MAX_LENGTH })
@@ -409,7 +413,7 @@ export function CreateLoteDialog({
           />
 
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <FormControl size="small" fullWidth>
+            <FormControl size="small" fullWidth error={Boolean(lotErrors.variedadCafeId)}>
               <InputLabel id="variedad-lote-label">{ti('variedadLabel')}</InputLabel>
               <Select
                 labelId="variedad-lote-label"
@@ -424,9 +428,12 @@ export function CreateLoteDialog({
                   </MenuItem>
                 ))}
               </Select>
+              {lotErrors.variedadCafeId ? (
+                <FormHelperText>{lotHelperText('variedadCafeId', lotErrors.variedadCafeId)}</FormHelperText>
+              ) : null}
             </FormControl>
 
-            <FormControl size="small" fullWidth>
+            <FormControl size="small" fullWidth error={Boolean(lotErrors.tipoTuesteCafeId)}>
               <InputLabel id="tipo-tueste-lote-label">{ti('tipoTuesteLabel')}</InputLabel>
               <Select
                 labelId="tipo-tueste-lote-label"
@@ -441,9 +448,12 @@ export function CreateLoteDialog({
                   </MenuItem>
                 ))}
               </Select>
+              {lotErrors.tipoTuesteCafeId ? (
+                <FormHelperText>{lotHelperText('tipoTuesteCafeId', lotErrors.tipoTuesteCafeId)}</FormHelperText>
+              ) : null}
             </FormControl>
 
-            <FormControl size="small" fullWidth>
+            <FormControl size="small" fullWidth error={Boolean(lotErrors.tipoProcesoCafeId)}>
               <InputLabel id="tipo-proceso-lote-label">{ti('tipoProcesoLabel')}</InputLabel>
               <Select
                 labelId="tipo-proceso-lote-label"
@@ -458,6 +468,9 @@ export function CreateLoteDialog({
                   </MenuItem>
                 ))}
               </Select>
+              {lotErrors.tipoProcesoCafeId ? (
+                <FormHelperText>{lotHelperText('tipoProcesoCafeId', lotErrors.tipoProcesoCafeId)}</FormHelperText>
+              ) : null}
             </FormControl>
           </Stack>
 

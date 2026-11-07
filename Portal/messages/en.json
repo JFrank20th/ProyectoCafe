@@ -346,6 +346,7 @@
   "sales": {
     "subtitle": "Initial structure of the sales module.",
     "tabVentas": "Sales",
+    "tabHistorial": "Sales History",
     "tabPrecios": "Prices",
     "tabClientes": "Customers",
     "ventasTitle": "Sales",
@@ -463,7 +464,9 @@
     "referenceLabel": "Reference",
     "errorLoadingMovements": "Associated movements could not be loaded.",
     "cancelSale": "Cancel sale",
+    "cancelSaleHint": "Use when the commercial operation is not completed (e.g., the customer withdraws).",
     "anulateSale": "Annul sale",
+    "anulateSaleHint": "Use to correct administrative errors, duplicate records, or incorrectly registered sales.",
     "cancelReason": "Cancellation reason",
     "anulateReason": "Annulment reason",
     "reasonRequired": "The reason is required.",
@@ -501,6 +504,9 @@
     "balanceLabel": "Balance",
     "allOption": "All",
     "clearFiltersLabel": "Clear",
-    "deliveryUpdatedSuccess": "Delivery status updated."
+    "deliveryUpdatedSuccess": "Delivery status updated.",
+    "tabSummaryLabel": "Sale summary",
+    "tabPaymentsLabel": "Payments",
+    "tabManagementLabel": "Management"
   }
 }

@@ -113,7 +113,7 @@
     "subtitle": "Gestión de lotes, existencias, movimientos, gramajes y presentaciones.",
     "tabLotes": "Lotes",
     "tabPresentaciones": "Gramajes",
-    "tabTiposCafe": "Tipos de café",
+    "tabTiposCafe": "Presentaciones",
     "filtersTitle": "Filtros de búsqueda",
     "searchByCode": "Buscar por código de lote",
     "searchPlaceholder": "Ej. LOTE-2026-001",
@@ -239,6 +239,10 @@
     "lineErrorFallback": "No se pudo registrar la línea.",
     "insufficientBalance": "No hay paquetes suficientes para la salida o el ajuste negativo.",
     "lotCodeRequired": "El código de lote es obligatorio.",
+    "observationRequired": "La observación es obligatoria.",
+    "variedadRequired": "La variedad es obligatoria.",
+    "tipoTuesteRequired": "El tipo de tueste es obligatorio.",
+    "tipoProcesoRequired": "El tipo de proceso es obligatorio.",
     "lotCodeTooLong": "El código no puede exceder {max} caracteres.",
     "productionDateRequired": "La fecha de tueste es obligatoria.",
     "productionDateFuture": "La fecha de tueste no puede ser futura.",
@@ -346,6 +350,7 @@
   "sales": {
     "subtitle": "Estructura inicial del módulo de ventas.",
     "tabVentas": "Ventas",
+    "tabHistorial": "Historial de Ventas",
     "tabPrecios": "Precios",
     "tabClientes": "Clientes",
     "ventasTitle": "Ventas",
@@ -463,7 +468,9 @@
     "referenceLabel": "Referencia",
     "errorLoadingMovements": "No se pudieron cargar los movimientos asociados.",
     "cancelSale": "Cancelar venta",
+    "cancelSaleHint": "Use cuando la operación comercial no se complete (ej. el cliente desiste de la compra).",
     "anulateSale": "Anular venta",
+    "anulateSaleHint": "Use para corregir errores administrativos, registros duplicados o ventas registradas incorrectamente.",
     "cancelReason": "Motivo de cancelación",
     "anulateReason": "Motivo de anulación",
     "reasonRequired": "El motivo es obligatorio.",
@@ -501,6 +508,9 @@
     "balanceLabel": "Saldo",
     "allOption": "Todos",
     "clearFiltersLabel": "Limpiar",
-    "deliveryUpdatedSuccess": "Estado de entrega actualizado."
+    "deliveryUpdatedSuccess": "Estado de entrega actualizado.",
+    "tabSummaryLabel": "Resumen de venta",
+    "tabPaymentsLabel": "Pagos",
+    "tabManagementLabel": "Gestión"
   }
 }

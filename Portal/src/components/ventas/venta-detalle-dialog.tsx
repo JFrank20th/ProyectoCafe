@@ -10,15 +10,21 @@ import { anulateVenta, cancelVenta, type MovimientoAsociado, type VentaHistorial
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Chip from '@mui/material/Chip';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
+import Divider from '@mui/material/Divider';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Select, { type SelectChangeEvent } from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -27,6 +33,14 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+
+import CancelIcon from '@mui/icons-material/Cancel';
+import CloseIcon from '@mui/icons-material/Close';
+import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
+import PaymentIcon from '@mui/icons-material/Payment';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import SaveIcon from '@mui/icons-material/Save';
+import SettingsIcon from '@mui/icons-material/Settings';
 
 export type VentaDetalleDialogProps = {
   open: boolean;
@@ -57,6 +71,7 @@ export function VentaDetalleDialog({
   const locale = useLocale();
 
   const [ventaActual, setVentaActual] = useState<VentaHistorial | null>(venta);
+  const [activeTab, setActiveTab] = useState<'summary' | 'payments' | 'management'>('summary');
   const [movimientos, setMovimientos] = useState<MovimientoAsociado[]>([]);
   const [loadingMovimientos, setLoadingMovimientos] = useState(false);
   const [movimientosError, setMovimientosError] = useState<string | null>(null);
@@ -85,6 +100,7 @@ export function VentaDetalleDialog({
 
   useEffect(() => {
     setVentaActual(venta);
+    setActiveTab('summary');
     setEstadoEntrega(venta?.estadoEntrega ?? 1);
     setPaymentMonto('');
     setPaymentReferencia('');
@@ -207,6 +223,7 @@ export function VentaDetalleDialog({
       setPaymentMonto('');
       setPaymentReferencia('');
       await refreshVenta();
+      onUpdated?.();
     } catch (requestError) {
       setPaymentError(requestError instanceof Error ? requestError.message : ts('ventaRegisterError'));
     } finally {
@@ -226,6 +243,7 @@ export function VentaDetalleDialog({
       });
       setDeliverySuccess(ts('deliveryUpdatedSuccess'));
       await refreshVenta();
+      onUpdated?.();
     } catch (requestError) {
       setDeliveryError(requestError instanceof Error ? requestError.message : ts('ventaRegisterError'));
     } finally {
@@ -307,350 +325,476 @@ export function VentaDetalleDialog({
         ? ts('statusCancelled')
         : ts('statusAnnulled');
 
+  const estadoVentaColor =
+    ventaActual.estado === 1 ? 'success' : ventaActual.estado === 2 ? 'warning' : 'error';
+
+  const estadoPagoColor =
+    ventaActual.estadoPago === 3 ? 'success' : ventaActual.estadoPago === 2 ? 'info' : 'warning';
+
+  const tableHeadSx = {
+    '& th': {
+      fontWeight: 600,
+      backgroundColor: 'action.hover',
+      color: 'text.primary',
+    },
+  };
+
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
-      <DialogTitle>{ts('ventaDetailTitle', { number: ventaActual.numeroVenta })}</DialogTitle>
-      <DialogContent dividers>
-        <Stack spacing={2} sx={{ pt: 1 }}>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} useFlexGap flexWrap="wrap">
-            <BoxInfo label={ts('saleNumberLabel')} value={String(ventaActual.numeroVenta)} />
-            <BoxInfo label={tf('date')} value={new Date(ventaActual.fechaVenta).toLocaleString(locale)} />
-            <BoxInfo label={ts('clientLabel')} value={ventaActual.clienteNombre || ts('noCliente')} />
-            <BoxInfo label={tf('status')} value={estadoLabel} />
-            <BoxInfo
-              label={ts('totalLabel')}
-              value={new Intl.NumberFormat(locale, {
-                style: 'currency',
-                currency: 'COP',
-                maximumFractionDigits: 0,
-              }).format(ventaActual.total)}
-            />
-          </Stack>
-
-          {ventaActual.observacion ? <Alert severity="info">{ventaActual.observacion}</Alert> : null}
-
-          <Typography variant="subtitle2">{ts('financialSummaryTitle')}</Typography>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} useFlexGap flexWrap="wrap">
-            <BoxInfo
-              label={ts('totalPaidLabel')}
-              value={new Intl.NumberFormat(locale, {
-                style: 'currency',
-                currency: 'COP',
-                maximumFractionDigits: 0,
-              }).format(ventaActual.montoPagado)}
-            />
-            <BoxInfo
-              label={ts('pendingBalanceLabel')}
-              value={new Intl.NumberFormat(locale, {
-                style: 'currency',
-                currency: 'COP',
-                maximumFractionDigits: 0,
-              }).format(ventaActual.saldoPendiente)}
-            />
-            <BoxInfo label={ts('paymentStatusLabel')} value={estadoPagoLabel(ventaActual.estadoPago)} />
-            <BoxInfo label={ts('deliveryStatusLabel')} value={estadoEntregaLabel(ventaActual.estadoEntrega)} />
-          </Stack>
-
-          {ventaActual.estado === 2 && ventaActual.motivoCancelacion ? (
-            <Alert severity="warning">
-              {`${ts('statusCancelled')}${ventaActual.canceladoEn ? ` ${new Date(ventaActual.canceladoEn).toLocaleString(locale)}` : ''}: ${ventaActual.motivoCancelacion}`}
-            </Alert>
-          ) : null}
-          {ventaActual.estado === 3 && ventaActual.motivoAnulacion ? (
-            <Alert severity="error">
-              {`${ts('statusAnnulled')}${ventaActual.anuladoEn ? ` ${new Date(ventaActual.anuladoEn).toLocaleString(locale)}` : ''}: ${ventaActual.motivoAnulacion}`}
-            </Alert>
-          ) : null}
-
-          {canCancelSale || canAnulateSale ? (
-            ventaActual.estado === 1 && ventaActual.estadoEntrega !== 4 ? (
-              <>
-                <Typography variant="subtitle2">Acciones de venta</Typography>
-                {cancelError ? <Alert severity="error">{cancelError}</Alert> : null}
-                {cancelSuccess ? <Alert severity="success">{cancelSuccess}</Alert> : null}
-                {anulateError ? <Alert severity="error">{anulateError}</Alert> : null}
-                {anulateSuccess ? <Alert severity="success">{anulateSuccess}</Alert> : null}
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} useFlexGap flexWrap="wrap">
-                  {canCancelSale ? (
-                    <Stack spacing={1} sx={{ minWidth: 260 }}>
-                      <TextField
-                        size="small"
-                        label={ts('cancelReason')}
-                        value={cancelMotivo}
-                        onChange={(event) => setCancelMotivo(event.target.value)}
-                        disabled={savingCancel || savingAnulate}
-                        inputProps={{ maxLength: 250 }}
-                        helperText={`${cancelMotivo.length}/250`}
-                      />
-                      <Button
-                        color="warning"
-                        variant="outlined"
-                        onClick={() => void submitCancel()}
-                        disabled={savingCancel || savingAnulate}
-                      >
-                        {savingCancel ? tc('saving') : ts('cancelSale')}
-                      </Button>
-                    </Stack>
-                  ) : null}
-                  {canAnulateSale ? (
-                    <Stack spacing={1} sx={{ minWidth: 260 }}>
-                      <TextField
-                        size="small"
-                        label={ts('anulateReason')}
-                        value={anulateMotivo}
-                        onChange={(event) => setAnulateMotivo(event.target.value)}
-                        disabled={savingCancel || savingAnulate}
-                        inputProps={{ maxLength: 250 }}
-                        helperText={`${anulateMotivo.length}/250`}
-                      />
-                      <Button
-                        color="error"
-                        variant="outlined"
-                        onClick={() => void submitAnulate()}
-                        disabled={savingCancel || savingAnulate}
-                      >
-                        {savingAnulate ? tc('saving') : ts('anulateSale')}
-                      </Button>
-                    </Stack>
-                  ) : null}
-                </Stack>
-              </>
-            ) : null
-          ) : null}
-
-          <Typography variant="subtitle2">{ts('productsTitle')}</Typography>
-          <TableContainer>
-            <Table size="small" sx={{ minWidth: 720 }}>
-              <TableHead>
-                <TableRow>
-                  <TableCell>{tf('presentation')}</TableCell>
-                  <TableCell>{tf('coffeeType')}</TableCell>
-                  <TableCell align="right">{ts('quantityLabel')}</TableCell>
-                  <TableCell align="right">{ts('unitPriceLabel')}</TableCell>
-                  <TableCell align="right">{ts('subtotalLabel')}</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {ventaActual.detalles.map((detalle) => (
-                  <TableRow key={detalle.ventaDetalleId} hover>
-                    <TableCell>
-                      <Stack spacing={0.25}>
-                        <Typography variant="body2">{detalle.presentacionNombre}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {detalle.presentacionCodigo}
-                        </Typography>
-                      </Stack>
-                    </TableCell>
-                    <TableCell>
-                      <Stack spacing={0.25}>
-                        <Typography variant="body2">{detalle.tipoCafeNombre}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {detalle.tipoCafeCodigo}
-                        </Typography>
-                      </Stack>
-                    </TableCell>
-                    <TableCell align="right">{detalle.cantidadPaquetes}</TableCell>
-                    <TableCell align="right">
-                      {new Intl.NumberFormat(locale, {
-                        style: 'currency',
-                        currency: 'COP',
-                        maximumFractionDigits: 0,
-                      }).format(detalle.precioUnitario)}
-                    </TableCell>
-                    <TableCell align="right">
-                      {new Intl.NumberFormat(locale, {
-                        style: 'currency',
-                        currency: 'COP',
-                        maximumFractionDigits: 0,
-                      }).format(detalle.subtotal)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-
-          {canRegisterPayments && !isCancelledOrAnnulled ? (
-            <>
-              <Typography variant="subtitle2">{ts('registerPayment')}</Typography>
-              {paymentError ? <Alert severity="error">{paymentError}</Alert> : null}
-              {paymentSuccess ? <Alert severity="success">{paymentSuccess}</Alert> : null}
-              {ventaActual.saldoPendiente <= 0 ? (
-                <Alert severity="info">{ts('paymentAlreadyPaid')}</Alert>
-              ) : (
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} useFlexGap flexWrap="wrap">
-                  <TextField
-                    size="small"
-                    type="number"
-                    label={ts('amountLabel')}
-                    value={paymentMonto}
-                    onChange={(event) => setPaymentMonto(event.target.value)}
-                    disabled={paymentDisabled}
-                    sx={{ minWidth: 140 }}
-                  />
-                  <TextField
-                    size="small"
-                    type="date"
-                    label={tf('date')}
-                    value={paymentFecha}
-                    onChange={(event) => setPaymentFecha(event.target.value)}
-                    slotProps={{ inputLabel: { shrink: true } }}
-                    sx={{ minWidth: 160 }}
-                  />
-                  <FormControl size="small" sx={{ minWidth: 180 }}>
-                    <InputLabel id="metodo-pago-label">{ts('paymentMethodLabel')}</InputLabel>
-                    <Select
-                      labelId="metodo-pago-label"
-                      label={ts('paymentMethodLabel')}
-                      value={paymentMetodo}
-                      onChange={(event: SelectChangeEvent) => setPaymentMetodo(event.target.value)}
-                    >
-                      <MenuItem value="Efectivo">Efectivo</MenuItem>
-                      <MenuItem value="Transferencia">Transferencia</MenuItem>
-                      <MenuItem value="Consignación">Consignación</MenuItem>
-                      <MenuItem value="Otro">Otro</MenuItem>
-                    </Select>
-                  </FormControl>
-                  <TextField
-                    size="small"
-                    label={tf('reference')}
-                    value={paymentReferencia}
-                    onChange={(event) => setPaymentReferencia(event.target.value)}
-                    sx={{ minWidth: 180 }}
-                  />
-                  <Button
-                    variant="contained"
-                    onClick={() => void submitPayment()}
-                    disabled={paymentDisabled || savingPayment}
-                  >
-                    {savingPayment ? tc('saving') : ts('registerPayment')}
-                  </Button>
-                </Stack>
-              )}
-            </>
-          ) : null}
-
-          <Typography variant="subtitle2">{ts('paymentHistoryTitle')}</Typography>
-          {ventaActual.pagos.length === 0 ? (
-            <Alert severity="info">{ts('noPaymentsRegistered')}</Alert>
-          ) : (
-            <TableContainer>
-              <Table size="small" sx={{ minWidth: 640 }}>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>{tf('date')}</TableCell>
-                    <TableCell>{ts('paymentMethodLabel')}</TableCell>
-                    <TableCell>{tf('reference')}</TableCell>
-                    <TableCell align="right">{ts('amountLabel')}</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {ventaActual.pagos.map((pago) => (
-                    <TableRow key={pago.pagoVentaId} hover>
-                      <TableCell>{new Date(pago.fechaPago).toLocaleString(locale)}</TableCell>
-                      <TableCell>{pago.metodoPago}</TableCell>
-                      <TableCell>{pago.referencia || '-'}</TableCell>
-                      <TableCell align="right">
-                        {new Intl.NumberFormat(locale, {
-                          style: 'currency',
-                          currency: 'COP',
-                          maximumFractionDigits: 0,
-                        }).format(pago.monto)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-
-          {canUpdateDelivery ? (
-            <>
-              <Typography variant="subtitle2">{ts('deliveryStatusLabel')}</Typography>
-              {deliveryError ? <Alert severity="error">{deliveryError}</Alert> : null}
-              {deliverySuccess ? <Alert severity="success">{deliverySuccess}</Alert> : null}
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} useFlexGap flexWrap="wrap">
-                <FormControl size="small" sx={{ minWidth: 220 }}>
-                  <InputLabel id="estado-entrega-label">{ts('deliveryStatusLabel')}</InputLabel>
-                  <Select
-                    labelId="estado-entrega-label"
-                    label={ts('deliveryStatusLabel')}
-                    value={String(estadoEntrega)}
-                    onChange={(event: SelectChangeEvent) => setEstadoEntrega(Number(event.target.value))}
-                    disabled={savingDelivery || isCancelledOrAnnulled}
-                  >
-                    <MenuItem value="1">{ts('deliveryStatusPendingPreparation')}</MenuItem>
-                    <MenuItem value="2">{ts('deliveryStatusInPreparation')}</MenuItem>
-                    <MenuItem value="3">{ts('deliveryStatusReadyToDeliver')}</MenuItem>
-                    <MenuItem value="4">{ts('deliveryStatusDelivered')}</MenuItem>
-                  </Select>
-                </FormControl>
-                <Button
-                  variant="contained"
-                  onClick={() => void submitDelivery()}
-                  disabled={savingDelivery || isCancelledOrAnnulled}
-                >
-                  {savingDelivery ? tc('saving') : ts('saveDeliveryButton')}
-                </Button>
-              </Stack>
-            </>
-          ) : null}
-
-          <Typography variant="subtitle2">{ts('associatedMovementsTitle')}</Typography>
-          {!canQueryMovements ? (
-            <Alert severity="info">{ts('movementsNoPermission')}</Alert>
-          ) : loadingMovimientos ? (
-            <Typography variant="body2" color="text.secondary">
-              {tc('loading')}
-            </Typography>
-          ) : movimientosError ? (
-            <Alert severity="error">{movimientosError}</Alert>
-          ) : movimientos.length === 0 ? (
-            <Alert severity="info">{ts('noAssociatedMovements')}</Alert>
-          ) : (
-            <TableContainer>
-              <Table size="small" sx={{ minWidth: 640 }}>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>{tf('lotCode')}</TableCell>
-                    <TableCell>{ts('movementTypeLabel')}</TableCell>
-                    <TableCell align="right">{ts('quantityLabel')}</TableCell>
-                    <TableCell>{tf('date')}</TableCell>
-                    <TableCell>{ts('referenceLabel')}</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {movimientos.map((movimiento) => (
-                    <TableRow key={movimiento.movimientoLoteCafeId} hover>
-                      <TableCell>{movimiento.loteCodigo}</TableCell>
-                      <TableCell>
-                        {movimiento.tipoMovimiento === 2 ? ts('movementOut') : movimiento.tipoMovimiento}
-                      </TableCell>
-                      <TableCell align="right">{movimiento.cantidadPaquetes}</TableCell>
-                      <TableCell>{new Date(movimiento.fechaMovimiento).toLocaleString(locale)}</TableCell>
-                      <TableCell>{movimiento.referencia || '-'}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md" PaperProps={{ sx: { borderRadius: 2 } }}>
+      <DialogTitle sx={{ pb: 1 }}>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <ReceiptLongIcon color="primary" />
+          <Typography variant="h6" component="span">
+            {ts('ventaDetailTitle', { number: ventaActual.numeroVenta })}
+          </Typography>
         </Stack>
+      </DialogTitle>
+      <DialogContent dividers sx={{ pt: 2 }}>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+          <Tabs
+            value={activeTab}
+            onChange={(_event, value) => setActiveTab(value)}
+            variant="scrollable"
+            allowScrollButtonsMobile
+            indicatorColor="primary"
+            textColor="primary"
+          >
+            <Tab value="summary" label={ts('tabSummaryLabel')} icon={<ReceiptLongIcon />} iconPosition="start" />
+            <Tab value="payments" label={ts('tabPaymentsLabel')} icon={<PaymentIcon />} iconPosition="start" />
+            <Tab value="management" label={ts('tabManagementLabel')} icon={<SettingsIcon />} iconPosition="start" />
+          </Tabs>
+        </Box>
+
+        {activeTab === 'summary' ? (
+          <Stack spacing={2.5}>
+            <Card variant="outlined" sx={{ borderRadius: 2 }}>
+              <CardContent>
+                <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                  Información general
+                </Typography>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} useFlexGap flexWrap="wrap">
+                  <BoxInfo label={ts('saleNumberLabel')} value={String(ventaActual.numeroVenta)} />
+                  <BoxInfo label={tf('date')} value={new Date(ventaActual.fechaVenta).toLocaleString(locale)} />
+                  <BoxInfo label={ts('clientLabel')} value={ventaActual.clienteNombre || ts('noCliente')} />
+                  <Box sx={{ minWidth: 140 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      {tf('status')}
+                    </Typography>
+                    <Box sx={{ mt: 0.5 }}>
+                      <Chip label={estadoLabel} color={estadoVentaColor} size="small" variant="outlined" />
+                    </Box>
+                  </Box>
+                  <BoxInfo
+                    label={ts('totalLabel')}
+                    value={new Intl.NumberFormat(locale, {
+                      style: 'currency',
+                      currency: 'COP',
+                      maximumFractionDigits: 0,
+                    }).format(ventaActual.total)}
+                    bold
+                  />
+                </Stack>
+                {ventaActual.observacion ? (
+                  <Alert severity="info" sx={{ mt: 2 }}>
+                    {ventaActual.observacion}
+                  </Alert>
+                ) : null}
+              </CardContent>
+            </Card>
+
+            <Card variant="outlined" sx={{ borderRadius: 2 }}>
+              <CardContent>
+                <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                  {ts('financialSummaryTitle')}
+                </Typography>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} useFlexGap flexWrap="wrap">
+                  <BoxInfo
+                    label={ts('totalPaidLabel')}
+                    value={new Intl.NumberFormat(locale, {
+                      style: 'currency',
+                      currency: 'COP',
+                      maximumFractionDigits: 0,
+                    }).format(ventaActual.montoPagado)}
+                  />
+                  <BoxInfo
+                    label={ts('pendingBalanceLabel')}
+                    value={new Intl.NumberFormat(locale, {
+                      style: 'currency',
+                      currency: 'COP',
+                      maximumFractionDigits: 0,
+                    }).format(ventaActual.saldoPendiente)}
+                  />
+                  <Box sx={{ minWidth: 140 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      {ts('paymentStatusLabel')}
+                    </Typography>
+                    <Box sx={{ mt: 0.5 }}>
+                      <Chip label={estadoPagoLabel(ventaActual.estadoPago)} color={estadoPagoColor} size="small" variant="outlined" />
+                    </Box>
+                  </Box>
+                  <Box sx={{ minWidth: 140 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      {ts('deliveryStatusLabel')}
+                    </Typography>
+                    <Box sx={{ mt: 0.5 }}>
+                      <Chip label={estadoEntregaLabel(ventaActual.estadoEntrega)} color="default" size="small" variant="outlined" />
+                    </Box>
+                  </Box>
+                </Stack>
+              </CardContent>
+            </Card>
+
+            {ventaActual.estado === 2 && ventaActual.motivoCancelacion ? (
+              <Alert severity="warning">
+                {`${ts('statusCancelled')}${ventaActual.canceladoEn ? ` ${new Date(ventaActual.canceladoEn).toLocaleString(locale)}` : ''}: ${ventaActual.motivoCancelacion}`}
+              </Alert>
+            ) : null}
+            {ventaActual.estado === 3 && ventaActual.motivoAnulacion ? (
+              <Alert severity="error">
+                {`${ts('statusAnnulled')}${ventaActual.anuladoEn ? ` ${new Date(ventaActual.anuladoEn).toLocaleString(locale)}` : ''}: ${ventaActual.motivoAnulacion}`}
+              </Alert>
+            ) : null}
+
+            <Card variant="outlined" sx={{ borderRadius: 2 }}>
+              <CardContent>
+                <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                  {ts('productsTitle')}
+                </Typography>
+                <TableContainer>
+                  <Table size="small" sx={{ minWidth: 720, ...tableHeadSx }}>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>{tf('presentation')}</TableCell>
+                        <TableCell>{tf('coffeeType')}</TableCell>
+                        <TableCell align="right">{ts('quantityLabel')}</TableCell>
+                        <TableCell align="right">{ts('unitPriceLabel')}</TableCell>
+                        <TableCell align="right">{ts('subtotalLabel')}</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {ventaActual.detalles.map((detalle) => (
+                        <TableRow key={detalle.ventaDetalleId} hover>
+                          <TableCell>
+                            <Stack spacing={0.25}>
+                              <Typography variant="body2" fontWeight={500}>{detalle.presentacionNombre}</Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {detalle.presentacionCodigo}
+                              </Typography>
+                            </Stack>
+                          </TableCell>
+                          <TableCell>
+                            <Stack spacing={0.25}>
+                              <Typography variant="body2">{detalle.tipoCafeNombre}</Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {detalle.tipoCafeCodigo}
+                              </Typography>
+                            </Stack>
+                          </TableCell>
+                          <TableCell align="right">{detalle.cantidadPaquetes}</TableCell>
+                          <TableCell align="right">
+                            {new Intl.NumberFormat(locale, {
+                              style: 'currency',
+                              currency: 'COP',
+                              maximumFractionDigits: 0,
+                            }).format(detalle.precioUnitario)}
+                          </TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 600 }}>
+                            {new Intl.NumberFormat(locale, {
+                              style: 'currency',
+                              currency: 'COP',
+                              maximumFractionDigits: 0,
+                            }).format(detalle.subtotal)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </CardContent>
+            </Card>
+
+            {canUpdateDelivery ? (
+              <Card variant="outlined" sx={{ borderRadius: 2 }}>
+                <CardContent>
+                  <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                    {ts('deliveryStatusLabel')}
+                  </Typography>
+                  {deliveryError ? <Alert severity="error" sx={{ mb: 1 }}>{deliveryError}</Alert> : null}
+                  {deliverySuccess ? <Alert severity="success" sx={{ mb: 1 }}>{deliverySuccess}</Alert> : null}
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} useFlexGap flexWrap="wrap" alignItems="center">
+                    <FormControl size="small" sx={{ minWidth: 240 }}>
+                      <InputLabel id="estado-entrega-label">{ts('deliveryStatusLabel')}</InputLabel>
+                      <Select
+                        labelId="estado-entrega-label"
+                        label={ts('deliveryStatusLabel')}
+                        value={String(estadoEntrega)}
+                        onChange={(event: SelectChangeEvent) => setEstadoEntrega(Number(event.target.value))}
+                        disabled={savingDelivery || isCancelledOrAnnulled}
+                      >
+                        <MenuItem value="1">{ts('deliveryStatusPendingPreparation')}</MenuItem>
+                        <MenuItem value="2">{ts('deliveryStatusInPreparation')}</MenuItem>
+                        <MenuItem value="3">{ts('deliveryStatusReadyToDeliver')}</MenuItem>
+                        <MenuItem value="4">{ts('deliveryStatusDelivered')}</MenuItem>
+                      </Select>
+                    </FormControl>
+                    <Button
+                      variant="contained"
+                      startIcon={<SaveIcon />}
+                      onClick={() => void submitDelivery()}
+                      disabled={savingDelivery || isCancelledOrAnnulled}
+                    >
+                      {savingDelivery ? tc('saving') : ts('saveDeliveryButton')}
+                    </Button>
+                  </Stack>
+                </CardContent>
+              </Card>
+            ) : null}
+          </Stack>
+        ) : null}
+
+        {activeTab === 'payments' ? (
+          <Stack spacing={2.5}>
+            {canRegisterPayments && !isCancelledOrAnnulled ? (
+              <Card variant="outlined" sx={{ borderRadius: 2 }}>
+                <CardContent>
+                  <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                    {ts('registerPayment')}
+                  </Typography>
+                  {paymentError ? <Alert severity="error" sx={{ mb: 1 }}>{paymentError}</Alert> : null}
+                  {paymentSuccess ? <Alert severity="success" sx={{ mb: 1 }}>{paymentSuccess}</Alert> : null}
+                  {ventaActual.saldoPendiente <= 0 ? (
+                    <Alert severity="info">{ts('paymentAlreadyPaid')}</Alert>
+                  ) : (
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} useFlexGap flexWrap="wrap" alignItems="center">
+                      <TextField
+                        size="small"
+                        type="number"
+                        label={ts('amountLabel')}
+                        value={paymentMonto}
+                        onChange={(event) => setPaymentMonto(event.target.value)}
+                        disabled={paymentDisabled}
+                        sx={{ minWidth: 140 }}
+                      />
+                      <TextField
+                        size="small"
+                        type="date"
+                        label={tf('date')}
+                        value={paymentFecha}
+                        onChange={(event) => setPaymentFecha(event.target.value)}
+                        slotProps={{ inputLabel: { shrink: true } }}
+                        sx={{ minWidth: 160 }}
+                      />
+                      <FormControl size="small" sx={{ minWidth: 180 }}>
+                        <InputLabel id="metodo-pago-label">{ts('paymentMethodLabel')}</InputLabel>
+                        <Select
+                          labelId="metodo-pago-label"
+                          label={ts('paymentMethodLabel')}
+                          value={paymentMetodo}
+                          onChange={(event: SelectChangeEvent) => setPaymentMetodo(event.target.value)}
+                        >
+                          <MenuItem value="Efectivo">Efectivo</MenuItem>
+                          <MenuItem value="Transferencia">Transferencia</MenuItem>
+                          <MenuItem value="Consignación">Consignación</MenuItem>
+                          <MenuItem value="Otro">Otro</MenuItem>
+                        </Select>
+                      </FormControl>
+                      <TextField
+                        size="small"
+                        label={tf('reference')}
+                        value={paymentReferencia}
+                        onChange={(event) => setPaymentReferencia(event.target.value)}
+                        sx={{ minWidth: 180 }}
+                      />
+                      <Button
+                        variant="contained"
+                        startIcon={<PaymentIcon />}
+                        onClick={() => void submitPayment()}
+                        disabled={paymentDisabled || savingPayment}
+                      >
+                        {savingPayment ? tc('saving') : ts('registerPayment')}
+                      </Button>
+                    </Stack>
+                  )}
+                </CardContent>
+              </Card>
+            ) : null}
+
+            <Card variant="outlined" sx={{ borderRadius: 2 }}>
+              <CardContent>
+                <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                  {ts('paymentHistoryTitle')}
+                </Typography>
+                {ventaActual.pagos.length === 0 ? (
+                  <Alert severity="info">{ts('noPaymentsRegistered')}</Alert>
+                ) : (
+                  <TableContainer>
+                    <Table size="small" sx={{ minWidth: 640, ...tableHeadSx }}>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>{tf('date')}</TableCell>
+                          <TableCell>{ts('paymentMethodLabel')}</TableCell>
+                          <TableCell>{tf('reference')}</TableCell>
+                          <TableCell align="right">{ts('amountLabel')}</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {ventaActual.pagos.map((pago) => (
+                          <TableRow key={pago.pagoVentaId} hover>
+                            <TableCell>{new Date(pago.fechaPago).toLocaleString(locale)}</TableCell>
+                            <TableCell>{pago.metodoPago}</TableCell>
+                            <TableCell>{pago.referencia || '-'}</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600 }}>
+                              {new Intl.NumberFormat(locale, {
+                                style: 'currency',
+                                currency: 'COP',
+                                maximumFractionDigits: 0,
+                              }).format(pago.monto)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
+              </CardContent>
+            </Card>
+          </Stack>
+        ) : null}
+
+        {activeTab === 'management' ? (
+          <Stack spacing={2.5}>
+            {canCancelSale || canAnulateSale ? (
+              ventaActual.estado === 1 && ventaActual.estadoEntrega !== 4 ? (
+                <Card variant="outlined" sx={{ borderRadius: 2 }}>
+                  <CardContent>
+                    <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                      {ts('administrativeAction')}
+                    </Typography>
+                    {cancelError ? <Alert severity="error" sx={{ mb: 1 }}>{cancelError}</Alert> : null}
+                    {cancelSuccess ? <Alert severity="success" sx={{ mb: 1 }}>{cancelSuccess}</Alert> : null}
+                    {anulateError ? <Alert severity="error" sx={{ mb: 1 }}>{anulateError}</Alert> : null}
+                    {anulateSuccess ? <Alert severity="success" sx={{ mb: 1 }}>{anulateSuccess}</Alert> : null}
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} useFlexGap flexWrap="wrap">
+                      {canCancelSale ? (
+                        <Stack spacing={1} sx={{ minWidth: 280, flex: 1 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            {ts('cancelSaleHint')}
+                          </Typography>
+                          <TextField
+                            size="small"
+                            label={ts('cancelReason')}
+                            value={cancelMotivo}
+                            onChange={(event) => setCancelMotivo(event.target.value)}
+                            disabled={savingCancel || savingAnulate}
+                            inputProps={{ maxLength: 250 }}
+                            helperText={`${cancelMotivo.length}/250`}
+                          />
+                          <Button
+                            color="warning"
+                            variant="outlined"
+                            startIcon={<CancelIcon />}
+                            onClick={() => void submitCancel()}
+                            disabled={savingCancel || savingAnulate}
+                          >
+                            {savingCancel ? tc('saving') : ts('cancelSale')}
+                          </Button>
+                        </Stack>
+                      ) : null}
+                      {canAnulateSale ? (
+                        <Stack spacing={1} sx={{ minWidth: 280, flex: 1 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            {ts('anulateSaleHint')}
+                          </Typography>
+                          <TextField
+                            size="small"
+                            label={ts('anulateReason')}
+                            value={anulateMotivo}
+                            onChange={(event) => setAnulateMotivo(event.target.value)}
+                            disabled={savingCancel || savingAnulate}
+                            inputProps={{ maxLength: 250 }}
+                            helperText={`${anulateMotivo.length}/250`}
+                          />
+                          <Button
+                            color="error"
+                            variant="outlined"
+                            startIcon={<DeleteForeverIcon />}
+                            onClick={() => void submitAnulate()}
+                            disabled={savingCancel || savingAnulate}
+                          >
+                            {savingAnulate ? tc('saving') : ts('anulateSale')}
+                          </Button>
+                        </Stack>
+                      ) : null}
+                    </Stack>
+                  </CardContent>
+                </Card>
+              ) : null
+            ) : null}
+
+            <Card variant="outlined" sx={{ borderRadius: 2 }}>
+              <CardContent>
+                <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                  {ts('associatedMovementsTitle')}
+                </Typography>
+                {!canQueryMovements ? (
+                  <Alert severity="info">{ts('movementsNoPermission')}</Alert>
+                ) : loadingMovimientos ? (
+                  <Typography variant="body2" color="text.secondary">
+                    {tc('loading')}
+                  </Typography>
+                ) : movimientosError ? (
+                  <Alert severity="error">{movimientosError}</Alert>
+                ) : movimientos.length === 0 ? (
+                  <Alert severity="info">{ts('noAssociatedMovements')}</Alert>
+                ) : (
+                  <TableContainer>
+                    <Table size="small" sx={{ minWidth: 640, ...tableHeadSx }}>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>{tf('lotCode')}</TableCell>
+                          <TableCell>{ts('movementTypeLabel')}</TableCell>
+                          <TableCell align="right">{ts('quantityLabel')}</TableCell>
+                          <TableCell>{tf('date')}</TableCell>
+                          <TableCell>{ts('referenceLabel')}</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {movimientos.map((movimiento) => (
+                          <TableRow key={movimiento.movimientoLoteCafeId} hover>
+                            <TableCell>{movimiento.loteCodigo}</TableCell>
+                            <TableCell>
+                              {movimiento.tipoMovimiento === 2 ? ts('movementOut') : movimiento.tipoMovimiento}
+                            </TableCell>
+                            <TableCell align="right">{movimiento.cantidadPaquetes}</TableCell>
+                            <TableCell>{new Date(movimiento.fechaMovimiento).toLocaleString(locale)}</TableCell>
+                            <TableCell>{movimiento.referencia || '-'}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
+              </CardContent>
+            </Card>
+          </Stack>
+        ) : null}
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>{ts('closeLabel')}</Button>
+      <DialogActions sx={{ px: 3, py: 2 }}>
+        <Button onClick={onClose} startIcon={<CloseIcon />} variant="outlined">
+          {ts('closeLabel')}
+        </Button>
       </DialogActions>
     </Dialog>
   );
 }
 
-function BoxInfo({ label, value }: { label: string; value: string }) {
+function BoxInfo({ label, value, bold = false }: { label: string; value: string; bold?: boolean }) {
   return (
     <Box sx={{ minWidth: 140 }}>
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.4 }}>
         {label}
       </Typography>
-      <Typography variant="body2" sx={{ mt: 0.5 }}>
+      <Typography variant="body2" sx={{ mt: 0.5, fontWeight: bold ? 700 : 500 }}>
         {value}
       </Typography>
     </Box>

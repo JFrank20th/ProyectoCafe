@@ -62,6 +62,10 @@ public sealed class InventarioCafeEndpointTests
         {
             codigoLote = "LOTE-001",
             fechaProduccion = DateTime.UtcNow.AddDays(-1),
+            observacion = "Observación de prueba",
+            variedadCafeId = 1,
+            tipoTuesteCafeId = 1,
+            tipoProcesoCafeId = 1,
         });
 
         await AssertValidationProblemAsync(duplicate, nameof(CreateLoteCafeRequest.CodigoLote));
@@ -631,6 +635,7 @@ public sealed class InventarioCafeEndpointTests
         {
             codigoLote = "LOTE-CATALOGOS",
             fechaProduccion = DateTime.UtcNow.AddDays(-1),
+            observacion = "Observación de prueba",
             variedadCafeId = variedadId,
             tipoTuesteCafeId = tuesteId,
             tipoProcesoCafeId = procesoId,
@@ -648,12 +653,7 @@ public sealed class InventarioCafeEndpointTests
             codigoLote = "LOTE-SIN-CATALOGOS",
             fechaProduccion = DateTime.UtcNow.AddDays(-1),
         });
-        Assert.Equal(HttpStatusCode.Created, nullLoteResponse.StatusCode);
-        var nullLoteId = (await nullLoteResponse.Content.ReadFromJsonAsync<Dictionary<string, int>>())!["loteCafeId"];
-        var nullDetail = await GetLoteAsync(client, nullLoteId);
-        Assert.Null(nullDetail.VariedadCafeId);
-        Assert.Null(nullDetail.TipoTuesteCafeId);
-        Assert.Null(nullDetail.TipoProcesoCafeId);
+        Assert.Equal(HttpStatusCode.BadRequest, nullLoteResponse.StatusCode);
     }
 
     private static async Task<HttpClient> CreateInventoryClientAsync(
@@ -664,12 +664,74 @@ public sealed class InventarioCafeEndpointTests
         return await factory.CreateAuthenticatedClientAsync(email);
     }
 
+    private static async Task<int> GetOrCreateVariedadAsync(HttpClient client)
+    {
+        var list = await client.GetFromJsonAsync<VariedadCafeDto[]>("/api/v1/inventario/variedades");
+        if (list is { Length: > 0 })
+        {
+            return list[0].VariedadCafeId;
+        }
+
+        var response = await client.PostAsJsonAsync("/api/v1/inventario/variedades", new
+        {
+            codigo = "VAR",
+            nombre = "Variedad",
+        });
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadFromJsonAsync<VariedadCreadaResponse>();
+        return body!.VariedadCafeId;
+    }
+
+    private static async Task<int> GetOrCreateTipoTuesteAsync(HttpClient client)
+    {
+        var list = await client.GetFromJsonAsync<TipoTuesteCafeDto[]>("/api/v1/inventario/tipos-tueste");
+        if (list is { Length: > 0 })
+        {
+            return list[0].TipoTuesteCafeId;
+        }
+
+        var response = await client.PostAsJsonAsync("/api/v1/inventario/tipos-tueste", new
+        {
+            codigo = "TUE",
+            nombre = "Tueste",
+        });
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadFromJsonAsync<TipoTuesteCreadoResponse>();
+        return body!.TipoTuesteCafeId;
+    }
+
+    private static async Task<int> GetOrCreateTipoProcesoAsync(HttpClient client)
+    {
+        var list = await client.GetFromJsonAsync<TipoProcesoCafeDto[]>("/api/v1/inventario/tipos-proceso");
+        if (list is { Length: > 0 })
+        {
+            return list[0].TipoProcesoCafeId;
+        }
+
+        var response = await client.PostAsJsonAsync("/api/v1/inventario/tipos-proceso", new
+        {
+            codigo = "PRO",
+            nombre = "Proceso",
+        });
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadFromJsonAsync<TipoProcesoCreadoResponse>();
+        return body!.TipoProcesoCafeId;
+    }
+
     private static async Task<int> CreateLoteAsync(HttpClient client, string codigoLote)
     {
+        var variedadId = await GetOrCreateVariedadAsync(client);
+        var tipoTuesteId = await GetOrCreateTipoTuesteAsync(client);
+        var tipoProcesoId = await GetOrCreateTipoProcesoAsync(client);
+
         var response = await client.PostAsJsonAsync("/api/v1/inventario/lotes", new
         {
             codigoLote,
             fechaProduccion = DateTime.UtcNow.AddDays(-1),
+            observacion = "Observación de prueba",
+            variedadCafeId = variedadId,
+            tipoTuesteCafeId = tipoTuesteId,
+            tipoProcesoCafeId = tipoProcesoId,
         });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
@@ -785,6 +847,21 @@ public sealed class InventarioCafeEndpointTests
     private sealed class LoteCreadoResponse
     {
         public int LoteCafeId { get; set; }
+    }
+
+    private sealed class VariedadCreadaResponse
+    {
+        public int VariedadCafeId { get; set; }
+    }
+
+    private sealed class TipoTuesteCreadoResponse
+    {
+        public int TipoTuesteCafeId { get; set; }
+    }
+
+    private sealed class TipoProcesoCreadoResponse
+    {
+        public int TipoProcesoCafeId { get; set; }
     }
 
     private sealed class PresentacionCreadaResponse
