@@ -2,7 +2,7 @@
 
 ## API
 
-- `Database:ConnectionString` — connection string a SQL Server (puede estar en `appsettings.Development.json` o env var).
+- `Database:ConnectionString` — connection string a SQL Server/Azure SQL. **No se commitea con credenciales**: en QA/PROD se configura mediante la variable de entorno `Database__ConnectionString` (Azure SQL Database). En Development puede definirse localmente con `dotnet user-secrets` o la misma variable de entorno. `appsettings.json` y `appsettings.Development.json` dejan el valor vacío para no versionar secretos.
 
 ### Secretos y credenciales
 
@@ -87,7 +87,7 @@ $env:CORS_ALLOWED_ORIGINS = "https://portal.example.com,https://admin.example.co
 > `SameSite=None` y `Secure`; el valor por defecto `Lax` solo se envía en peticiones
 > del mismo sitio.
 
-- En desarrollo, la conexión por defecto apunta a `ProyectoCafe.Dev`.
+- En desarrollo, la conexión se resuelve desde `Database__ConnectionString` (Azure SQL) o `dotnet user-secrets`; las pruebas siguen usando LocalDB y no dependen de Azure.
 - La estructura vigente se crea con `tools/sqlserver-create-current.sql`; el script crea la base desde cero y se detiene si ya existe para evitar mezclar esquemas heredados.
 
 ### Rate limiting de login

@@ -4,7 +4,7 @@ Recomendado: configurar secrets como variables de entorno de usuario/máquina en
 
 Ejemplos (PowerShell):
 
-- `setx Database__ConnectionString "Server=...;Database=...;..."`
+- `setx Database__ConnectionString 'Server=tcp:databasesqlcoffee.database.windows.net,1433;Initial Catalog=proyectcoffee.dev;Persist Security Info=False;User ID=coffeeadmin;Password=<tu-password>;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;'`
 - `setx Auth__Jwt__SigningKey "<clave aleatoria de al menos 32 bytes>"`
 - `setx NEXT_PUBLIC_PROYECTOCAFE_API_URL "http://localhost:5000"`
 

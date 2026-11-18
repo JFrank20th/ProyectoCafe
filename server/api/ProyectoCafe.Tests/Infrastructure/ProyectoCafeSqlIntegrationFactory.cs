@@ -27,6 +27,10 @@ public class ProyectoCafeSqlIntegrationFactory : WebApplicationFactory<Program>,
             : configured;
 
         ValidateConnectionString(_connectionString);
+
+        // Asegura que AddInfrastructure (que se ejecuta al arrancar el host) vea la
+        // cadena de conexión aunque appsettings.json la deje vacía para no versionar secretos.
+        Environment.SetEnvironmentVariable("Database__ConnectionString", _connectionString);
     }
 
     public string ConnectionString => _connectionString;

@@ -37,6 +37,12 @@ internal sealed class ProyectoCafeApiFactory : WebApplicationFactory<Program>
         _overrides = overrides ?? new Dictionary<string, string?>();
         _environment = environment;
         _configureDefaultCorsOrigin = configureDefaultCorsOrigin;
+
+        // appsettings.json deja la cadena vacía para no versionar secretos; se
+        // proporciona un valor no secreto para que AddInfrastructure valide al arrancar.
+        Environment.SetEnvironmentVariable(
+            "Database__ConnectionString",
+            "Server=(localdb)\\mssqllocaldb;Database=ProyectoCafeTests;Trusted_Connection=True;TrustServerCertificate=True");
     }
 
     public CapturingLoggerProvider Logs { get; } = new();
