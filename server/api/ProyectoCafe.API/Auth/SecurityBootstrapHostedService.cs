@@ -65,7 +65,11 @@ public sealed class SecurityBootstrapHostedService(
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Security bootstrap no pudo ejecutarse. La API seguirá iniciando, pero auth/admin puede fallar hasta que la BD esté lista.");
+            // El bootstrap de seguridad es obligatorio: si falla (por ejemplo, por
+            // un error de conexión a la base de datos), la API no debe quedar
+            // disponible como si estuviera lista.
+            _logger.LogCritical(ex, "Security bootstrap no pudo ejecutarse. Se aborta el arranque de la API.");
+            throw;
         }
     }
 
