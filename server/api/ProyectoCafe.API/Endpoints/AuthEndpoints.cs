@@ -169,14 +169,23 @@ public static class AuthEndpoints
         return endpoints;
     }
 
-    private static CookieOptions CreateCookieOptions(IHostEnvironment environment, bool httpOnly) =>
-        new()
+    private static CookieOptions CreateCookieOptions(
+        AuthCookieOptions cookieOptions,
+        IHostEnvironment environment,
+        bool httpOnly)
+    {
+        // La validación de arranque ya garantiza un valor admitido; si llegara
+        // un valor inesperado, Lax es el comportamiento seguro por defecto.
+        cookieOptions.TryGetSameSite(out var sameSite);
+
+        return new()
         {
             HttpOnly = httpOnly,
-            Secure = !environment.IsDevelopment(),
-            SameSite = SameSiteMode.Lax,
+            Secure = cookieOptions.ResolveSecure(environment),
+            SameSite = sameSite,
             Path = "/",
         };
+    }
 
     private static void SetAuthCookies(
         HttpContext http,
@@ -188,23 +197,23 @@ public static class AuthEndpoints
         http.Response.Cookies.Append(
             options.Cookie.AccessTokenCookieName,
             token,
-            CreateCookieOptions(environment, httpOnly: true));
+            CreateCookieOptions(options.Cookie, environment, httpOnly: true));
 
         http.Response.Cookies.Append(
             options.Cookie.CsrfCookieName,
             csrfToken,
-            CreateCookieOptions(environment, httpOnly: false));
+            CreateCookieOptions(options.Cookie, environment, httpOnly: false));
     }
 
     private static void ClearAuthCookies(HttpContext http, AuthOptions options, IHostEnvironment environment)
     {
         http.Response.Cookies.Delete(
             options.Cookie.AccessTokenCookieName,
-            CreateCookieOptions(environment, httpOnly: true));
+            CreateCookieOptions(options.Cookie, environment, httpOnly: true));
 
         http.Response.Cookies.Delete(
             options.Cookie.CsrfCookieName,
-            CreateCookieOptions(environment, httpOnly: false));
+            CreateCookieOptions(options.Cookie, environment, httpOnly: false));
     }
 
     private static IResult InvalidCredentials() =>

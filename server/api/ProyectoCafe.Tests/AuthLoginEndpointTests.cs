@@ -42,6 +42,64 @@ public sealed class AuthLoginEndpointTests
     }
 
     [Fact]
+    public async Task Login_InProduction_DefaultsToSecureLaxCookies()
+    {
+        await using var factory = new ProyectoCafeApiFactory(environment: "Production");
+        await factory.SeedUserAsync("prod@test.local", password: Password);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/v1/auth/login", new
+        {
+            email = "prod@test.local",
+            password = Password,
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.Headers.TryGetValues("Set-Cookie", out var cookies));
+
+        var authCookie = cookies!.Single(cookie => cookie.StartsWith("pc_at=", StringComparison.Ordinal));
+        var csrfCookie = cookies!.Single(cookie => cookie.StartsWith("pc_csrf=", StringComparison.Ordinal));
+
+        foreach (var cookie in new[] { authCookie, csrfCookie })
+        {
+            Assert.Contains("secure", cookie, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("samesite=lax", cookie, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    [Fact]
+    public async Task Login_WithSameSiteNoneAndSecure_UsesSameFlagsForBothCookies()
+    {
+        await using var factory = new ProyectoCafeApiFactory(
+            new Dictionary<string, string?>
+            {
+                ["Auth:Cookie:SameSite"] = "None",
+                ["Auth:Cookie:Secure"] = "true",
+            },
+            environment: "Production");
+        await factory.SeedUserAsync("cross-site@test.local", password: Password);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/v1/auth/login", new
+        {
+            email = "cross-site@test.local",
+            password = Password,
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.Headers.TryGetValues("Set-Cookie", out var cookies));
+
+        var authCookie = cookies!.Single(cookie => cookie.StartsWith("pc_at=", StringComparison.Ordinal));
+        var csrfCookie = cookies!.Single(cookie => cookie.StartsWith("pc_csrf=", StringComparison.Ordinal));
+
+        foreach (var cookie in new[] { authCookie, csrfCookie })
+        {
+            Assert.Contains("secure", cookie, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("samesite=none", cookie, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    [Fact]
     public async Task Login_FiveFailedAttempts_LocksAccountForFifteenMinutes()
     {
         await using var factory = new ProyectoCafeApiFactory();

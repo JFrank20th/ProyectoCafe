@@ -44,18 +44,25 @@ public sealed class UnitOfWork(ProyectoCafeDbContext db) : IUnitOfWork
             return await operation(ct);
         }
 
-        await using var transaction = await _db.Database.BeginTransactionAsync(ct);
-        try
+        var strategy = _db.Database.CreateExecutionStrategy();
+
+        // Con EnableRetryOnFailure EF Core exige ejecutar las transacciones
+        // manuales dentro de su estrategia de reintentos.
+        return await strategy.ExecuteAsync(async () =>
         {
-            var result = await operation(ct);
-            await transaction.CommitAsync(ct);
-            return result;
-        }
-        catch
-        {
-            await transaction.RollbackAsync(CancellationToken.None);
-            throw;
-        }
+            await using var transaction = await _db.Database.BeginTransactionAsync(ct);
+            try
+            {
+                var result = await operation(ct);
+                await transaction.CommitAsync(ct);
+                return result;
+            }
+            catch
+            {
+                await transaction.RollbackAsync(CancellationToken.None);
+                throw;
+            }
+        });
     }
 
     private static bool IsUniqueConstraintViolation(DbUpdateException ex)

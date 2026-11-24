@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Microsoft.Extensions.Options;
@@ -10,6 +11,7 @@ using ProyectoCafe.Application.Abstractions.Security;
 using ProyectoCafe.Application.Extensions;
 using ProyectoCafe.API.Auth;
 using ProyectoCafe.API.Configuration;
+using ProyectoCafe.API.Health;
 using ProyectoCafe.Infrastructure.Extensions;
 
 namespace ProyectoCafe.API.Extensions;
@@ -19,6 +21,25 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddProyectoCafeApi(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddProblemDetails();
+
+        // La API puede ejecutarse detrás del ingress de Azure Container Apps u
+        // otro proxy: acepta X-Forwarded-For y X-Forwarded-Proto para que
+        // RemoteIpAddress y Request.Scheme reflejen al cliente. ForwardLimit=1
+        // toma solo el valor más a la derecha de X-Forwarded-For (el único que
+        // garantiza ACA); los valores anteriores los controla el cliente.
+        // Ver DOCS/ENV.md: solo es seguro si el contenedor no es accesible
+        // directamente sin pasar por el ingress.
+        services.Configure<ForwardedHeadersOptions>(options =>
+        {
+            options.ForwardedHeaders =
+                ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+            options.ForwardLimit = 1;
+            options.KnownIPNetworks.Clear();
+            options.KnownProxies.Clear();
+        });
+
+        services.AddHealthChecks()
+            .AddCheck<DatabaseHealthCheck>("database");
 
         // La API es la única autoridad CORS. El Portal no debe emitir cabeceras
         // Access-Control-*: si lo hiciera, se duplicarían o contradirían estas.

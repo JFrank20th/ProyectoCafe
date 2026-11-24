@@ -79,6 +79,36 @@ public sealed class SecurityConfigurationTests
     }
 
     [Fact]
+    public void InvalidSameSite_FailsAtStartup()
+    {
+        using var factory = new ProyectoCafeApiFactory(
+            new Dictionary<string, string?>
+            {
+                ["Auth:Cookie:SameSite"] = "Sometimes",
+            });
+
+        var exception = Assert.ThrowsAny<Exception>(() => factory.CreateClient());
+
+        Assert.Contains("Auth:Cookie:SameSite", exception.ToString(), StringComparison.Ordinal);
+        Assert.Contains("Lax, Strict o None", exception.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SameSiteNoneWithoutSecure_InDevelopment_FailsAtStartup()
+    {
+        using var factory = new ProyectoCafeApiFactory(
+            new Dictionary<string, string?>
+            {
+                ["Auth:Cookie:SameSite"] = "None",
+            },
+            environment: "Development");
+
+        var exception = Assert.ThrowsAny<Exception>(() => factory.CreateClient());
+
+        Assert.Contains("SameSite=None requiere Auth:Cookie:Secure=true", exception.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void KnownDemoAccountsWithDefaultPasswords_AreDetected()
     {
         var adminHash = PasswordHasher.HashPassword("admin", iterations: 100_000);

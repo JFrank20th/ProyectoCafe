@@ -85,7 +85,85 @@ $env:CORS_ALLOWED_ORIGINS = "https://portal.example.com,https://admin.example.co
 > Si el Portal y la API están en sitios distintos (no solo subdominios del mismo
 > dominio registrable), además de CORS hay que configurar la cookie de sesión con
 > `SameSite=None` y `Secure`; el valor por defecto `Lax` solo se envía en peticiones
-> del mismo sitio.
+> del mismo sitio. Consulta la sección «Cookies de sesión y SameSite».
+
+### Cookies de sesión y SameSite
+
+La API emite `pc_at` (JWT, `HttpOnly`) y `pc_csrf` (legible por JS) con la misma
+política de sitio y seguridad:
+
+- `Auth:Cookie:SameSite` — `Lax` (por defecto), `Strict` o `None`. Un valor distinto
+  hace fallar el arranque.
+- `Auth:Cookie:Secure` — booleano opcional. Si no se define, es `true` fuera de
+  Development y `false` en Development. En QA/PROD debe permanecer `true`.
+- `SameSite=None` exige `Secure=true` (explícito o por el valor por defecto del
+  entorno); si no, la API falla al arrancar porque los navegadores rechazan esa
+  combinación.
+
+Decisión según el dominio del Portal y de la API:
+
+| Escenario | `SameSite` | `Secure` | Notas |
+| --- | --- | --- | --- |
+| Mismo sitio (mismo dominio registrable, aunque sean subdominios distintos: `portal.example.com` y `api.example.com`) | `Lax` | `true` (QA/PROD) | Configuración recomendada. La cookie se envía porque el sitio es el mismo. |
+| Sitios distintos (p. ej. dominios sin relación o `*.azurecontainerapps.io` separados) | `None` | `true` | HTTPS obligatorio y origen exacto en `Cors:AllowedOrigins`. Algunos navegadores bloquean cookies de terceros; valida el flujo en los navegadores objetivo. |
+| Aislamiento máximo sin enlaces externos que deban conservar la sesión | `Strict` | `true` (QA/PROD) | La cookie no se envía en navegaciones provenientes de otros sitios. |
+
+```powershell
+# Mismo sitio (por defecto)
+$env:Auth__Cookie__SameSite = "Lax"
+$env:Auth__Cookie__Secure = "true"
+
+# Portal y API en sitios distintos
+$env:Auth__Cookie__SameSite = "None"
+$env:Auth__Cookie__Secure = "true"
+```
+
+### Forwarded headers (ingress/proxy)
+
+La API procesa `X-Forwarded-For` y `X-Forwarded-Proto` antes de autenticación y CORS
+(`UseForwardedHeaders`). Así `RemoteIpAddress` y `Request.Scheme` reflejan al cliente
+y no al proxy. La configuración usa `ForwardLimit = 1`: solo se acepta el valor
+**más a la derecha** de `X-Forwarded-For`.
+
+- Azure Container Apps garantiza únicamente el valor derecho de `X-Forwarded-For`;
+  los valores que añada el cliente a la izquierda no son confiables y se ignoran.
+- Como el ingress de ACA no es loopback, la API confía en el proxy de la plataforma
+  (`KnownProxies`/`KnownIPNetworks` vacíos). **Riesgo de spoofing:** si el contenedor
+  es accesible directamente sin pasar por el ingress, un cliente podría falsificar
+  esas cabeceras e influir en la IP usada por el rate limiting y en el esquema
+  percibido. Publica solo el Portal con ingress externo y mantén `pc-api` con
+  ingress interno o sin exposición pública.
+- `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` es una alternativa soportada. Si está
+  activo, la API no registra su middleware por segunda vez (evita aplicar el límite
+  dos veces). No combines ambas opciones con proxies que no sanitizen las cabeceras.
+
+### Health checks y probes de Azure Container Apps
+
+- `GET /health` — **liveness**. Anónimo, no consulta la base de datos. Responde
+  `200 {"status":"ok"}`.
+- `GET /health/ready` — **readiness**. Anónimo, comprueba que la API puede abrir
+  conexión con SQL Server. Responde `200 {"status":"Healthy"}` o
+  `503 {"status":"Unhealthy"}`. No incluye descripciones, excepciones ni cadenas de
+  conexión.
+
+Probes recomendados en Azure Container Apps:
+
+| App | Target port | Startup / Liveness | Readiness |
+| --- | --- | --- | --- |
+| `pc-api` | `8080` | HTTP `GET /health` en `8080` | HTTP `GET /health/ready` en `8080` |
+| `pc-portal` | `3000` | TCP en `3000` | TCP en `3000` |
+
+La API usa `ASPNETCORE_URLS=http://+:8080`. El Portal escucha en `3000`. Mantén la
+readiness de la API separada de la liveness para que un fallo temporal de SQL no
+reinicie el contenedor.
+
+### Resiliencia SQL
+
+`UseSqlServer` usa `EnableRetryOnFailure()`: EF Core reintenta automáticamente los
+errores transitorios (cortes de red, timeouts, bloqueos) con espera exponencial. Las
+transacciones explícitas se ejecutan dentro de `CreateExecutionStrategy()` para ser
+compatibles con los reintentos. Un error no transitorio (por ejemplo, una validación
+de negocio o una restricción única) no se reintenta.
 
 - En desarrollo, la conexión se resuelve desde `Database__ConnectionString` (Azure SQL) o `dotnet user-secrets`; las pruebas siguen usando LocalDB y no dependen de Azure.
 - La estructura vigente se crea con `tools/sqlserver-create-current.sql`; el script crea la base desde cero y se detiene si ya existe para evitar mezclar esquemas heredados.
@@ -114,7 +192,7 @@ Al superarse un límite se responde `429` con un mensaje genérico y cabecera `R
 
 ### Sesión por cookie HttpOnly
 
-- `POST /api/v1/auth/login` responde únicamente la información del usuario (`user`: email, nombre, roles y permisos) y entrega el JWT en la cookie `pc_at` con `HttpOnly`, `Secure` fuera de Development y `SameSite=Lax`.
+- `POST /api/v1/auth/login` responde únicamente la información del usuario (`user`: email, nombre, roles y permisos) y entrega el JWT en la cookie `pc_at` con `HttpOnly`, `Secure` fuera de Development (configurable con `Auth:Cookie:Secure`) y `SameSite=Lax` por defecto (configurable con `Auth:Cookie:SameSite`).
 - El token CSRF se entrega en la cookie legible `pc_csrf`; el Portal lo reenvía en la cabecera `X-CSRF` en cada petición no idempotente.
 - `POST /api/v1/auth/refresh` renueva el JWT y rota el token CSRF. Requiere sesión válida y `X-CSRF`.
 - `POST /api/v1/auth/logout` elimina ambas cookies, incluso si la sesión ya caducó.

@@ -22,6 +22,20 @@ _ = app.Services.GetRequiredService<IOptions<AuthOptions>>().Value;
 // Falla si no hay orígenes, si hay comodines o si algún origen no es válido.
 CorsOrigins.Resolve(app.Configuration);
 
+// Debe ejecutarse antes que autenticación, CORS y cualquier middleware que
+// dependa del esquema o de la IP del cliente. Si el hosting ya lo habilitó con
+// ASPNETCORE_FORWARDEDHEADERS_ENABLED, no se registra dos veces (eso aplicaría
+// ForwardLimit dos veces y permitiría que el cliente inyecte valores).
+var forwardedHeadersFromEnvironment = string.Equals(
+    app.Configuration["ASPNETCORE_FORWARDEDHEADERS_ENABLED"],
+    "true",
+    StringComparison.OrdinalIgnoreCase);
+
+if (!forwardedHeadersFromEnvironment)
+{
+    app.UseForwardedHeaders();
+}
+
 app.UseExceptionHandler();
 
 app.UseCors(CorsPolicyNames.Portal);

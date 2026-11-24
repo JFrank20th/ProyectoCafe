@@ -28,15 +28,18 @@ internal sealed class ProyectoCafeApiFactory : WebApplicationFactory<Program>
     private readonly IReadOnlyDictionary<string, string?> _overrides;
     private readonly string _environment;
     private readonly bool _configureDefaultCorsOrigin;
+    private readonly Action<IServiceCollection>? _configureServices;
 
     public ProyectoCafeApiFactory(
         IReadOnlyDictionary<string, string?>? overrides = null,
         string environment = "Testing",
-        bool configureDefaultCorsOrigin = true)
+        bool configureDefaultCorsOrigin = true,
+        Action<IServiceCollection>? configureServices = null)
     {
         _overrides = overrides ?? new Dictionary<string, string?>();
         _environment = environment;
         _configureDefaultCorsOrigin = configureDefaultCorsOrigin;
+        _configureServices = configureServices;
 
         // appsettings.json deja la cadena vacía para no versionar secretos; se
         // proporciona un valor no secreto para que AddInfrastructure valide al arrancar.
@@ -98,6 +101,8 @@ internal sealed class ProyectoCafeApiFactory : WebApplicationFactory<Program>
                 options.UseInMemoryDatabase(_databaseName);
                 options.UseInternalServiceProvider(inMemoryProvider);
             });
+
+            _configureServices?.Invoke(services);
         });
     }
 

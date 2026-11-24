@@ -25,7 +25,9 @@ public static class ServiceCollectionExtensions
         }
 
         services.AddDbContext<ProyectoCafeDbContext>(options =>
-            options.UseSqlServer(dbOptions.ConnectionString));
+            options.UseSqlServer(
+                dbOptions.ConnectionString,
+                sqlServer => sqlServer.EnableRetryOnFailure()));
 
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddScoped<IRolRepository, RolRepository>();

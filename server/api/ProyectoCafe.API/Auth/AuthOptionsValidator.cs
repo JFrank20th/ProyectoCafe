@@ -32,6 +32,19 @@ public sealed class AuthOptionsValidator(
         if (string.IsNullOrWhiteSpace(options.Cookie.CsrfHeaderName))
             failures.Add("Auth:Cookie:CsrfHeaderName es requerido.");
 
+        if (!options.Cookie.TryGetSameSite(out var sameSite))
+        {
+            failures.Add("Auth:Cookie:SameSite debe ser Lax, Strict o None.");
+        }
+        else if (sameSite == SameSiteMode.None && !options.Cookie.ResolveSecure(_environment))
+        {
+            // Los navegadores rechazan SameSite=None sin Secure. Fallar al
+            // arrancar evita emitir cookies que nunca se almacenarían.
+            failures.Add(
+                "Auth:Cookie:SameSite=None requiere Auth:Cookie:Secure=true " +
+                $"(entorno actual: {_environment.EnvironmentName}).");
+        }
+
         var rateLimit = options.RateLimit;
         if (rateLimit.IpMaxFailedAttempts is < 1 or > 10_000)
             failures.Add("Auth:RateLimit:IpMaxFailedAttempts debe estar entre 1 y 10000.");

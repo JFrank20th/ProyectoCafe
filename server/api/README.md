@@ -87,13 +87,31 @@ docker run --rm --name pc-api-local -p 8080:8080 `
   pc-api:local
 ```
 
-Health check (con una base de datos accesible):
+Health checks:
 
 ```powershell
+# Liveness: no consulta la base de datos
 curl.exe -i http://localhost:8080/health
 # HTTP/1.1 200 OK
 # {"status":"ok"}
+
+# Readiness: comprueba la conexión con SQL Server
+curl.exe -i http://localhost:8080/health/ready
+# HTTP/1.1 200 OK
+# {"status":"Healthy"}
+# Si la base de datos no responde: HTTP 503 {"status":"Unhealthy"}
 ```
+
+En Azure Container Apps configura el *target port* `8080` y estos probes:
+
+| Probe | App `pc-api` | App `pc-portal` |
+| --- | --- | --- |
+| Startup / Liveness | HTTP `GET /health` en `8080` | TCP en `3000` |
+| Readiness | HTTP `GET /health/ready` en `8080` | TCP en `3000` |
+
+`/health` es liveness y no depende de SQL; `/health/ready` solo responde `200` cuando
+la API puede abrir conexión con la base de datos. La salida no incluye descripciones,
+excepciones ni cadenas de conexión.
 
 ### Variables obligatorias
 
@@ -105,9 +123,14 @@ curl.exe -i http://localhost:8080/health
 
 Opcionales: `ASPNETCORE_ENVIRONMENT` (por defecto `Production`),
 `Auth__Jwt__Issuer`, `Auth__Jwt__Audience`,
-`Auth__Jwt__AccessTokenLifetimeMinutes` y el resto de claves documentadas en
+`Auth__Jwt__AccessTokenLifetimeMinutes`, `Auth__Cookie__SameSite`
+(`Lax`/`Strict`/`None`), `Auth__Cookie__Secure` y el resto de claves documentadas en
 [`DOCS/ENV.md`](../../DOCS/ENV.md). `ASPNETCORE_URLS` ya vale
 `http://+:8080`; en Azure Container Apps configura el *target port* `8080`.
+
+La API procesa `X-Forwarded-For` y `X-Forwarded-Proto` del ingress (solo el valor
+derecho de `X-Forwarded-For`). No expongas `pc-api` directamente sin proxy: consulta
+el riesgo de spoofing en [`DOCS/ENV.md`](../../DOCS/ENV.md).
 
 En `Production` no se permite `Auth:Users` y la API **no aplica migraciones**:
 la base debe existir con el esquema vigente. Las migraciones automáticas solo

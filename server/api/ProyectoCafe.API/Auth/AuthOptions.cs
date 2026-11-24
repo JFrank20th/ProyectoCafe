@@ -65,4 +65,40 @@ public sealed class AuthCookieOptions
 
     [Required]
     public string CsrfHeaderName { get; init; } = "X-CSRF";
+
+    /// <summary>
+    /// Política SameSite aplicada a <c>pc_at</c> y <c>pc_csrf</c>: Lax (por
+    /// defecto), Strict o None. None solo es necesario cuando el Portal y la
+    /// API están en sitios distintos y exige Secure.
+    /// </summary>
+    [Required]
+    public string SameSite { get; init; } = "Lax";
+
+    /// <summary>
+    /// Fuerza el atributo Secure de las cookies. Si no se define, es
+    /// <c>true</c> fuera de Development y <c>false</c> en Development.
+    /// </summary>
+    public bool? Secure { get; init; }
+
+    public bool ResolveSecure(IHostEnvironment environment) =>
+        Secure ?? !environment.IsDevelopment();
+
+    public bool TryGetSameSite(out SameSiteMode mode)
+    {
+        switch ((SameSite ?? string.Empty).Trim().ToLowerInvariant())
+        {
+            case "lax":
+                mode = SameSiteMode.Lax;
+                return true;
+            case "strict":
+                mode = SameSiteMode.Strict;
+                return true;
+            case "none":
+                mode = SameSiteMode.None;
+                return true;
+            default:
+                mode = SameSiteMode.Lax;
+                return false;
+        }
+    }
 }

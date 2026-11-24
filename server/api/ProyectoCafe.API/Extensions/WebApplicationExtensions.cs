@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using ProyectoCafe.API.Auth;
 using ProyectoCafe.API.Endpoints;
 
@@ -13,7 +15,17 @@ public static class WebApplicationExtensions
         app.MapInventarioCafeEndpoints();
         app.MapVentasEndpoints();
 
+        // Liveness: solo confirma que el proceso responde. No consulta la BD.
         app.MapGet("/health", () => Results.Ok(new { status = "ok" }))
+            .WithTags("Health")
+            .AllowAnonymous();
+
+        // Readiness: comprueba dependencias (SQL Server). No expone descripciones,
+        // excepciones ni cadenas de conexión; solo el estado agregado.
+        app.MapHealthChecks("/health/ready", new HealthCheckOptions
+        {
+            ResponseWriter = WriteHealthResponse,
+        })
             .WithTags("Health")
             .AllowAnonymous();
 
@@ -23,4 +35,7 @@ public static class WebApplicationExtensions
 
         return app;
     }
+
+    private static Task WriteHealthResponse(HttpContext context, HealthReport report) =>
+        context.Response.WriteAsJsonAsync(new { status = report.Status.ToString() });
 }
