@@ -108,7 +108,7 @@ Al superarse un límite se responde `429` con un mensaje genérico y cabecera `R
 ## Portal
 
 - `NEXT_PUBLIC_PROYECTOCAFE_API_URL` - base URL del backend (ej: `http://localhost:5000`). Se usa en el cliente y como valor por defecto del servidor.
-- `PROYECTOCAFE_API_URL` - base URL del backend usada en runtime por el servidor (middleware, Server Components y Route Handlers). Tiene prioridad sobre la variable pública. Úsala en Docker/QA/PROD para no recompilar la imagen al cambiar el destino.
+- `PROYECTOCAFE_API_URL` - base URL del backend usada en runtime por el servidor (middleware, Server Components y Route Handlers) y publicada al cliente en `window.__RUNTIME_ENV__`. Tiene prioridad sobre la variable pública. Úsala en Docker/QA/PROD para no recompilar la imagen al cambiar el destino. Debe ser alcanzable tanto desde el navegador como desde el servidor del Portal (en Docker no uses un host interno inaccesible para el navegador).
 - `PROYECTOCAFE_AUTH_COOKIE_NAME` - nombre de la cookie HttpOnly de sesión emitida por la API (`pc_at` por defecto).
 - `NEXT_PUBLIC_APP_NAME` - nombre a mostrar.
 

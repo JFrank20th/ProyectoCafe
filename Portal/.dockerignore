@@ -4,3 +4,18 @@ Dockerfile
 .dockerignore
 npm-debug.log
 .git
+.gitignore
+
+# Secretos y configuración local: nunca deben entrar en la imagen.
+# El build de Docker no debe leer .env.local (Next.js lo cargaría en build time).
+.env
+.env.*
+!.env.example
+
+# Artefactos de pruebas y cobertura
+coverage
+test-results
+
+# Ruido de editor / sistema
+.vscode
+tsconfig.tsbuildinfo

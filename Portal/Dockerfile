@@ -27,9 +27,10 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-# Omitir lint y typecheck en el build Docker (se ejecutan en CI/local)
-ENV NEXT_IGNORE_ESLINT_DURING_BUILDS=true
-ENV NEXT_IGNORE_TYPECHECK_DURING_BUILDS=true
+# Lint y typecheck se ejecutan SIEMPRE en el build (igual que en CI).
+# No se desactivan: si se necesitara hacerlo puntualmente, las opciones
+# oficiales de Next.js son next.config.js → eslint.ignoreDuringBuilds y
+# typescript.ignoreBuildErrors (no existen variables NEXT_IGNORE_*).
 
 # ── SOLO metadata estática que no cambia entre ambientes ──────────────────────
 # Las URLs (API) se inyectan en RUNTIME, no aquí.
@@ -81,6 +82,16 @@ EXPOSE 3000
 # =============================================================================
 # Variables de runtime — DEBEN pasarse al contenedor (Azure Container Apps,
 # docker-compose, etc.). Ver .env.example para la lista completa.
+#
+# PROYECTOCAFE_API_URL (o NEXT_PUBLIC_PROYECTOCAFE_API_URL en local) debe ser
+# alcanzable por DOS consumidores distintos:
+#   1. El navegador del usuario: app/layout.tsx la inyecta en
+#      window.__RUNTIME_ENV__ y el cliente llama directamente a la API.
+#   2. El servidor del Portal: middleware y Server Components validan la
+#      sesión contra /api/v1/auth/me usando esa misma URL.
+# Por eso no puede ser un host interno de Docker (p. ej. http://api:8080)
+# si el navegador no resuelve ese nombre: usa una URL pública, o configura
+# DNS/red de forma que ambos la alcancen.
 # =============================================================================
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
