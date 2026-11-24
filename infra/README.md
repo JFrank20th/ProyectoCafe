@@ -66,6 +66,7 @@ los valores del entorno. No hay secretos en los parámetros.
 | `keyVaultPurgeProtection` | `true` | No se puede desactivar después. |
 | `keyVaultPublicNetworkAccess` | `Enabled` | `Disabled` exige private endpoint. |
 | `cookieSameSite` | `Lax` | `None` solo si Portal y API son sitios distintos. |
+| `cookieDomain` | vacío | Dominio del atributo `Domain` de las cookies (`example.com`), sin esquema ni punto inicial. Necesario para compartir `pc_at`/`pc_csrf` entre `app.example.com` y `api.example.com`. |
 | `databaseSecretName` | `DatabaseConnectionString` | Nombre del secreto de SQL. |
 | `jwtSecretName` | `AuthJwtSigningKey` | Nombre de la clave HS256. |
 | `deployApps` | `true` | `false` en la primera fase, antes de imágenes y secretos. |
@@ -75,6 +76,12 @@ los valores del entorno. No hay secretos en los parámetros.
 `<nombre-app>.<defaultDomain>` del environment. La plantilla **no** crea dominios
 personalizados ni certificados; si usas dominios propios, bíndalos antes a las
 apps y luego pasa los FQDN.
+
+Si usas dominios personalizados, pasa también `cookieDomain` (el dominio
+registrable común) en **cada** despliegue de la plantilla. La plantilla declara
+las variables de entorno como estado deseado: si vuelves a aplicarla sin
+`portalPublicFqdn`, `apiPublicFqdn` y `cookieDomain`, las apps recuperan los FQDN
+por defecto y la cookie vuelve a ser host-only.
 
 ## Orden de despliegue
 
@@ -267,11 +274,16 @@ La API es la única autoridad CORS. La plantilla configura:
 Cors__AllowedOrigins__0=https://<portalFqdn>
 Auth__Cookie__Secure=true
 Auth__Cookie__SameSite=<cookieSameSite>
+Auth__Cookie__Domain=<cookieDomain>
 ```
 
 - Si Portal y API comparten el dominio registrable (aunque sean subdominios
-  distintos), `Lax` es correcto.
-- Si están en dominios sin relación, usa `None`; `Secure` ya está en `true`.
+  distintos), `Lax` es correcto y `cookieDomain` debe ser ese dominio común
+  (por ejemplo, `example.com`). Sin `Domain`, `pc_at` queda host-only en
+  `api.example.com` y el middleware del Portal no la ve.
+- Si están en dominios sin relación, usa `None`; `Secure` ya está en `true`. En
+  ese caso no hay un `Domain` común: el Portal necesita consumir la API bajo su
+  mismo origen (proxy inverso) para poder leer la sesión en el servidor.
 - El Portal recibe `PROYECTOCAFE_API_URL` y `PROYECTOCAFE_API_URL_INTERNAL` con
   la URL pública de la API. Ambos valores se calculan con `apiFqdn`.
 - No configures CORS en el ingress de Container Apps: duplicaría o contradiría

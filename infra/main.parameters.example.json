@@ -38,6 +38,9 @@
     "cookieSameSite": {
       "value": "Lax"
     },
+    "cookieDomain": {
+      "value": ""
+    },
     "deployApps": {
       "value": true
     }

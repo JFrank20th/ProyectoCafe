@@ -32,6 +32,16 @@ public sealed class AuthOptionsValidator(
         if (string.IsNullOrWhiteSpace(options.Cookie.CsrfHeaderName))
             failures.Add("Auth:Cookie:CsrfHeaderName es requerido.");
 
+        var cookieDomain = options.Cookie.ResolveDomain();
+        if (cookieDomain is not null &&
+            (cookieDomain.IndexOfAny(['/', ':', '\\', '*']) >= 0 ||
+             cookieDomain.Any(char.IsWhiteSpace)))
+        {
+            failures.Add(
+                "Auth:Cookie:Domain debe ser un dominio sin esquema, puerto, ruta ni comodines " +
+                "(por ejemplo, example.com). Deja el valor vacío para una cookie host-only.");
+        }
+
         if (!options.Cookie.TryGetSameSite(out var sameSite))
         {
             failures.Add("Auth:Cookie:SameSite debe ser Lax, Strict o None.");

@@ -80,8 +80,27 @@ public sealed class AuthCookieOptions
     /// </summary>
     public bool? Secure { get; init; }
 
+    /// <summary>
+    /// Dominio opcional de las cookies (atributo Domain), sin esquema ni punto
+    /// inicial. Es necesario para que el Portal reciba <c>pc_at</c> y
+    /// <c>pc_csrf</c> cuando está en otro subdominio del mismo dominio
+    /// registrable (por ejemplo, <c>app.example.com</c> y
+    /// <c>api.example.com</c>). Si está vacío, la cookie es host-only y solo se
+    /// envía al host de la API.
+    /// </summary>
+    public string? Domain { get; init; }
+
     public bool ResolveSecure(IHostEnvironment environment) =>
         Secure ?? !environment.IsDevelopment();
+
+    /// <summary>
+    /// Devuelve el dominio normalizado o <c>null</c> para una cookie host-only.
+    /// </summary>
+    public string? ResolveDomain()
+    {
+        var value = Domain?.Trim().Trim('.');
+        return string.IsNullOrEmpty(value) ? null : value;
+    }
 
     public bool TryGetSameSite(out SameSiteMode mode)
     {

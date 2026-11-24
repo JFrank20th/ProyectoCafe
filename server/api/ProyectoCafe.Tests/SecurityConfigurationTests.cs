@@ -109,6 +109,21 @@ public sealed class SecurityConfigurationTests
     }
 
     [Fact]
+    public void InvalidCookieDomain_FailsAtStartup()
+    {
+        using var factory = new ProyectoCafeApiFactory(
+            new Dictionary<string, string?>
+            {
+                ["Auth:Cookie:Domain"] = "https://example.com",
+            });
+
+        var exception = Assert.ThrowsAny<Exception>(() => factory.CreateClient());
+
+        Assert.Contains("Auth:Cookie:Domain", exception.ToString(), StringComparison.Ordinal);
+        Assert.Contains("sin esquema", exception.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void KnownDemoAccountsWithDefaultPasswords_AreDetected()
     {
         var adminHash = PasswordHasher.HashPassword("admin", iterations: 100_000);

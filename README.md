@@ -126,8 +126,10 @@ manualmente desde `main` con `deploy=true`), con el environment `production`. Us
 OIDC para autenticarse en Azure, construye y publica las imágenes de `pc-api` y
 `pc-portal` en ACR, aplica las migraciones idempotentes desde Key Vault y actualiza
 ambas Container Apps esperando una revisión saludable. El smoke test comprueba
-`GET /health` de la API y `GET /login` del Portal. Guía de configuración y rollback:
-[`DOCS/DESPLIEGUE-AZURE.md`](DOCS/DESPLIEGUE-AZURE.md).
+`GET /health` de la API y `GET /login` del Portal. Para la verificación completa
+(login, cookies, CSRF, administración, ventas e inventario) usa
+`scripts/smoke-azure.ps1`; los pasos, la configuración de dominios y el rollback
+están en [`DOCS/DESPLIEGUE-AZURE.md`](DOCS/DESPLIEGUE-AZURE.md).
 
 Para bloquear la fusión de cambios, configura en GitHub la protección de la rama
 principal y marca **`CI required`** como *required status check*.

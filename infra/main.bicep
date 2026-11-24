@@ -110,6 +110,9 @@ param keyVaultPublicNetworkAccess string = 'Enabled'
 ])
 param cookieSameSite string = 'Lax'
 
+@description('Dominio de las cookies (atributo Domain), sin esquema ni punto inicial (ej. example.com). Vacio = host-only.')
+param cookieDomain string = ''
+
 @description('Nombre del secreto de Key Vault con la cadena de Azure SQL.')
 @minLength(1)
 @maxLength(127)
@@ -234,6 +237,10 @@ var apiEnvironmentVariables = [
   {
     name: 'Auth__Cookie__SameSite'
     value: cookieSameSite
+  }
+  {
+    name: 'Auth__Cookie__Domain'
+    value: cookieDomain
   }
   {
     name: 'Cors__AllowedOrigins__0'

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Logging;
 using ProyectoCafe.Tests.Infrastructure;
 
@@ -96,6 +97,39 @@ public sealed class AuthLoginEndpointTests
         {
             Assert.Contains("secure", cookie, StringComparison.OrdinalIgnoreCase);
             Assert.Contains("samesite=none", cookie, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    [Fact]
+    public async Task Login_WithCookieDomain_AppliesSharedDomainToBothCookies()
+    {
+        await using var factory = new ProyectoCafeApiFactory(
+            new Dictionary<string, string?>
+            {
+                ["Auth:Cookie:Domain"] = ".example.com",
+            },
+            environment: "Production");
+        await factory.SeedUserAsync("shared-domain@test.local", password: Password);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = false,
+        });
+
+        var response = await client.PostAsJsonAsync("/api/v1/auth/login", new
+        {
+            email = "shared-domain@test.local",
+            password = Password,
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.Headers.TryGetValues("Set-Cookie", out var cookies));
+
+        var authCookie = cookies!.Single(cookie => cookie.StartsWith("pc_at=", StringComparison.Ordinal));
+        var csrfCookie = cookies!.Single(cookie => cookie.StartsWith("pc_csrf=", StringComparison.Ordinal));
+
+        foreach (var cookie in new[] { authCookie, csrfCookie })
+        {
+            Assert.Contains("domain=example.com", cookie, StringComparison.OrdinalIgnoreCase);
         }
     }
 

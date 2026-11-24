@@ -183,6 +183,7 @@ public static class AuthEndpoints
             HttpOnly = httpOnly,
             Secure = cookieOptions.ResolveSecure(environment),
             SameSite = sameSite,
+            Domain = cookieOptions.ResolveDomain(),
             Path = "/",
         };
     }

@@ -82,10 +82,14 @@ $env:Cors__AllowedOrigins__1 = "https://admin.example.com"
 $env:CORS_ALLOWED_ORIGINS = "https://portal.example.com,https://admin.example.com"
 ```
 
-> Si el Portal y la API están en sitios distintos (no solo subdominios del mismo
-> dominio registrable), además de CORS hay que configurar la cookie de sesión con
-> `SameSite=None` y `Secure`; el valor por defecto `Lax` solo se envía en peticiones
-> del mismo sitio. Consulta la sección «Cookies de sesión y SameSite».
+> Si el Portal y la API son subdominios del mismo dominio registrable
+> (`app.example.com` y `api.example.com`), configura además
+> `Auth:Cookie:Domain=example.com` para que el middleware del Portal reciba
+> `pc_at`. Si están en sitios distintos, `SameSite=None` y `Secure` permiten el
+> envío cross-site a la API, pero el middleware del Portal no puede leer una
+> cookie de otro dominio registrable: publica la API bajo el mismo origen del
+> Portal (proxy inverso) o usa un dominio común. Consulta la sección «Cookies de
+> sesión y SameSite».
 
 ### Cookies de sesión y SameSite
 
@@ -96,26 +100,40 @@ política de sitio y seguridad:
   hace fallar el arranque.
 - `Auth:Cookie:Secure` — booleano opcional. Si no se define, es `true` fuera de
   Development y `false` en Development. En QA/PROD debe permanecer `true`.
+- `Auth:Cookie:Domain` — opcional. Dominio del atributo `Domain` de `pc_at` y
+  `pc_csrf`, sin esquema ni punto inicial (`example.com`). Si se omite, la cookie es
+  **host-only** y solo se envía al host de la API. Configúralo cuando el Portal y
+  la API sean subdominios del mismo dominio registrable (`app.example.com` y
+  `api.example.com`): el middleware del Portal lee `pc_at` de su propio host y, sin
+  `Domain`, redirige a `/login` aunque el navegador tenga la cookie en el host de
+  la API.
 - `SameSite=None` exige `Secure=true` (explícito o por el valor por defecto del
   entorno); si no, la API falla al arrancar porque los navegadores rechazan esa
   combinación.
+- `Auth:Cookie:Domain` debe ser un sufijo del host de la API y el dominio común
+  más específico posible. No uses un sufijo público (por ejemplo, `com`) ni un
+  dominio del que la API no sea subdominio: el navegador rechazará la cookie o la
+  compartirá con hosts no deseados.
 
 Decisión según el dominio del Portal y de la API:
 
-| Escenario | `SameSite` | `Secure` | Notas |
-| --- | --- | --- | --- |
-| Mismo sitio (mismo dominio registrable, aunque sean subdominios distintos: `portal.example.com` y `api.example.com`) | `Lax` | `true` (QA/PROD) | Configuración recomendada. La cookie se envía porque el sitio es el mismo. |
-| Sitios distintos (p. ej. dominios sin relación o `*.azurecontainerapps.io` separados) | `None` | `true` | HTTPS obligatorio y origen exacto en `Cors:AllowedOrigins`. Algunos navegadores bloquean cookies de terceros; valida el flujo en los navegadores objetivo. |
-| Aislamiento máximo sin enlaces externos que deban conservar la sesión | `Strict` | `true` (QA/PROD) | La cookie no se envía en navegaciones provenientes de otros sitios. |
+| Escenario | `SameSite` | `Secure` | `Domain` | Notas |
+| --- | --- | --- | --- | --- |
+| Mismo sitio (mismo dominio registrable, aunque sean subdominios distintos: `app.example.com` y `api.example.com`) | `Lax` | `true` (QA/PROD) | `example.com` | Configuración recomendada. La cookie se envía porque el sitio es el mismo y `Domain` la comparte con el Portal. |
+| Mismos hosts, sin subdominios separados (desarrollo con `localhost`) | `Lax` | `false` en Development | vacío | Cookie host-only; el navegador la envía porque el host es el mismo. |
+| Sitios distintos (dominios sin relación) | `None` | `true` | vacío | `None` solo permite que el navegador envíe la cookie a la API en peticiones cross-site. El middleware del Portal **no** puede leer una cookie de otro dominio registrable: publica la API bajo el mismo origen que el Portal (proxy inverso) o usa un dominio registrable común. Algunos navegadores bloquean cookies de terceros. |
+| Aislamiento máximo sin enlaces externos que deban conservar la sesión | `Strict` | `true` (QA/PROD) | el dominio común, si aplica | La cookie no se envía en navegaciones provenientes de otros sitios. |
 
 ```powershell
-# Mismo sitio (por defecto)
+# Mismo sitio con subdominios (por defecto)
 $env:Auth__Cookie__SameSite = "Lax"
 $env:Auth__Cookie__Secure = "true"
+$env:Auth__Cookie__Domain = "example.com"
 
-# Portal y API en sitios distintos
+# Portal y API en sitios distintos (requiere proxy del API en el origen del Portal)
 $env:Auth__Cookie__SameSite = "None"
 $env:Auth__Cookie__Secure = "true"
+# No definas Domain: no existe un dominio común entre sitios distintos.
 ```
 
 ### Forwarded headers (ingress/proxy)
