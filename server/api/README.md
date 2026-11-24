@@ -48,3 +48,87 @@ Set-Location -Path "c:\ProyectoCafe\server\api"
 dotnet build ProyectoCafe.sln --configuration Release -warnaserror
 dotnet test ProyectoCafe.sln --configuration Release
 ```
+
+## Imagen Docker
+
+`Dockerfile` es multi-etapa y usa el contexto `server/api`:
+
+- Build: `mcr.microsoft.com/dotnet/sdk:10.0`.
+- Runtime: `mcr.microsoft.com/dotnet/aspnet:10.0`.
+- El `restore` ocupa una capa propia que solo copia los `.csproj`.
+- `publish` en `Release`, salida a `/app/publish` y `/p:UseAppHost=false`.
+- El runtime corre como usuario no-root `app` (`$APP_UID`) en el puerto `8080`.
+- `appsettings.Development.json` se elimina del artefacto publicado y
+  `.dockerignore` excluye `bin`, `obj`, `.artifacts` (incluidos respaldos de BD),
+  `.git`, `TestResults`, `.vs`, `*.user` y `.env*`. La imagen no contiene
+  secretos ni cadenas de conexión.
+
+### Build
+
+```powershell
+Set-Location -Path "c:\ProyectoCafe"
+docker build -t pc-api:local server/api
+```
+
+La imagen local ocupa aproximadamente **459 MB** (`docker images`), sin contar
+la caché de build. Si se compila en una máquina ARM para Azure Container Apps,
+añade `--platform linux/amd64`.
+
+### Run
+
+```powershell
+$key = [Convert]::ToBase64String(
+    [System.Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
+
+docker run --rm --name pc-api-local -p 8080:8080 `
+  -e "Database__ConnectionString=$env:Database__ConnectionString" `
+  -e "Auth__Jwt__SigningKey=$key" `
+  -e "Cors__AllowedOrigins__0=http://localhost:3010" `
+  pc-api:local
+```
+
+Health check (con una base de datos accesible):
+
+```powershell
+curl.exe -i http://localhost:8080/health
+# HTTP/1.1 200 OK
+# {"status":"ok"}
+```
+
+### Variables obligatorias
+
+| Variable | Obligatoria | Descripción |
+| --- | --- | --- |
+| `Database__ConnectionString` | Sí | Cadena de conexión a SQL Server/Azure SQL. No está incluida en la imagen. |
+| `Auth__Jwt__SigningKey` | Sí | Clave HS256 de al menos 32 bytes. En Azure Container Apps usa una referencia a Key Vault. |
+| `Cors__AllowedOrigins__0` | Sí | Origen exacto del Portal (`esquema://host:puerto`). Para más orígenes usa `__1`, `__2`, ... No se admite `*`. |
+
+Opcionales: `ASPNETCORE_ENVIRONMENT` (por defecto `Production`),
+`Auth__Jwt__Issuer`, `Auth__Jwt__Audience`,
+`Auth__Jwt__AccessTokenLifetimeMinutes` y el resto de claves documentadas en
+[`DOCS/ENV.md`](../../DOCS/ENV.md). `ASPNETCORE_URLS` ya vale
+`http://+:8080`; en Azure Container Apps configura el *target port* `8080`.
+
+En `Production` no se permite `Auth:Users` y la API **no aplica migraciones**:
+la base debe existir con el esquema vigente. Las migraciones automáticas solo
+ocurren en `Development`.
+
+### Fail-fast al arrancar
+
+La API valida la configuración antes de escuchar tráfico. Si algo falta, el
+contenedor termina con código distinto de cero y `GET /health` no responde:
+
+- Sin cadena de conexión:
+  `Missing required config: Database:ConnectionString`.
+- Sin clave JWT o con una clave corta/provisional: error de
+  `Auth:Jwt:SigningKey` con la indicación de configurarla por variable de
+  entorno o gestor de secretos.
+- Sin orígenes CORS, con `*` o con una URL inválida: error de `Cors:AllowedOrigins`.
+- Base de datos inaccesible o insegura (por ejemplo, firewall de Azure SQL o
+  credenciales por defecto): `Security bootstrap no pudo ejecutarse. Se aborta
+  el arranque de la API.` acompañado de la excepción original.
+
+> Validación local de esta tarea: el build de la imagen fue correcto, se
+> comprobó el fail-fast sin cadena de conexión y, con la IP del host autorizada
+> en el firewall de Azure SQL, el comando de `docker run` anterior respondió
+> `HTTP 200 {"status":"ok"}` en `GET /health`.
