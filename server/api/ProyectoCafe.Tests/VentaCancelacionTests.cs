@@ -42,6 +42,10 @@ public sealed class VentaCancelacionTests
         {
             codigoLote = "LOTE-CANCEL",
             fechaProduccion = DateTime.UtcNow.AddDays(-1),
+            observacion = "Lote de prueba",
+            variedadCafeId = catalogs.VariedadCafeId,
+            tipoTuesteCafeId = catalogs.TipoTuesteCafeId,
+            tipoProcesoCafeId = catalogs.TipoProcesoCafeId,
         });
         var loteId = (await loteResponse.Content.ReadFromJsonAsync<Dictionary<string, int>>())!["loteCafeId"];
 
@@ -154,6 +158,10 @@ public sealed class VentaCancelacionTests
         {
             codigoLote = "LOTE-ANULATE",
             fechaProduccion = DateTime.UtcNow.AddDays(-1),
+            observacion = "Lote de prueba",
+            variedadCafeId = catalogs.VariedadCafeId,
+            tipoTuesteCafeId = catalogs.TipoTuesteCafeId,
+            tipoProcesoCafeId = catalogs.TipoProcesoCafeId,
         });
         var loteId = (await loteResponse.Content.ReadFromJsonAsync<Dictionary<string, int>>())!["loteCafeId"];
 
@@ -530,6 +538,10 @@ public sealed class VentaCancelacionTests
         {
             codigoLote = $"LOTE-{email}",
             fechaProduccion = DateTime.UtcNow.AddDays(-1),
+            observacion = "Lote de prueba",
+            variedadCafeId = catalogs.VariedadCafeId,
+            tipoTuesteCafeId = catalogs.TipoTuesteCafeId,
+            tipoProcesoCafeId = catalogs.TipoProcesoCafeId,
         });
         var loteId = (await loteResponse.Content.ReadFromJsonAsync<Dictionary<string, int>>())!["loteCafeId"];
 

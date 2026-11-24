@@ -97,9 +97,9 @@ const validLote: LoteFormValues = {
   fechaEnvasado: '2026-10-02',
   fechaVencimiento: '2027-04-02',
   observacion: ' Lote de prueba ',
-  variedadCafeId: '',
-  tipoTuesteCafeId: '',
-  tipoProcesoCafeId: '',
+  variedadCafeId: '1',
+  tipoTuesteCafeId: '2',
+  tipoProcesoCafeId: '3',
 };
 
 const today = '2026-10-27';
@@ -133,9 +133,9 @@ test('buildCreateLotePayload normalizes the code and optional text fields', () =
     fechaEnvasado: '2026-10-02',
     fechaVencimiento: '2027-01-01',
     observacion: 'Lote de prueba',
-    variedadCafeId: null,
-    tipoTuesteCafeId: null,
-    tipoProcesoCafeId: null,
+    variedadCafeId: 1,
+    tipoTuesteCafeId: 2,
+    tipoProcesoCafeId: 3,
   });
 
   assert.deepEqual(

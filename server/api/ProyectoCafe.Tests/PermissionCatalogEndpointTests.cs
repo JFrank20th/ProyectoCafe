@@ -25,7 +25,7 @@ public sealed class PermissionCatalogEndpointTests
             .ToDictionary(item => item.Modulo, item => item.Acciones, StringComparer.OrdinalIgnoreCase);
 
         // El alcance actual del proyecto expone Administración e Inventario de café terminado.
-        Assert.Equal(11, catalog!.Length);
+        Assert.Equal(14, catalog!.Length);
         Assert.Equal(
             new[]
             {
@@ -37,6 +37,9 @@ public sealed class PermissionCatalogEndpointTests
                 "Inventario.Movimientos",
                 "Inventario.Presentaciones",
                 "Inventario.TiposCafe",
+                "Inventario.TiposProceso",
+                "Inventario.TiposTueste",
+                "Inventario.Variedades",
                 "Ventas.Clientes",
                 "Ventas.Precios",
                 "Ventas.Ventas",
@@ -57,9 +60,12 @@ public sealed class PermissionCatalogEndpointTests
         Assert.Equal(new[] { "Ver", "Crear" }, byModule["Inventario.Movimientos"]);
         Assert.Equal(new[] { "Ver", "Crear", "Editar", "Eliminar" }, byModule["Inventario.Presentaciones"]);
         Assert.Equal(new[] { "Ver", "Crear", "Editar", "Eliminar" }, byModule["Inventario.TiposCafe"]);
+        Assert.Equal(new[] { "Ver", "Crear", "Editar", "Eliminar" }, byModule["Inventario.TiposProceso"]);
+        Assert.Equal(new[] { "Ver", "Crear", "Editar", "Eliminar" }, byModule["Inventario.TiposTueste"]);
+        Assert.Equal(new[] { "Ver", "Crear", "Editar", "Eliminar" }, byModule["Inventario.Variedades"]);
         Assert.Equal(new[] { "Ver", "Crear", "Editar" }, byModule["Ventas.Precios"]);
         Assert.Equal(new[] { "Ver", "Crear", "Editar" }, byModule["Ventas.Clientes"]);
-        Assert.Equal(new[] { "Ver", "Crear" }, byModule["Ventas.Ventas"]);
+        Assert.Equal(new[] { "Ver", "Crear", "Editar", "Anular", "Cancelar" }, byModule["Ventas.Ventas"]);
     }
 
     private sealed record CatalogItem(string Modulo, string[] Acciones);

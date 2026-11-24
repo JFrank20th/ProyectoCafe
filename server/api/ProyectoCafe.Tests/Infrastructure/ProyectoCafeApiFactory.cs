@@ -315,14 +315,33 @@ internal sealed class ProyectoCafeApiFactory : WebApplicationFactory<Program>
         int Presentacion250Id,
         int Presentacion454Id,
         int TipoGranoId,
-        int TipoMolidoId)> SeedInventarioCafeCatalogsAsync()
+        int TipoMolidoId,
+        int VariedadCafeId,
+        int TipoTuesteCafeId,
+        int TipoProcesoCafeId)> SeedInventarioCafeCatalogsAsync()
     {
         var presentacion250 = await SeedPresentacionCafeAsync("250G", "250 g", 250);
         var presentacion454 = await SeedPresentacionCafeAsync("454G", "454 g", 454);
         var tipoGrano = await SeedTipoCafeAsync("GRANO", "Grano");
         var tipoMolido = await SeedTipoCafeAsync("MOLIDO", "Molido");
+        var loteCatalogs = await SeedLoteCafeCatalogsAsync();
 
-        return (presentacion250, presentacion454, tipoGrano, tipoMolido);
+        return (
+            presentacion250,
+            presentacion454,
+            tipoGrano,
+            tipoMolido,
+            loteCatalogs.VariedadCafeId,
+            loteCatalogs.TipoTuesteCafeId,
+            loteCatalogs.TipoProcesoCafeId);
+    }
+
+    public async Task<(int VariedadCafeId, int TipoTuesteCafeId, int TipoProcesoCafeId)>
+        SeedLoteCafeCatalogsAsync()
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ProyectoCafeDbContext>();
+        return await CatalogoCafeTestData.SeedLoteCafeAsync(db);
     }
 
     public async Task SetLoteCafeEstadoAsync(int loteCafeId, EstadoLoteCafe estado)

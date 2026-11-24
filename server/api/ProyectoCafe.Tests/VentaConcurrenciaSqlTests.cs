@@ -339,10 +339,15 @@ public sealed class VentaConcurrenciaSqlTests : IClassFixture<ProyectoCafeSqlInt
         string codigo,
         int cantidad)
     {
+        var loteCatalogs = await _factory.SeedLoteCafeCatalogsAsync();
         var loteResponse = await client.PostAsJsonAsync("/api/v1/inventario/lotes", new
         {
             codigoLote = codigo,
             fechaProduccion = DateTime.UtcNow.AddDays(-1),
+            observacion = "Lote de prueba",
+            variedadCafeId = loteCatalogs.VariedadCafeId,
+            tipoTuesteCafeId = loteCatalogs.TipoTuesteCafeId,
+            tipoProcesoCafeId = loteCatalogs.TipoProcesoCafeId,
         });
         loteResponse.EnsureSuccessStatusCode();
         var loteId = (await loteResponse.Content.ReadFromJsonAsync<Dictionary<string, int>>())!["loteCafeId"];

@@ -76,6 +76,14 @@ public class ProyectoCafeSqlIntegrationFactory : WebApplicationFactory<Program>,
         await db.Database.MigrateAsync();
     }
 
+    public async Task<(int VariedadCafeId, int TipoTuesteCafeId, int TipoProcesoCafeId)>
+        SeedLoteCafeCatalogsAsync()
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ProyectoCafeDbContext>();
+        return await CatalogoCafeTestData.SeedLoteCafeAsync(db);
+    }
+
     public new async Task DisposeAsync()
     {
         await base.DisposeAsync();
