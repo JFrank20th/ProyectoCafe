@@ -24,6 +24,30 @@ tiempo de ejecución.
 
 Los valores concretos de cada entorno se pasan por variables; no se versionan.
 
+## Topología desplegada
+
+```mermaid
+flowchart LR
+    B[Navegador] -->|HTTPS 443| P[pc-portal<br/>Next.js :3000]
+    P -->|HTTPS 443| A[pc-api<br/>.NET :8080]
+    A -->|TDS 1433| S[(Azure SQL<br/>base existente)]
+    A -->|secretos| KV[Key Vault]
+    A -->|logs| LA[Log Analytics]
+    ACR[Azure Container Registry] -->|pull| P
+    ACR -->|pull| A
+```
+
+| Contenedor | Imagen | Puerto interno | Ingress ACA | Probes | Configuración |
+| --- | --- | --- | --- | --- | --- |
+| `pc-api` | `server/api/Dockerfile` | `8080` | Externo `443` → `8080` | HTTP `GET /health` (startup/liveness) y `GET /health/ready` (readiness) | Secretos de Key Vault, CORS y cookies por variables de entorno. |
+| `pc-portal` | `Portal/Dockerfile` | `3000` | Externo `443` → `3000` | TCP `3000` | `PROYECTOCAFE_API_URL`, `PROYECTOCAFE_API_URL_INTERNAL`, `PROYECTOCAFE_AUTH_COOKIE_NAME` y `APP_NAME`. |
+| Azure SQL | Base existente | `1433` | No expuesto | La API lo valida en readiness | No lo crea la plantilla; conectividad por firewall o private endpoint. |
+
+La API se publica con ingress externo porque el navegador la llama directamente
+con cookies y CSRF. El Portal no actúa como proxy de la API. No abras puertos del
+contenedor fuera del ingress ni agregues CORS en el ingress de Container Apps.
+Las variables exactas por app están en [`ENV.md`](ENV.md#variables-en-azure-container-apps).
+
 ## Infraestructura como código
 
 [`infra/`](../infra/README.md) contiene la plantilla Bicep que crea ACR, Log

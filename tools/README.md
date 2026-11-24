@@ -26,7 +26,8 @@ pwsh -File .\scripts\db-migrate.ps1 -CreateDatabaseIfMissing
 ## Obsoletos (solo referencia histórica)
 
 - `sqlserver-create-current.sql` — creación manual antigua; no incluye el esquema
-  `Ventas` ni los catálogos de lote.
+  `Ventas` ni los catálogos de lote. Se conserva solo como referencia histórica y
+  no se ejecuta.
 - `sqlserver-reset-operacion-real.sql` — limpieza con un baseline de migraciones
   anterior a Ventas.
 

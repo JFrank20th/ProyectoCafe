@@ -13,25 +13,28 @@
   - Administracion (Usuarios, Roles, UsuariosRoles, RolesPermisos)
   - Inventario de cafe terminado (PresentacionesCafe, TiposCafe,
     LotesCafeTerminado, LotesCafeExistencias, MovimientosLoteCafe)
-  - Historial de EF Core alineado a las migraciones vigentes:
+  - Historial de EF Core limitado a las dos primeras migraciones:
     20261023012804_InitialAdministration
     20261028025431_AddInventarioCafeTerminado
 
-  Este script crea la base desde cero con la misma estructura que generan las
-  migraciones del proyecto .NET actual.
+  Este script histórico ya NO crea la estructura vigente. No lo ejecutes:
+  no incluye Ventas, VariedadesCafe, TiposTuesteCafe ni TiposProcesoCafe y
+  dejaría una base incompleta. El contenido se conserva solo como referencia
+  de la primera versión del esquema.
 
-  Ejecucion (contra la instancia, normalmente master):
-    sqlcmd -S localhost -E -i "C:\ProyectoCafe\tools\sqlserver-create-current.sql" -b
+  Procedimiento vigente:
+    1. tools/sqlserver-migrate-current.sql (script idempotente generado por EF Core).
+    2. scripts/db-migrate.ps1 (aplicación desde Database__ConnectionString).
+    3. Para desarrollo, `pwsh -File .\scripts\db-migrate.ps1 -CreateDatabaseIfMissing`.
 
-  Si la base ya existe, el script se detiene para evitar mezclar estructuras
-  heredadas. Para recrearla de forma explicita:
-    1. Cambiar @RecreateExisting a 1.
-    2. Respaldar la base antes de ejecutar.
+  Si necesitas recrear una base, respáldala y usa el procedimiento anterior;
+  no reactives este archivo cambiando @RecreateExisting.
 
   Nota: los roles iniciales (Admin, User) los siembra la API al iniciar.
   Los usuarios de prueba (admin@local, user@local) solo se crean en Development
   a partir de hashes PBKDF2 configurados en appsettings.Development.json;
-  nunca se almacenan contraseñas en texto plano. El script solo crea la estructura.
+  nunca se almacenan contraseñas en texto plano. El script histórico solo creaba
+  la estructura; no siembra usuarios ni roles.
 */
 
 SET NOCOUNT ON;

@@ -11,6 +11,20 @@ ProyectoCafe migra la funcionalidad de berry-free-react-admin-template a una arq
 > **Inventario** de café terminado y **Ventas**. La pantalla **Dashboard** se
 > mantiene vacía, sin funcionalidad.
 
+## Módulos y pantallas vigentes
+
+| Módulo | Rutas del Portal | Estado |
+| --- | --- | --- |
+| Administración | `/administracion/usuarios`, `/administracion/roles` | Implementado |
+| Inventario | `/inventario/CafeTostado` | Implementado |
+| Ventas | `/dashboard/ventas` | Implementado |
+| Dashboard | `/dashboard` | Pantalla vacía, sin funcionalidad |
+
+**Inventario** y **Ventas** no están retirados: tienen endpoints en
+`ProyectoCafe.API/Endpoints`, migraciones en `ProyectoCafe.Infrastructure` y
+pantallas en el Portal. El detalle funcional está en
+[`DOCS/MANUAL_USUARIO_SISTEMA.md`](DOCS/MANUAL_USUARIO_SISTEMA.md).
+
 ## Arquitectura del backend
 
 El backend respeta una arquitectura por capas real:
@@ -24,6 +38,37 @@ Los endpoints no acceden directamente a `ProyectoCafeDbContext`: invocan los
 servicios de Application, que a su vez usan las abstracciones implementadas por
 Infrastructure. El detalle de reglas y estructura está en
 [`server/api/README.md`](server/api/README.md).
+
+## Arquitectura de despliegue
+
+En Azure Container Apps hay dos aplicaciones y una base de datos existente. El
+navegador llama directamente a la API (CORS con credenciales); el Portal usa la
+misma URL para el navegador y una URL de servidor para middleware y Server
+Components.
+
+```mermaid
+flowchart LR
+    B[Navegador] -->|HTTPS 443| P[pc-portal<br/>Next.js :3000]
+    P -->|HTTPS 443| A[pc-api<br/>.NET :8080]
+    A -->|TDS 1433| S[(Azure SQL<br/>base existente)]
+    A -->|secretos| KV[Key Vault]
+    A -->|logs| LA[Log Analytics]
+    ACR[Azure Container Registry] -->|pull| P
+    ACR -->|pull| A
+```
+
+| Contenedor | Imagen / build | Puerto interno | Publicación local | Ingress ACA | Health checks |
+| --- | --- | --- | --- | --- | --- |
+| `pc-api` | `server/api/Dockerfile` | `8080` | `localhost:5000` → `8080` (`API_PORT`) | Externo `443` → `8080` | HTTP `GET /health` (startup/liveness) y `GET /health/ready` (readiness) |
+| `pc-portal` | `Portal/Dockerfile` | `3000` | `localhost:3010` → `3000` (`PORTAL_PORT`) | Externo `443` → `3000` | TCP `3000` |
+| Azure SQL | Base existente | `1433` | No aplica | No expuesto | La API lo valida en `/health/ready` |
+
+El Portal **no** hace de proxy de la API: el navegador necesita alcanzar la API
+pública para enviar la cookie de sesión y el token CSRF. `pc-api` y `pc-portal`
+usan ingress externo; los contenedores no publican puertos adicionales fuera del
+ingress. La topología completa y las variables por app están en
+[`DOCS/DESPLIEGUE-AZURE.md`](DOCS/DESPLIEGUE-AZURE.md) y
+[`DOCS/ENV.md`](DOCS/ENV.md).
 
 # Configurar la clave de firma JWT (solo la primera vez; se guarda fuera del repo)
 Set-Location -Path "c:\ProyectoCafe\server\api\ProyectoCafe.API"
@@ -41,7 +86,8 @@ Set-Location -Path "c:\ProyectoCafe\server\api\ProyectoCafe.API"; dotnet run
 El esquema vigente se aplica con el script idempotente generado por EF Core
 (`tools/sqlserver-migrate-current.sql`). El antiguo
 `tools/sqlserver-create-current.sql` está **obsoleto**: no incluye Ventas ni los
-catálogos de lote.
+catálogos de lote, se conserva solo como referencia histórica y ningún
+procedimiento del repositorio lo ejecuta.
 
 ```powershell
 # Cadena de conexión solo en el entorno; nunca en el repositorio.

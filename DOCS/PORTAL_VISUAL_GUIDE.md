@@ -2,7 +2,7 @@
 
 ## Alcance
 
-El portal vigente cubre el módulo **Administración**. La guía describe cómo comunicar visualmente los indicadores de usuarios, roles, permisos y estados de acceso. No aplica a módulos operativos retirados.
+El portal vigente cubre los módulos **Administración**, **Inventario** y **Ventas**. La guía describe cómo comunicar visualmente los indicadores de usuarios, roles, permisos, lotes, existencias, movimientos, ventas, pagos y entregas.
 
 La pantalla **Dashboard** se mantiene como pantalla de entrada vacía, sin componentes ni indicadores.
 
@@ -12,6 +12,22 @@ La pantalla **Dashboard** se mantiene como pantalla de entrada vacía, sin compo
 - **Roles**: usar secundario café tostado para la estructura de roles y sus asignaciones.
 - **Permisos**: usar acento cosecha para permisos efectivos, módulos cubiertos y asignaciones por rol.
 - **Riesgo y excepción**: usar warning y error solo para cuentas pendientes, bloqueos, roles inactivos o inconsistencias reales.
+
+## Semántica de inventario
+
+- **Lotes**: usar primario verde cafetal para lotes activos y el detalle seleccionado.
+- **Existencias**: mostrar paquetes y peso neto con cifras alineadas a la derecha; el saldo bajo o insuficiente usa warning.
+- **Movimientos**: diferenciar ingreso, salida, ajuste positivo y ajuste negativo con chips y colores consistentes.
+- **Catálogos**: usar chips para activo, inactivo y eliminado; los catálogos inactivos o eliminados se muestran solo para conservar el historial.
+- **Lote bloqueado**: usar error y una alerta visible; no ofrecer acciones de movimiento.
+
+## Semántica de ventas
+
+- **Venta registrada**: estado neutro o primario; **cancelada** y **anulada** usan warning/error según el impacto.
+- **Pago pendiente, abono parcial y pagada**: usar warning, info y success respectivamente.
+- **Entrega**: usar una progresión visual discreta (pendiente, en preparación, lista, entregada) sin competir con el estado de pago.
+- **Inventario disponible**: reutilizar la semántica de existencias; no mostrar acciones de venta si faltan permisos de inventario.
+- **Acciones destructivas**: **Cancelar venta** y **Anular venta** exigen confirmación y motivo; se presentan como operaciones administrativas separadas del flujo normal.
 
 ## Reglas por componente
 
@@ -40,3 +56,7 @@ La pantalla **Dashboard** se mantiene como pantalla de entrada vacía, sin compo
 - `Portal/src/theme/berry/overrides/DataGrid.ts`
 - `Portal/src/app/administracion/usuarios/page.tsx`
 - `Portal/src/app/administracion/roles/page.tsx`
+- `Portal/src/app/inventario/CafeTostado/page.tsx`
+- `Portal/src/app/dashboard/ventas/page.tsx`
+- `Portal/src/components/inventario/`
+- `Portal/src/components/ventas/`

@@ -8,17 +8,20 @@ Requiere .NET SDK 10; todos los proyectos apuntan a `net10.0`.
 - `ProyectoCafe.Domain` — Entidades y estados del dominio. No depende de ningún
   otro proyecto.
 - `ProyectoCafe.Application` — DTOs, casos de uso y puertos de salida. Contiene
-  `AuthenticationService` y `AdministrationService`, además de las interfaces
-  `IUsuarioRepository`, `IRolRepository`, `IUnitOfWork`, `IPermissionCatalog`,
-  `ILoginRateLimiter` e `ISecurityBootstrapStore`. No referencia EF Core ni
-  ASP.NET Core.
+  `AuthenticationService`, `AdministrationService`, `CatalogoCafeService`,
+  `LoteCafeService`, `PrecioVentaService`, `ClienteService`, `VentaService` y
+  `PagoVentaService`, además de las interfaces `IUsuarioRepository`,
+  `IRolRepository`, `IUnitOfWork`, `IPermissionCatalog`, `ILoginRateLimiter`,
+  `ISecurityBootstrapStore` y los repositorios de inventario y ventas. No
+  referencia EF Core ni ASP.NET Core.
 - `ProyectoCafe.Infrastructure` — Implementación de persistencia: `DbContext`,
   configuraciones de EF Core, migraciones y repositorios. Depende de Application
   y Domain.
 - `ProyectoCafe.API` — Minimal APIs, composición de dependencias, autenticación
   JWT por cookie, CSRF, CORS y el catálogo de permisos construido a partir de
-  los endpoints. Depende de Application (casos de uso) e Infrastructure (solo
-  para registrar implementaciones).
+  los endpoints. Expone autenticación, administración, inventario y ventas bajo
+  `/api/v1`. Depende de Application (casos de uso) e Infrastructure (solo para
+  registrar implementaciones).
 
 ## Reglas de dependencias
 

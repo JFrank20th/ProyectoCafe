@@ -54,7 +54,7 @@ Set-Location -Path "c:\ProyectoCafe\server\api\ProyectoCafe.API"; dotnet run
 
 ```powershell
 # Terminal 2 — Portal en http://localhost:3010
-Set-Location -Path "c:\ProyectoCafe\Portal"; npm ci; npm run dev # para intalar nodeModules
+Set-Location -Path "c:\ProyectoCafe\Portal"; npm ci   # instala node_modules
 Set-Location -Path "c:\ProyectoCafe\Portal"; npm run dev
 ```
 
@@ -126,16 +126,41 @@ El script es idempotente.
 
 ### 5.4 Levantar las dos imágenes
 
+`compose.yaml` construye las dos imágenes con los mismos Dockerfiles que usa Azure
+(`server/api/Dockerfile` y `Portal/Dockerfile`). Comprueba la configuración
+resuelta antes de arrancar (no imprime los secretos en claro):
+
 ```powershell
 Set-Location -Path "c:\ProyectoCafe"
+docker compose config --quiet
 docker compose up --build
 ```
 
-| Servicio | URL | Comprobación |
-| --- | --- | --- |
-| Portal | <http://localhost:3010> | `/login` responde `200` |
-| API | <http://localhost:5000/health> | `{"status":"ok"}` |
-| API readiness | <http://localhost:5000/health/ready> | `200` si Azure SQL responde |
+Si quieres construir las imágenes por separado:
+
+```powershell
+docker build -t pc-api:local server/api
+docker build -t pc-portal:local Portal
+```
+
+Para ejecutarlas coordinadas usa `docker compose up`; el ejemplo de `docker run`
+de una sola imagen, con sus variables, está en
+[`../server/api/README.md`](../server/api/README.md#run).
+
+La imagen de la API escucha en `8080` y la del Portal en `3000`; Compose publica
+`5000` y `3010` en el host. No cambies el puerto interno de la API: Azure Container
+Apps usa el mismo target port `8080`.
+
+| Servicio | Contenedor | Puerto host | Puerto interno | URL / comprobación |
+| --- | --- | --- | --- | --- |
+| Portal | `pc-portal` | `${PORTAL_PORT:-3010}` | `3000` | <http://localhost:3010>; `/login` responde `200` |
+| API | `pc-api` | `${API_PORT:-5000}` | `8080` | <http://localhost:5000/health> → `{"status":"ok"}` |
+| API readiness | `pc-api` | `${API_PORT:-5000}` | `8080` | <http://localhost:5000/health/ready> → `200` si Azure SQL responde |
+| Azure SQL | externo | no aplica | `1433` | La API lo valida en readiness |
+
+La topología y los puertos de Azure son los mismos, con ingress ACA en lugar de
+puertos publicados: `pc-portal` `443` → `3000` y `pc-api` `443` → `8080`. Ver
+[`../README.md#arquitectura-de-despliegue`](../README.md#arquitectura-de-despliegue).
 
 - El navegador usa `PROYECTOCAFE_API_URL` (`http://localhost:5000`). Es la URL
   que `layout.tsx` publica en `window.__RUNTIME_ENV__`.
@@ -144,6 +169,7 @@ docker compose up --build
   en la red privada de Compose.
 - La API solo acepta el origen exacto `http://localhost:3010` (`Cors`).
 - Para ver registros: `docker compose logs -f api` o `docker compose logs -f portal`.
+- Para ver el estado de los servicios: `docker compose ps`.
 - Para parar: `docker compose down`.
 
 ### 5.5 Iniciar sesión
@@ -236,7 +262,9 @@ Ubicación: `%APPDATA%\Microsoft\UserSecrets\c853932b-aecf-4394-b660-490e286f2ea
 - [ ] Login con `admin@local` funciona
 - [ ] Docker Desktop instalado y `.env` creado (ruta Compose)
 - [ ] IP del desarrollador permitida en el firewall de Azure SQL
+- [ ] `docker compose config --quiet` valida el archivo sin errores
 - [ ] `docker compose up --build` levanta API y Portal contra Azure SQL
 - [ ] Login con una cuenta activa de Azure SQL funciona en `http://localhost:3010`
+- [ ] `/inventario/CafeTostado` y `/dashboard/ventas` cargan con los permisos adecuados
 
 Más detalle: [`DOCS/ENV.md`](ENV.md) · [`README.md`](../README.md)

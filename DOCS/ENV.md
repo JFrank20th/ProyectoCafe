@@ -1,5 +1,30 @@
 # Variables de entorno (ProyectoCafe)
 
+## Topología de despliegue
+
+```mermaid
+flowchart LR
+    B[Navegador] -->|HTTPS 443| P[pc-portal<br/>Next.js :3000]
+    P -->|HTTPS 443| A[pc-api<br/>.NET :8080]
+    A -->|TDS 1433| S[(Azure SQL)]
+    A -->|secretos| KV[Key Vault]
+    A -->|logs| LA[Log Analytics]
+    ACR[Azure Container Registry] -->|pull| P
+    ACR -->|pull| A
+```
+
+| Contenedor | Imagen | Puerto interno | Compose local | Ingress ACA | Probes |
+| --- | --- | --- | --- | --- | --- |
+| `pc-api` | `server/api/Dockerfile` | `8080` | `localhost:5000` → `8080` | Externo `443` → `8080` | HTTP `GET /health` (startup/liveness) y `GET /health/ready` (readiness) |
+| `pc-portal` | `Portal/Dockerfile` | `3000` | `localhost:3010` → `3000` | Externo `443` → `3000` | TCP `3000` |
+| Azure SQL | Base existente | `1433` | No aplica | No expuesto | La API lo valida en `/health/ready` |
+
+En Azure Container Apps las dos apps usan ingress externo: el navegador llama
+directamente a la API para enviar cookies y CSRF, y el Portal necesita ser
+alcanzable por el usuario. El contenedor de la API no publica puertos fuera del
+ingress de la plataforma. La plantilla Bicep que crea esta topología está en
+[`../infra/README.md`](../infra/README.md).
+
 ## API
 
 - `Database:ConnectionString` — connection string a SQL Server/Azure SQL. **No se commitea con credenciales**: en QA/PROD se configura mediante la variable de entorno `Database__ConnectionString` (Azure SQL Database). En Development puede definirse localmente con `dotnet user-secrets` o la misma variable de entorno. `appsettings.json` y `appsettings.Development.json` dejan el valor vacío para no versionar secretos.
@@ -48,6 +73,58 @@ seguro (por ejemplo, registrando la cuenta y activándola directamente en la bas
 datos) y no reutilices las credenciales de Development. Al arrancar fuera de Development
 también se revisa la base de datos y se aborta el inicio si `admin@local` o `user@local`
 conservan las contraseñas históricas `admin`/`user`.
+
+### Variables en Azure Container Apps
+
+La plantilla [`infra/main.bicep`](../infra/main.bicep) declara el estado deseado de
+cada app. No copies estos valores a archivos versionados: los secretos viven en Key
+Vault y los FQDN se pasan como parámetros.
+
+`pc-api`:
+
+| Variable | Valor / origen |
+| --- | --- |
+| `ASPNETCORE_ENVIRONMENT` | `Production` |
+| `ASPNETCORE_URLS` | `http://+:8080` |
+| `Database__ConnectionString` | `secretRef` a Key Vault (`DatabaseConnectionString`). |
+| `Auth__Jwt__SigningKey` | `secretRef` a Key Vault (`AuthJwtSigningKey`). |
+| `Auth__Cookie__Secure` | `true` |
+| `Auth__Cookie__SameSite` | `Lax` por defecto; `None` solo entre sitios distintos. |
+| `Auth__Cookie__Domain` | Dominio común sin esquema (`example.com`) o vacío para host-only. |
+| `Cors__AllowedOrigins__0` | Origen exacto del Portal (`https://<portalFqdn>`). |
+| `Logging__LogLevel__Default` | `Information` (ajustable). |
+
+`pc-portal`:
+
+| Variable | Valor / origen |
+| --- | --- |
+| `PROYECTOCAFE_API_URL` | URL pública de la API; se publica al navegador. |
+| `PROYECTOCAFE_API_URL_INTERNAL` | URL que usan middleware y Server Components; en ACA suele ser la misma URL pública. |
+| `PROYECTOCAFE_AUTH_COOKIE_NAME` | `pc_at` |
+| `APP_NAME` | `ProyectoCafe` |
+| `NEXT_TELEMETRY_DISABLED` | `1` |
+
+`Cors__AllowedOrigins__0`, `Auth__Cookie__SameSite`, `Auth__Cookie__Domain` y las
+URLs del Portal deben ser coherentes con los dominios personalizados. Si vuelves a
+aplicar Bicep sin `portalPublicFqdn`, `apiPublicFqdn` y `cookieDomain`, las apps
+recuperan los FQDN por defecto y la cookie vuelve a ser host-only.
+
+### Key Vault
+
+En Azure los secretos se leen con **referencias de Key Vault** y la identidad
+administrada de `pc-api`; no se copian a variables de entorno en texto plano ni al
+repositorio.
+
+| Secreto de Key Vault | Variable de la API | Uso |
+| --- | --- | --- |
+| `DatabaseConnectionString` | `Database__ConnectionString` | Cadena de Azure SQL. |
+| `AuthJwtSigningKey` | `Auth__Jwt__SigningKey` | Clave HS256 de al menos 32 bytes. |
+
+La plantilla de `infra/` crea el vault con RBAC y las referencias, pero **no crea los
+secretos**. La identidad de `pc-api` necesita `Key Vault Secrets User`; el service
+principal de despliegue solo necesita leer la cadena para migrar. La rotación y el
+procedimiento de rollback están en
+[`DESPLIEGUE-AZURE.md`](DESPLIEGUE-AZURE.md#key-vault-secretos-permisos-y-rotación).
 
 ### CORS
 
@@ -149,8 +226,12 @@ y no al proxy. La configuración usa `ForwardLimit = 1`: solo se acepta el valor
   (`KnownProxies`/`KnownIPNetworks` vacíos). **Riesgo de spoofing:** si el contenedor
   es accesible directamente sin pasar por el ingress, un cliente podría falsificar
   esas cabeceras e influir en la IP usada por el rate limiting y en el esquema
-  percibido. Publica solo el Portal con ingress externo y mantén `pc-api` con
-  ingress interno o sin exposición pública.
+  percibido. En la topología actual `pc-api` sí usa ingress externo porque el
+  navegador llama directamente a la API; la protección consiste en no publicar el
+  contenedor por ningún otro canal y en no desactivar el ingress esperando que el
+  Portal haga de proxy (no lo hace). Si en el futuro publicas la API bajo el mismo
+  origen del Portal, cambia a ingress interno con proxy inverso y actualiza a la vez
+  CORS, cookies y `PROYECTOCAFE_API_URL`/`PROYECTOCAFE_API_URL_INTERNAL`.
 - `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` es una alternativa soportada. Si está
   activo, la API no registra su middleware por segunda vez (evita aplicar el límite
   dos veces). No combines ambas opciones con proxies que no sanitizen las cabeceras.
@@ -171,9 +252,11 @@ Probes recomendados en Azure Container Apps:
 | `pc-api` | `8080` | HTTP `GET /health` en `8080` | HTTP `GET /health/ready` en `8080` |
 | `pc-portal` | `3000` | TCP en `3000` | TCP en `3000` |
 
-La API usa `ASPNETCORE_URLS=http://+:8080`. El Portal escucha en `3000`. Mantén la
-readiness de la API separada de la liveness para que un fallo temporal de SQL no
-reinicie el contenedor.
+La API usa `ASPNETCORE_URLS=http://+:8080`. El Portal escucha en `3000`. La
+plantilla [`infra/main.bicep`](../infra/main.bicep) ya declara los tres probes
+(`Startup`, `Liveness` y `Readiness`) con esos puertos. Mantén la readiness de la
+API separada de la liveness para que un fallo temporal de SQL no reinicie el
+contenedor.
 
 ### Resiliencia SQL
 
@@ -183,10 +266,32 @@ transacciones explícitas se ejecutan dentro de `CreateExecutionStrategy()` para
 compatibles con los reintentos. Un error no transitorio (por ejemplo, una validación
 de negocio o una restricción única) no se reintenta.
 
-- En desarrollo, la conexión se resuelve desde `Database__ConnectionString` (Azure SQL) o `dotnet user-secrets`; las pruebas siguen usando LocalDB y no dependen de Azure.
+- En desarrollo, la conexión se resuelve desde `Database__ConnectionString`
+  (LocalDB o Azure SQL) o `dotnet user-secrets`; las pruebas siguen usando LocalDB
+  y no dependen de Azure. `appsettings.json` y `appsettings.Development.json` no
+  versionan la cadena.
 - El esquema vigente se aplica con `tools/sqlserver-migrate-current.sql` mediante
   `scripts/db-migrate.ps1`. El script se genera con EF Core, es idempotente y
-  sustituye al obsoleto `tools/sqlserver-create-current.sql`.
+  sustituye al histórico `tools/sqlserver-create-current.sql`, que se conserva
+  solo como referencia y no debe usarse para preparar una base.
+
+#### Cadena de conexión de Azure SQL
+
+Usa cifrado y validación de certificado en Azure SQL. No escribas la cadena en el
+repositorio ni en la línea de comandos:
+
+```text
+Server=tcp:<servidor>.database.windows.net,1433;Database=<base>;
+User ID=<usuario>;Password=<password>;Encrypt=True;TrustServerCertificate=False;
+```
+
+Con Microsoft Entra ID usa `Authentication=Active Directory Default` (o el método
+que corresponda) en lugar de `User ID`/`Password`, y crea el usuario contenido en
+SQL con los permisos DDL necesarios. Para desarrollo local con LocalDB:
+
+```text
+Server=(localdb)\MSSQLLocalDB;Database=ProyectoCafe.Dev;Trusted_Connection=True;TrustServerCertificate=True
+```
 
 ### Migrar el esquema antes de desplegar
 
