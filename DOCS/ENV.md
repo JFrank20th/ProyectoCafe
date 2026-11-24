@@ -174,7 +174,13 @@ de negocio o una restricción única) no se reintenta.
 
 En `Production` la API **no** aplica migraciones (`MigrateAsync` solo se ejecuta
 en Development). El esquema debe estar al día antes de desplegar una nueva
-versión de `pc-api`:
+versión de `pc-api`.
+
+El job `deploy` de `.github/workflows/ci.yml` aplica automáticamente el script
+idempotente antes de actualizar la API, leyendo la cadena de Azure SQL desde Key
+Vault. El procedimiento manual siguiente se mantiene para la primera puesta en
+marcha, entornos locales o despliegues fuera del workflow. Configuración completa:
+[`DESPLIEGUE-AZURE.md`](DESPLIEGUE-AZURE.md).
 
 1. Genera el script oficial si cambió alguna migración (ya está versionado en
    `tools/sqlserver-migrate-current.sql`):

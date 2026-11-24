@@ -7,6 +7,9 @@
   base vacía o ya migrada sin duplicar objetos ni filas del historial.
 - `../scripts/db-migrate.ps1` — aplica el script anterior usando la cadena de
   conexión de la variable de entorno `Database__ConnectionString`.
+- `.github/workflows/ci.yml` (job `deploy`) — aplica el mismo script con
+  `azure/sql-action` antes de actualizar `pc-api`; no requiere Docker ni `sqlcmd`
+  local.
 
 ```powershell
 $env:Database__ConnectionString = "<cadena de conexión>"

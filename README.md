@@ -51,9 +51,11 @@ $env:Database__ConnectionString = "Server=(localdb)\MSSQLLocalDB;Database=Proyec
 pwsh -File .\scripts\db-migrate.ps1 -CreateDatabaseIfMissing
 ```
 
-Antes de desplegar la API a Azure SQL, ejecuta `scripts/db-migrate.ps1` contra
-la base existente (sin `-CreateDatabaseIfMissing`). En `Production` la API no
-aplica migraciones. Procedimiento completo: [`DOCS/ENV.md`](DOCS/ENV.md).
+Antes del primer despliegue manual, ejecuta `scripts/db-migrate.ps1` contra la
+base existente (sin `-CreateDatabaseIfMissing`). En `Production` la API no
+aplica migraciones; el workflow de despliegue aplica el mismo script idempotente
+antes de actualizar `pc-api`. Procedimiento completo:
+[`DOCS/ENV.md`](DOCS/ENV.md) y [`DOCS/DESPLIEGUE-AZURE.md`](DOCS/DESPLIEGUE-AZURE.md).
 
 # Validación local
 
@@ -93,12 +95,20 @@ El navegador usa `PROYECTOCAFE_API_URL` y el servidor del Portal usa
 Azure SQL y login:
 [`DOCS/ARRANQUE-LOCAL.md`](DOCS/ARRANQUE-LOCAL.md#5-levantar-api-y-portal-juntos-con-docker-compose-azure-sql).
 
-# Integración continua
+# Integración continua y despliegue
 
 `.github/workflows/ci.yml` ejecuta las validaciones del backend y del frontend en cada
 `push` a `main`/`master` y en cada `pull_request`. Cualquier fallo de compilación,
 lint, TypeScript o pruebas marca el workflow como fallido (incluido el job agregador
 `CI required`).
+
+El job `deploy` se ejecuta después de `CI required`, solo en `push` a `main` (o
+manualmente desde `main` con `deploy=true`), con el environment `production`. Usa
+OIDC para autenticarse en Azure, construye y publica las imágenes de `pc-api` y
+`pc-portal` en ACR, aplica las migraciones idempotentes desde Key Vault y actualiza
+ambas Container Apps esperando una revisión saludable. El smoke test comprueba
+`GET /health` de la API y `GET /login` del Portal. Guía de configuración y rollback:
+[`DOCS/DESPLIEGUE-AZURE.md`](DOCS/DESPLIEGUE-AZURE.md).
 
 Para bloquear la fusión de cambios, configura en GitHub la protección de la rama
 principal y marca **`CI required`** como *required status check*.

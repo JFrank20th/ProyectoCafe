@@ -5,13 +5,20 @@ on:
     branches: [main, master]
   pull_request:
   workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Desplegar a producción (solo desde la rama main)"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # No canceles un despliegue de main a mitad de camino. Los PR sí se cancelan.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   DOTNET_NOLOGO: true
@@ -111,3 +118,231 @@ jobs:
             exit 1
           fi
           echo "Todas las validaciones obligatorias pasaron."
+
+  deploy:
+    name: Deploy to Azure Container Apps
+    needs: [ci-success]
+    # Automático solo en push a main; manual con deploy=true y desde main.
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && inputs.deploy == true && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 60
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    permissions:
+      id-token: write
+      actions: read
+      contents: read
+    env:
+      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      ACR_NAME: ${{ vars.ACR_NAME }}
+      KEY_VAULT_NAME: ${{ vars.KEY_VAULT_NAME }}
+      SQL_CONNECTION_SECRET_NAME: ${{ vars.SQL_CONNECTION_SECRET_NAME }}
+      SQL_SKIP_FIREWALL_CHECK: ${{ vars.SQL_SKIP_FIREWALL_CHECK }}
+      API_APP_NAME: ${{ vars.API_APP_NAME }}
+      PORTAL_APP_NAME: ${{ vars.PORTAL_APP_NAME }}
+      API_IMAGE_NAME: ${{ vars.API_IMAGE_NAME }}
+      PORTAL_IMAGE_NAME: ${{ vars.PORTAL_IMAGE_NAME }}
+      API_CONTAINER_NAME: ${{ vars.API_CONTAINER_NAME }}
+      PORTAL_CONTAINER_NAME: ${{ vars.PORTAL_CONTAINER_NAME }}
+      API_BASE_URL: ${{ vars.API_BASE_URL }}
+      PORTAL_BASE_URL: ${{ vars.PORTAL_BASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate deployment configuration
+        run: |
+          set -euo pipefail
+          required=(
+            AZURE_CLIENT_ID
+            AZURE_TENANT_ID
+            AZURE_SUBSCRIPTION_ID
+            AZURE_RESOURCE_GROUP
+            ACR_NAME
+            KEY_VAULT_NAME
+            SQL_CONNECTION_SECRET_NAME
+            API_APP_NAME
+            PORTAL_APP_NAME
+          )
+          missing=0
+          for name in "${required[@]}"; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Falta la variable '$name' en el environment 'production'."
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve registry, image tags and previous revisions
+        run: |
+          set -euo pipefail
+          SHORT_SHA="${GITHUB_SHA::7}"
+          ACR_LOGIN_SERVER="$(az acr show --name "$ACR_NAME" --query loginServer -o tsv)"
+          if [ -z "$ACR_LOGIN_SERVER" ]; then
+            echo "::error::No se pudo resolver el login server de ACR '$ACR_NAME'."
+            exit 1
+          fi
+
+          API_REPOSITORY="${API_IMAGE_NAME:-pc-api}"
+          PORTAL_REPOSITORY="${PORTAL_IMAGE_NAME:-pc-portal}"
+          API_IMAGE="${ACR_LOGIN_SERVER}/${API_REPOSITORY}:${SHORT_SHA}"
+          PORTAL_IMAGE="${ACR_LOGIN_SERVER}/${PORTAL_REPOSITORY}:${SHORT_SHA}"
+
+          API_PREVIOUS_IMAGE="$(az containerapp show \
+            --name "$API_APP_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --query 'properties.template.containers[0].image' \
+            -o tsv)"
+          PORTAL_PREVIOUS_IMAGE="$(az containerapp show \
+            --name "$PORTAL_APP_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --query 'properties.template.containers[0].image' \
+            -o tsv)"
+
+          {
+            echo "SHORT_SHA=$SHORT_SHA"
+            echo "ACR_LOGIN_SERVER=$ACR_LOGIN_SERVER"
+            echo "API_REPOSITORY=$API_REPOSITORY"
+            echo "PORTAL_REPOSITORY=$PORTAL_REPOSITORY"
+            echo "API_IMAGE=$API_IMAGE"
+            echo "PORTAL_IMAGE=$PORTAL_IMAGE"
+            echo "API_PREVIOUS_IMAGE=$API_PREVIOUS_IMAGE"
+            echo "PORTAL_PREVIOUS_IMAGE=$PORTAL_PREVIOUS_IMAGE"
+          } >> "$GITHUB_ENV"
+
+      - name: Build and push pc-api image
+        run: |
+          set -euo pipefail
+          # El despliegue usa el tag SHA; latest es solo una referencia.
+          az acr build \
+            --registry "$ACR_NAME" \
+            --image "$API_REPOSITORY:$SHORT_SHA" \
+            --image "$API_REPOSITORY:latest" \
+            --file Dockerfile \
+            --platform linux/amd64 \
+            server/api
+
+      - name: Build and push pc-portal image
+        run: |
+          set -euo pipefail
+          az acr build \
+            --registry "$ACR_NAME" \
+            --image "$PORTAL_REPOSITORY:$SHORT_SHA" \
+            --image "$PORTAL_REPOSITORY:latest" \
+            --file Dockerfile \
+            --platform linux/amd64 \
+            Portal
+
+      - name: Read Azure SQL connection string from Key Vault
+        id: sql
+        run: |
+          set -euo pipefail
+          connection_string="$(az keyvault secret show \
+            --vault-name "$KEY_VAULT_NAME" \
+            --name "$SQL_CONNECTION_SECRET_NAME" \
+            --query value \
+            -o tsv)"
+          if [ -z "$connection_string" ]; then
+            echo "::error::El secreto '$SQL_CONNECTION_SECRET_NAME' está vacío o no existe en '$KEY_VAULT_NAME'."
+            exit 1
+          fi
+          echo "::add-mask::$connection_string"
+          echo "connection-string=$connection_string" >> "$GITHUB_OUTPUT"
+
+      - name: Apply idempotent EF Core migrations (sqlcmd)
+        uses: azure/sql-action@v2.3
+        with:
+          connection-string: ${{ steps.sql.outputs.connection-string }}
+          path: ./tools/sqlserver-migrate-current.sql
+          arguments: "-b"
+          skip-firewall-check: ${{ env.SQL_SKIP_FIREWALL_CHECK == 'true' }}
+
+      - name: Deploy pc-api image
+        run: |
+          set -euo pipefail
+          container_args=()
+          if [ -n "${API_CONTAINER_NAME:-}" ]; then
+            container_args+=(--container-name "$API_CONTAINER_NAME")
+          fi
+          az containerapp update \
+            --name "$API_APP_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --image "$API_IMAGE" \
+            "${container_args[@]}" \
+            --output none
+
+      - name: Wait for pc-api revision and smoke test /health
+        run: |
+          set -euo pipefail
+          bash scripts/aca-verify-revision.sh \
+            --app "$API_APP_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --image "$API_IMAGE" \
+            --label API \
+            --path /health \
+            --url "${API_BASE_URL:-}"
+
+      - name: Deploy pc-portal image
+        run: |
+          set -euo pipefail
+          container_args=()
+          if [ -n "${PORTAL_CONTAINER_NAME:-}" ]; then
+            container_args+=(--container-name "$PORTAL_CONTAINER_NAME")
+          fi
+          az containerapp update \
+            --name "$PORTAL_APP_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --image "$PORTAL_IMAGE" \
+            "${container_args[@]}" \
+            --output none
+
+      - name: Wait for pc-portal revision and smoke test /login
+        run: |
+          set -euo pipefail
+          bash scripts/aca-verify-revision.sh \
+            --app "$PORTAL_APP_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --image "$PORTAL_IMAGE" \
+            --label Portal \
+            --path /login \
+            --url "${PORTAL_BASE_URL:-}"
+
+      - name: Deployment summary
+        if: success()
+        run: |
+          set -euo pipefail
+          {
+            echo "## Despliegue completado"
+            echo ""
+            echo "- Commit: \`$GITHUB_SHA\`"
+            echo "- Tag: \`$SHORT_SHA\`"
+            echo "- API: \`$API_IMAGE\`"
+            echo "- Portal: \`$PORTAL_IMAGE\`"
+            echo "- Migraciones: \`tools/sqlserver-migrate-current.sql\` aplicado antes de actualizar la API."
+            echo ""
+            echo "### Rollback de imágenes"
+            echo '```bash'
+            echo "az containerapp update --name \"$API_APP_NAME\" --resource-group \"$AZURE_RESOURCE_GROUP\" --image \"$API_PREVIOUS_IMAGE\""
+            echo "az containerapp update --name \"$PORTAL_APP_NAME\" --resource-group \"$AZURE_RESOURCE_GROUP\" --image \"$PORTAL_PREVIOUS_IMAGE\""
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Azure logout
+        if: always()
+        run: az logout || true
