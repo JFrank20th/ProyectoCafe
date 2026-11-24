@@ -133,8 +133,25 @@ derecho de `X-Forwarded-For`). No expongas `pc-api` directamente sin proxy: cons
 el riesgo de spoofing en [`DOCS/ENV.md`](../../DOCS/ENV.md).
 
 En `Production` no se permite `Auth:Users` y la API **no aplica migraciones**:
-la base debe existir con el esquema vigente. Las migraciones automáticas solo
-ocurren en `Development`.
+las migraciones automáticas solo ocurren en `Development`. Antes de desplegar,
+aplica el esquema vigente contra Azure SQL con el script idempotente:
+
+```powershell
+Set-Location -Path "c:\ProyectoCafe"
+$env:Database__ConnectionString = "<cadena de Azure SQL>"
+pwsh -File .\scripts\db-migrate.ps1
+```
+
+`tools/sqlserver-migrate-current.sql` se genera con
+`dotnet ef migrations script --idempotent` y puede aplicarse dos veces sin
+error. Los detalles para regenerarlo están en
+[`tools/README.md`](../../tools/README.md) y el procedimiento de despliegue en
+[`DOCS/ENV.md`](../../DOCS/ENV.md).
+
+El bootstrap de seguridad reintenta la siembra de roles y permisos si dos
+instancias chocan con un índice único. Aun así, configura `maxReplicas=1` en
+`pc-api` como precaución durante el primer despliegue o una actualización de
+esquema; el rate limiting de login también es en memoria y por instancia.
 
 ### Fail-fast al arrancar
 

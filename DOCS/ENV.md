@@ -166,7 +166,70 @@ compatibles con los reintentos. Un error no transitorio (por ejemplo, una valida
 de negocio o una restricción única) no se reintenta.
 
 - En desarrollo, la conexión se resuelve desde `Database__ConnectionString` (Azure SQL) o `dotnet user-secrets`; las pruebas siguen usando LocalDB y no dependen de Azure.
-- La estructura vigente se crea con `tools/sqlserver-create-current.sql`; el script crea la base desde cero y se detiene si ya existe para evitar mezclar esquemas heredados.
+- El esquema vigente se aplica con `tools/sqlserver-migrate-current.sql` mediante
+  `scripts/db-migrate.ps1`. El script se genera con EF Core, es idempotente y
+  sustituye al obsoleto `tools/sqlserver-create-current.sql`.
+
+### Migrar el esquema antes de desplegar
+
+En `Production` la API **no** aplica migraciones (`MigrateAsync` solo se ejecuta
+en Development). El esquema debe estar al día antes de desplegar una nueva
+versión de `pc-api`:
+
+1. Genera el script oficial si cambió alguna migración (ya está versionado en
+   `tools/sqlserver-migrate-current.sql`):
+
+   ```powershell
+   Set-Location -Path "c:\ProyectoCafe\server\api"
+   dotnet ef migrations script --idempotent `
+     --project ProyectoCafe.Infrastructure `
+     --startup-project ProyectoCafe.API `
+     --output ..\..\tools\sqlserver-migrate-current.sql
+   ```
+
+2. Define la cadena en la variable de entorno de la sesión. No la escribas en
+   archivos versionados ni la pases como argumento de línea de comandos:
+
+   ```powershell
+   $env:Database__ConnectionString = "<cadena de Azure SQL>"
+   ```
+
+3. Aplica el script contra la base existente:
+
+   ```powershell
+   pwsh -File .\scripts\db-migrate.ps1
+   ```
+
+   El script crea/actualiza las tablas y los índices, y registra cada migración
+   en `dbo.__EFMigrationsHistory`. Es idempotente: ejecutarlo dos veces no
+   duplica objetos ni historial. En desarrollo, para una base LocalDB que aún
+   no existe, añade `-CreateDatabaseIfMissing`.
+
+4. Verifica el resultado y solo entonces despliega la nueva revisión de
+   `pc-api`. Si el script falla, el despliegue debe detenerse.
+
+Códigos de salida de `db-migrate.ps1`: `0` correcto, `2` cadena ausente o
+inválida, `3` script no encontrado, `4` proveedor SQL no disponible, `5` error
+SQL y `6` error inesperado. La cadena no se imprime en ningún caso.
+
+> `db-migrate.ps1` usa autenticación SQL o integrada de Windows. Si tu cadena
+> usa Microsoft Entra ID, aplica el mismo script con
+> `sqlcmd -S <servidor> -d <base> --authentication-method <método> -b -i tools/sqlserver-migrate-current.sql`.
+
+### Bootstrap de seguridad y réplicas
+
+Al arrancar, la API asegura los roles base (`Admin`, `User`) y los permisos del
+rol `Admin`. Esas siembras son idempotentes y toleran concurrencia: si otra
+instancia inserta el mismo rol o permiso entre la lectura y la escritura, se
+captura el error de índice único de SQL Server (`2601`/`2627`), se descarta el
+estado local y se vuelve a leer (hasta tres intentos).
+
+Como precaución adicional durante el primer despliegue o una actualización de
+esquema, configura `pc-api` con `maxReplicas=1` en Azure Container Apps. Varias
+réplicas no corrompen el bootstrap, pero el rate limiting de login es en memoria
+y está pensado por instancia; hasta migrarlo a un almacén distribuido, una sola
+réplica mantiene el comportamiento esperado. Puedes aumentarlas después de
+validar el arranque.
 
 ### Rate limiting de login
 

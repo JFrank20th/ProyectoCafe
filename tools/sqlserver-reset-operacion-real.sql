@@ -1,5 +1,12 @@
 /*
-  Reinicio de ProyectoCafe (alcance actual: Administración e Inventario de café terminado).
+  OBSOLETO: no usar para despliegues nuevos.
+
+  El baseline de este script solo cubre InitialAdministration y
+  AddInventarioCafeTerminado; no incluye Ventas ni los catálogos de lote.
+  Se conserva solo como referencia histórica. Para alinear el esquema usa
+  tools/sqlserver-migrate-current.sql y scripts/db-migrate.ps1.
+
+  Reinicio de ProyectoCafe (alcance histórico: Administración e Inventario de café terminado).
 
   Preserva:
   - Seguridad.Usuarios

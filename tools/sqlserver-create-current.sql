@@ -1,7 +1,15 @@
 /*
-  Creacion de la base de datos vigente de ProyectoCafe.
+  OBSOLETO: no usar para despliegues nuevos.
 
-  Alcance actual del proyecto:
+  Este script quedó desactualizado (no incluye Ventas, VariedadesCafe,
+  TiposTuesteCafe ni TiposProcesoCafe). Se conserva solo como referencia
+  histórica. El esquema vigente se aplica con:
+    - tools/sqlserver-migrate-current.sql (generado por EF Core)
+    - scripts/db-migrate.ps1 (aplicación desde la cadena de conexión)
+
+  Creacion de la base de datos original de ProyectoCafe.
+
+  Alcance del script histórico:
   - Administracion (Usuarios, Roles, UsuariosRoles, RolesPermisos)
   - Inventario de cafe terminado (PresentacionesCafe, TiposCafe,
     LotesCafeTerminado, LotesCafeExistencias, MovimientosLoteCafe)

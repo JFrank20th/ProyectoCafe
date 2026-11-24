@@ -7,7 +7,9 @@ ProyectoCafe migra la funcionalidad de berry-free-react-admin-template a una arq
 
 > Este repo está en construcción: migración por módulos, evitando copiar la estructura legacy.
 >
-> Alcance funcional actual: **Administración** (usuarios, roles y permisos). El resto de módulos operativos fue retirado. La pantalla **Dashboard** se mantiene vacía, sin funcionalidad.
+> Alcance funcional actual: **Administración** (usuarios, roles y permisos),
+> **Inventario** de café terminado y **Ventas**. La pantalla **Dashboard** se
+> mantiene vacía, sin funcionalidad.
 
 ## Arquitectura del backend
 
@@ -34,13 +36,24 @@ Set-Location -Path "c:\ProyectoCafe\server\api\ProyectoCafe.API"; dotnet run
 > Guía detallada de arranque local, credenciales de Development y solución de
 > errores: [`DOCS/ARRANQUE-LOCAL.md`](DOCS/ARRANQUE-LOCAL.md).
 
-# Base de datos (SQL Server)
-# Crea la base ProyectoCafe.Dev con el esquema vigente (Administración).
-sqlcmd -S localhost -E -i "c:\ProyectoCafe\tools\sqlserver-create-current.sql" -b
+# Base de datos (SQL Server / Azure SQL)
 
-# Si la base ya existe, el script se detiene. Para recrearla de forma explícita:
-# 1. Respalda la base actual.
-# 2. Cambia @RecreateExisting a 1 dentro del script y vuelve a ejecutarlo.
+El esquema vigente se aplica con el script idempotente generado por EF Core
+(`tools/sqlserver-migrate-current.sql`). El antiguo
+`tools/sqlserver-create-current.sql` está **obsoleto**: no incluye Ventas ni los
+catálogos de lote.
+
+```powershell
+# Cadena de conexión solo en el entorno; nunca en el repositorio.
+$env:Database__ConnectionString = "Server=(localdb)\MSSQLLocalDB;Database=ProyectoCafe.Dev;Trusted_Connection=True;TrustServerCertificate=True"
+
+# Aplica el esquema. Es idempotente: repetirlo no duplica tablas ni migraciones.
+pwsh -File .\scripts\db-migrate.ps1 -CreateDatabaseIfMissing
+```
+
+Antes de desplegar la API a Azure SQL, ejecuta `scripts/db-migrate.ps1` contra
+la base existente (sin `-CreateDatabaseIfMissing`). En `Production` la API no
+aplica migraciones. Procedimiento completo: [`DOCS/ENV.md`](DOCS/ENV.md).
 
 # Validación local
 

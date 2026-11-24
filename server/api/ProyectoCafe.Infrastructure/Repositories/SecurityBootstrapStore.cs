@@ -1,3 +1,4 @@
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using ProyectoCafe.Application.Abstractions.Persistence;
 using ProyectoCafe.Application.Security;
@@ -9,9 +10,13 @@ namespace ProyectoCafe.Infrastructure.Repositories;
 /// <summary>
 /// Persistencia del arranque de seguridad. La capa API decide qué sembrar y en
 /// qué entornos; esta clase concentra las consultas y escrituras en la base.
+/// Las operaciones de siembra son idempotentes y toleran que otra instancia
+/// inserte el mismo rol, permiso o usuario al mismo tiempo.
 /// </summary>
 public sealed class SecurityBootstrapStore(ProyectoCafeDbContext db) : ISecurityBootstrapStore
 {
+    private const int MaxBootstrapAttempts = 3;
+
     private readonly ProyectoCafeDbContext _db = db;
 
     public Task MigrateAsync(CancellationToken ct) => _db.Database.MigrateAsync(ct);
@@ -35,6 +40,39 @@ public sealed class SecurityBootstrapStore(ProyectoCafeDbContext db) : ISecurity
         IReadOnlyCollection<string> roleNames,
         CancellationToken ct)
     {
+        await ExecuteWithUniqueRetryAsync(
+            () => EnsureRolesOnceAsync(roleNames, ct),
+            ct);
+    }
+
+    public async Task EnsureUsersAsync(
+        IReadOnlyCollection<SecurityBootstrapUser> users,
+        CancellationToken ct)
+    {
+        if (users.Count == 0)
+        {
+            return;
+        }
+
+        await ExecuteWithUniqueRetryAsync(
+            () => EnsureUsersOnceAsync(users, ct),
+            ct);
+    }
+
+    public async Task EnsureRolePermissionsAsync(
+        string roleName,
+        IReadOnlyCollection<SecurityPermission> permissions,
+        CancellationToken ct)
+    {
+        await ExecuteWithUniqueRetryAsync(
+            () => EnsureRolePermissionsOnceAsync(roleName, permissions, ct),
+            ct);
+    }
+
+    private async Task EnsureRolesOnceAsync(
+        IReadOnlyCollection<string> roleNames,
+        CancellationToken ct)
+    {
         var existing = await _db.Roles
             .Select(r => r.Nombre)
             .ToListAsync(ct);
@@ -50,18 +88,16 @@ public sealed class SecurityBootstrapStore(ProyectoCafeDbContext db) : ISecurity
             existing.Add(name);
         }
 
-        await _db.SaveChangesAsync(ct);
+        if (_db.ChangeTracker.HasChanges())
+        {
+            await _db.SaveChangesAsync(ct);
+        }
     }
 
-    public async Task EnsureUsersAsync(
+    private async Task EnsureUsersOnceAsync(
         IReadOnlyCollection<SecurityBootstrapUser> users,
         CancellationToken ct)
     {
-        if (users.Count == 0)
-        {
-            return;
-        }
-
         var rolesByName = await _db.Roles
             .Where(r => r.Estado == RolEstado.Activo)
             .ToDictionaryAsync(r => r.Nombre, r => r, StringComparer.OrdinalIgnoreCase, ct);
@@ -122,17 +158,22 @@ public sealed class SecurityBootstrapStore(ProyectoCafeDbContext db) : ISecurity
                 .Select(ur => ur.RolId)
                 .ToListAsync(ct);
 
+            var added = 0;
             foreach (var roleId in roleIds)
             {
                 if (already.Contains(roleId)) continue;
                 _db.UsuariosRoles.Add(new UsuarioRol { UsuarioId = existing.UsuarioId, RolId = roleId });
+                added++;
             }
 
-            await _db.SaveChangesAsync(ct);
+            if (added > 0)
+            {
+                await _db.SaveChangesAsync(ct);
+            }
         }
     }
 
-    public async Task EnsureRolePermissionsAsync(
+    private async Task EnsureRolePermissionsOnceAsync(
         string roleName,
         IReadOnlyCollection<SecurityPermission> permissions,
         CancellationToken ct)
@@ -165,6 +206,37 @@ public sealed class SecurityBootstrapStore(ProyectoCafeDbContext db) : ISecurity
             });
         }
 
-        await _db.SaveChangesAsync(ct);
+        if (_db.ChangeTracker.HasChanges())
+        {
+            await _db.SaveChangesAsync(ct);
+        }
     }
+
+    /// <summary>
+    /// Ejecuta una siembra idempotente. Si otra instancia insertó el mismo rol,
+    /// permiso o usuario entre la lectura y la escritura, SQL Server devuelve un
+    /// error de índice único; se descarta el estado local y se vuelve a leer.
+    /// </summary>
+    private async Task ExecuteWithUniqueRetryAsync(
+        Func<Task> operation,
+        CancellationToken ct)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                await operation();
+                return;
+            }
+            catch (DbUpdateException ex)
+                when (attempt < MaxBootstrapAttempts && IsUniqueConstraintViolation(ex))
+            {
+                ct.ThrowIfCancellationRequested();
+                _db.ChangeTracker.Clear();
+            }
+        }
+    }
+
+    private static bool IsUniqueConstraintViolation(DbUpdateException exception) =>
+        exception.InnerException is SqlException { Number: 2601 or 2627 };
 }

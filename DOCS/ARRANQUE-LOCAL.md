@@ -28,12 +28,22 @@ y tener al menos 8 caracteres distintos. Nunca la pongas en `appsettings*.json`.
 
 ## 3. Base de datos
 
+El esquema se aplica con el script idempotente generado por EF Core. La cadena
+va en una variable de entorno, nunca en el repositorio:
+
 ```powershell
-sqlcmd -S localhost -E -i "c:\ProyectoCafe\tools\sqlserver-create-current.sql" -b
+$env:Database__ConnectionString = "Server=(localdb)\MSSQLLocalDB;Database=ProyectoCafe.Dev;Trusted_Connection=True;TrustServerCertificate=True"
+
+# Crea la base si falta y aplica el esquema vigente.
+pwsh -File .\scripts\db-migrate.ps1 -CreateDatabaseIfMissing
 ```
 
-Crea `ProyectoCafe.Dev`. Si ya existe, el script se detiene. En Development las
-migraciones de EF Core se aplican solas al iniciar la API.
+Puedes ejecutar `scripts/db-migrate.ps1` de nuevo sin
+`-CreateDatabaseIfMissing`: es idempotente y no duplica tablas, índices ni
+migraciones. En Development la API también aplica migraciones al iniciar, pero
+este script es el procedimiento oficial y el mismo que debes usar antes de
+desplegar a Azure SQL. El antiguo `tools/sqlserver-create-current.sql` está
+obsoleto.
 
 ## 4. Levantar API y Portal
 
@@ -105,7 +115,7 @@ Ubicación: `%APPDATA%\Microsoft\UserSecrets\c853932b-aecf-4394-b660-490e286f2ea
 
 - [ ] .NET 10 instalado
 - [ ] `Auth:Jwt:SigningKey` configurada
-- [ ] Base `ProyectoCafe.Dev` creada
+- [ ] Base `ProyectoCafe.Dev` creada y esquema aplicado con `scripts/db-migrate.ps1`
 - [ ] API en `:5000` y Portal en `:3010`
 - [ ] Login con `admin@local` funciona
 
