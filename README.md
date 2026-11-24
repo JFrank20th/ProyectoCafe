@@ -75,6 +75,24 @@ npm test
 npm run build
 ```
 
+# Las dos imágenes juntas (Docker Compose)
+
+`compose.yaml` levanta `pc-api` y `pc-portal` contra Azure SQL, con red interna,
+healthchecks y variables tomadas de un `.env` local (gitignored):
+
+```powershell
+Copy-Item .env.example .env   # completa la cadena y la clave JWT
+docker compose up --build
+```
+
+- Portal: <http://localhost:3010>
+- API: <http://localhost:5000/health>
+
+El navegador usa `PROYECTOCAFE_API_URL` y el servidor del Portal usa
+`PROYECTOCAFE_API_URL_INTERNAL` (`http://api:8080`). Guía completa, firewall de
+Azure SQL y login:
+[`DOCS/ARRANQUE-LOCAL.md`](DOCS/ARRANQUE-LOCAL.md#5-levantar-api-y-portal-juntos-con-docker-compose-azure-sql).
+
 # Integración continua
 
 `.github/workflows/ci.yml` ejecuta las validaciones del backend y del frontend en cada

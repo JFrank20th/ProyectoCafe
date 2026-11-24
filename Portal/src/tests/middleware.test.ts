@@ -7,6 +7,33 @@ import { middleware } from '@/middleware';
 
 const originalFetch = globalThis.fetch;
 
+const API_URL_ENV_KEYS = [
+  'PROYECTOCAFE_API_URL_INTERNAL',
+  'PROYECTOCAFE_API_URL',
+] as const;
+
+type ApiUrlEnvKey = (typeof API_URL_ENV_KEYS)[number];
+
+function snapshotApiUrlEnv(): Partial<Record<ApiUrlEnvKey, string>> {
+  const snapshot: Partial<Record<ApiUrlEnvKey, string>> = {};
+
+  for (const key of API_URL_ENV_KEYS) {
+    const value = process.env[key];
+    if (value !== undefined) snapshot[key] = value;
+    delete process.env[key];
+  }
+
+  return snapshot;
+}
+
+function restoreApiUrlEnv(snapshot: Partial<Record<ApiUrlEnvKey, string>>): void {
+  for (const key of API_URL_ENV_KEYS) {
+    const value = snapshot[key];
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  }
+}
+
 type SessionBody = {
   email?: string;
   name?: string;
@@ -129,6 +156,31 @@ test('Portal API routes accept a valid session without cookie redirects', async 
 
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('x-middleware-next'), '1');
+});
+
+test('middleware validates the session against the internal API URL', async () => {
+  const snapshot = snapshotApiUrlEnv();
+
+  try {
+    process.env['PROYECTOCAFE_API_URL'] = 'http://localhost:5000';
+    process.env['PROYECTOCAFE_API_URL_INTERNAL'] = 'http://api:8080';
+
+    let requestedUrl = '';
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      requestedUrl = String(input);
+      return new Response(
+        JSON.stringify({ email: 'admin@local', name: 'Admin', roles: [], permissions: [] }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }) as typeof fetch;
+
+    const response = await middleware(request('/dashboard', 'pc_at=valid-token'));
+
+    assert.equal(response.status, 200);
+    assert.equal(requestedUrl, 'http://api:8080/api/v1/auth/me');
+  } finally {
+    restoreApiUrlEnv(snapshot);
+  }
 });
 
 test('Portal API routes clear invalid session cookies', async () => {

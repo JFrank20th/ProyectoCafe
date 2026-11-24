@@ -83,15 +83,15 @@ EXPOSE 3000
 # Variables de runtime — DEBEN pasarse al contenedor (Azure Container Apps,
 # docker-compose, etc.). Ver .env.example para la lista completa.
 #
-# PROYECTOCAFE_API_URL (o NEXT_PUBLIC_PROYECTOCAFE_API_URL en local) debe ser
-# alcanzable por DOS consumidores distintos:
-#   1. El navegador del usuario: app/layout.tsx la inyecta en
-#      window.__RUNTIME_ENV__ y el cliente llama directamente a la API.
-#   2. El servidor del Portal: middleware y Server Components validan la
-#      sesión contra /api/v1/auth/me usando esa misma URL.
-# Por eso no puede ser un host interno de Docker (p. ej. http://api:8080)
-# si el navegador no resuelve ese nombre: usa una URL pública, o configura
-# DNS/red de forma que ambos la alcancen.
+# PROYECTOCAFE_API_URL es la URL PUBLICA que usa el navegador:
+# app/layout.tsx la inyecta en window.__RUNTIME_ENV__ y el cliente llama
+# directamente a la API.
+#
+# PROYECTOCAFE_API_URL_INTERNAL es opcional y SOLO se lee en el servidor del
+# Portal (middleware, Server Components y Route Handlers). Permite que el
+# contenedor use un host interno de Docker (p. ej. http://api:8080) mientras el
+# navegador sigue usando una URL publica. Si falta, se usa
+# PROYECTOCAFE_API_URL.
 # =============================================================================
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"

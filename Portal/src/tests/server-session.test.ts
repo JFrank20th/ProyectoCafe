@@ -1,7 +1,35 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { fetchSessionFromCookie, type ServerSession } from '@/lib/auth/server-session';
+import { fetchSessionFromCookie, getServerApiBaseUrl, type ServerSession } from '@/lib/auth/server-session';
+
+const API_URL_ENV_KEYS = [
+  'PROYECTOCAFE_API_URL_INTERNAL',
+  'PROYECTOCAFE_API_URL',
+  'NEXT_PUBLIC_PROYECTOCAFE_API_URL',
+] as const;
+
+type ApiUrlEnvKey = (typeof API_URL_ENV_KEYS)[number];
+
+function snapshotApiUrlEnv(): Partial<Record<ApiUrlEnvKey, string>> {
+  const snapshot: Partial<Record<ApiUrlEnvKey, string>> = {};
+
+  for (const key of API_URL_ENV_KEYS) {
+    const value = process.env[key];
+    if (value !== undefined) snapshot[key] = value;
+    delete process.env[key];
+  }
+
+  return snapshot;
+}
+
+function restoreApiUrlEnv(snapshot: Partial<Record<ApiUrlEnvKey, string>>): void {
+  for (const key of API_URL_ENV_KEYS) {
+    const value = snapshot[key];
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  }
+}
 
 type FetchCall = {
   url: string;
@@ -25,6 +53,57 @@ function fakeFetch(response: Response | (() => Promise<Response>)) {
 
   return { calls, fetchImpl };
 }
+
+test('getServerApiBaseUrl prefers the internal URL over the public one', () => {
+  const snapshot = snapshotApiUrlEnv();
+
+  try {
+    process.env['PROYECTOCAFE_API_URL'] = 'http://localhost:5000';
+    assert.equal(getServerApiBaseUrl(), 'http://localhost:5000');
+
+    process.env['PROYECTOCAFE_API_URL_INTERNAL'] = 'http://api:8080';
+    assert.equal(getServerApiBaseUrl(), 'http://api:8080');
+  } finally {
+    restoreApiUrlEnv(snapshot);
+  }
+});
+
+test('getServerApiBaseUrl keeps the public fallback chain when the internal URL is absent', () => {
+  const snapshot = snapshotApiUrlEnv();
+
+  try {
+    process.env['NEXT_PUBLIC_PROYECTOCAFE_API_URL'] = 'https://public.example';
+    assert.equal(getServerApiBaseUrl(), 'https://public.example');
+
+    process.env['PROYECTOCAFE_API_URL'] = 'https://runtime.example';
+    assert.equal(getServerApiBaseUrl(), 'https://runtime.example');
+
+    delete process.env['PROYECTOCAFE_API_URL'];
+    delete process.env['NEXT_PUBLIC_PROYECTOCAFE_API_URL'];
+    assert.equal(getServerApiBaseUrl(), 'http://localhost:5000');
+  } finally {
+    restoreApiUrlEnv(snapshot);
+  }
+});
+
+test('fetchSessionFromCookie validates the session against the internal URL', async () => {
+  const snapshot = snapshotApiUrlEnv();
+
+  try {
+    process.env['PROYECTOCAFE_API_URL'] = 'http://localhost:5000';
+    process.env['PROYECTOCAFE_API_URL_INTERNAL'] = 'http://api:8080/';
+
+    const { calls, fetchImpl } = fakeFetch(
+      jsonResponse({ email: 'admin@local', roles: [], permissions: [] }),
+    );
+
+    await fetchSessionFromCookie('token', { fetchImpl });
+
+    assert.equal(calls[0].url, 'http://api:8080/api/v1/auth/me');
+  } finally {
+    restoreApiUrlEnv(snapshot);
+  }
+});
 
 test('fetchSessionFromCookie validates the session against /auth/me', async () => {
   const { calls, fetchImpl } = fakeFetch(

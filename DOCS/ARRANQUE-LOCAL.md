@@ -58,14 +58,130 @@ Set-Location -Path "c:\ProyectoCafe\Portal"; npm ci; npm run dev # para intalar 
 Set-Location -Path "c:\ProyectoCafe\Portal"; npm run dev
 ```
 
-## 5. Entrar
+## 5. Levantar API y Portal juntos con Docker Compose (Azure SQL)
+
+Esta ruta valida las dos imágenes a la vez. La API se ejecuta con
+`ASPNETCORE_ENVIRONMENT=Production` contra Azure SQL, sin sembrar usuarios de
+prueba. Requiere Docker Desktop en marcha y una base Azure SQL ya existente.
+
+### 5.1 Permitir la IP del desarrollador en Azure SQL
+
+El contenedor sale a Internet con la IP pública de tu equipo. Añádela al
+firewall del servidor (no de la base):
+
+- Azure Portal → servidor SQL → **Networking** → **Add your client IPv4
+  address** (o **Add current client IP address**).
+- O con Azure CLI:
+
+```powershell
+$publicIp = (Invoke-RestMethod https://api.ipify.org)
+az sql server firewall-rule create `
+  --resource-group <grupo> `
+  --server <servidor> `
+  --name DevLocal `
+  --start-ip-address $publicIp `
+  --end-ip-address $publicIp
+```
+
+Comprueba la conectividad antes de levantar Compose:
+
+```powershell
+sqlcmd -S "<servidor>.database.windows.net" -d "<base>" -U "<usuario>" -P "<password>" -Q "SELECT 1"
+```
+
+Si cambias de red (oficina, VPN, casa) la IP cambia: repite este paso.
+
+### 5.2 Crear `.env` (no se commitea)
+
+```powershell
+Set-Location -Path "c:\ProyectoCafe"
+Copy-Item .env.example .env
+notepad .env
+```
+
+Completa como mínimo:
+
+- `DATABASE_CONNECTION_STRING`: cadena de Azure SQL, entre comillas simples.
+- `JWT_SIGNING_KEY`: clave aleatoria de al menos 32 bytes:
+
+```powershell
+[Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
+```
+
+`.env` está en `.gitignore`. No lo commitees ni lo copies a la imagen.
+`compose.yaml` solo contiene referencias `${...}` y valores no sensibles.
+
+### 5.3 Aplicar el esquema
+
+En `Production` la API **no** aplica migraciones. Si la base ya está al día,
+puedes saltar este paso; si no:
+
+```powershell
+$env:Database__ConnectionString = '<la misma cadena de .env>'
+pwsh -File .\scripts\db-migrate.ps1
+Remove-Item Env:Database__ConnectionString
+```
+
+El script es idempotente.
+
+### 5.4 Levantar las dos imágenes
+
+```powershell
+Set-Location -Path "c:\ProyectoCafe"
+docker compose up --build
+```
+
+| Servicio | URL | Comprobación |
+| --- | --- | --- |
+| Portal | <http://localhost:3010> | `/login` responde `200` |
+| API | <http://localhost:5000/health> | `{"status":"ok"}` |
+| API readiness | <http://localhost:5000/health/ready> | `200` si Azure SQL responde |
+
+- El navegador usa `PROYECTOCAFE_API_URL` (`http://localhost:5000`). Es la URL
+  que `layout.tsx` publica en `window.__RUNTIME_ENV__`.
+- El servidor del Portal (middleware y Server Components) usa
+  `PROYECTOCAFE_API_URL_INTERNAL` (`http://api:8080`), un host que solo existe
+  en la red privada de Compose.
+- La API solo acepta el origen exacto `http://localhost:3010` (`Cors`).
+- Para ver registros: `docker compose logs -f api` o `docker compose logs -f portal`.
+- Para parar: `docker compose down`.
+
+### 5.5 Iniciar sesión
+
+1. Abre <http://localhost:3010/login>.
+2. Usa un usuario **activo que ya exista en Azure SQL** y su contraseña.
+
+La imagen corre en `Production`: no crea `admin@local` ni `user@local`, y
+aborta el arranque si detecta esas cuentas con contraseñas predeterminadas. Si
+no tienes un administrador activo, regístralo en `/register` y actívalo desde
+la base de datos o con otro administrador existente; el registro deja la cuenta
+en `PendienteActivacion`.
+
+Tras entrar, el Portal renueva la sesión con `POST /api/v1/auth/refresh`
+(incluyendo `X-CSRF`) y valida las rutas protegidas contra
+`GET /api/v1/auth/me`. El middleware usa la URL interna, por lo que Login,
+refresh y las pantallas protegidas funcionan sin que el navegador conozca
+`api:8080`.
+
+Errores habituales en esta ruta:
+
+| Síntoma | Causa | Solución |
+| --- | --- | --- |
+| `api` reinicia y el log dice error de bootstrap/SQL | Firewall o cadena incorrecta | Revisa 5.1 y 5.2 |
+| Login responde `401`/`403` | Cuenta inexistente, inactiva o contraseña incorrecta | Usa una cuenta activa de Azure SQL |
+| El login “funciona” pero vuelve al login | Cookie `Secure` sobre HTTP | Mantén `Auth__Cookie__Secure=false` en Compose local |
+| Error CORS en el navegador | Origen distinto de `http://localhost:3010` | Ajusta `PORTAL_PUBLIC_ORIGIN` y `PORTAL_PORT` |
+| `DATABASE_CONNECTION_STRING` requerida | `.env` ausente o vacío | Repite 5.2 |
+
+## 6. Entrar
 
 | Email | Contraseña | Rol |
 | --- | --- | --- |
 | `admin@local` | `Admin.Dev#2026!Cafe` | Admin |
 | `user@local` | `User.Dev#2026!Cafe` | User |
 
-Solo existen en Development.
+Solo existen en Development. No se crean en la ruta Docker Compose (paso 5),
+que corre en `Production` contra Azure SQL.
 
 ---
 
@@ -118,5 +234,9 @@ Ubicación: `%APPDATA%\Microsoft\UserSecrets\c853932b-aecf-4394-b660-490e286f2ea
 - [ ] Base `ProyectoCafe.Dev` creada y esquema aplicado con `scripts/db-migrate.ps1`
 - [ ] API en `:5000` y Portal en `:3010`
 - [ ] Login con `admin@local` funciona
+- [ ] Docker Desktop instalado y `.env` creado (ruta Compose)
+- [ ] IP del desarrollador permitida en el firewall de Azure SQL
+- [ ] `docker compose up --build` levanta API y Portal contra Azure SQL
+- [ ] Login con una cuenta activa de Azure SQL funciona en `http://localhost:3010`
 
 Más detalle: [`DOCS/ENV.md`](ENV.md) · [`README.md`](../README.md)

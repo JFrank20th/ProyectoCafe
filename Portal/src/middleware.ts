@@ -2,7 +2,11 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 import { createPermissionSet } from '@/lib/auth/permissions';
 import { getRouteAccess, hasRoutePermission } from '@/lib/auth/route-access';
-import { AUTH_COOKIE_NAME, fetchSessionFromCookie } from '@/lib/auth/server-session';
+import {
+  AUTH_COOKIE_NAME,
+  fetchSessionFromCookie,
+  getServerApiBaseUrl,
+} from '@/lib/auth/server-session';
 import { buildLoginRedirect, FORBIDDEN_ROUTE, isApiRoute } from '@/lib/routes';
 
 function loginRedirect(request: NextRequest, clearCookie: boolean): NextResponse {
@@ -75,7 +79,9 @@ export async function middleware(request: NextRequest) {
       : loginRedirect(request, false);
   }
 
-  const session = await fetchSessionFromCookie(token);
+  // El middleware se ejecuta en el servidor: puede usar la URL interna de la
+  // red de Docker (http://api:8080) sin exponerla al navegador.
+  const session = await fetchSessionFromCookie(token, { apiUrl: getServerApiBaseUrl() });
 
   if (!session) {
     return isApi

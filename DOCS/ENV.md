@@ -249,9 +249,32 @@ Al superarse un límite se responde `429` con un mensaje genérico y cabecera `R
 ## Portal
 
 - `NEXT_PUBLIC_PROYECTOCAFE_API_URL` - base URL del backend (ej: `http://localhost:5000`). Se usa en el cliente y como valor por defecto del servidor.
-- `PROYECTOCAFE_API_URL` - base URL del backend usada en runtime por el servidor (middleware, Server Components y Route Handlers) y publicada al cliente en `window.__RUNTIME_ENV__`. Tiene prioridad sobre la variable pública. Úsala en Docker/QA/PROD para no recompilar la imagen al cambiar el destino. Debe ser alcanzable tanto desde el navegador como desde el servidor del Portal (en Docker no uses un host interno inaccesible para el navegador).
+- `PROYECTOCAFE_API_URL` - **URL pública** del backend. Se publica al cliente en `window.__RUNTIME_ENV__` y es la que usa el navegador para llamar a la API. Tiene prioridad sobre la variable pública. En Docker/QA/PROD permite cambiar el destino sin recompilar la imagen.
+- `PROYECTOCAFE_API_URL_INTERNAL` - **solo servidor**. URL que usan el middleware, los Server Components y los Route Handlers del Portal para validar la sesión. Si no se define, se usa `PROYECTOCAFE_API_URL`. No se inyecta en `window.__RUNTIME_ENV__`.
 - `PROYECTOCAFE_AUTH_COOKIE_NAME` - nombre de la cookie HttpOnly de sesión emitida por la API (`pc_at` por defecto).
 - `NEXT_PUBLIC_APP_NAME` - nombre a mostrar.
+
+### URL dual en Docker Compose
+
+En una red de Compose, el navegador y el servidor del Portal no resuelven los
+mismos nombres. Configura las dos variables con el mismo contenedor:
+
+```yaml
+environment:
+  PROYECTOCAFE_API_URL: http://localhost:5000          # navegador
+  PROYECTOCAFE_API_URL_INTERNAL: http://api:8080       # servidor del Portal
+```
+
+- El navegador solo conoce `PROYECTOCAFE_API_URL`; debe ser alcanzable desde el
+  host y coincidir con el origen permitido en `Cors:AllowedOrigins`
+  (`http://localhost:3010` en local).
+- El servidor del Portal usa `http://api:8080`, el nombre del servicio en la red
+  interna. Nunca publiques esta URL al cliente.
+- Si faltan ambas, el servidor cae a `NEXT_PUBLIC_PROYECTOCAFE_API_URL` y, por
+  último, a `http://localhost:5000`.
+
+El archivo `compose.yaml` de la raíz ya aplica este reparto. Ver
+[`DOCS/ARRANQUE-LOCAL.md`](ARRANQUE-LOCAL.md#5-levantar-api-y-portal-juntos-con-docker-compose-azure-sql).
 
 ### Sesión por cookie HttpOnly
 

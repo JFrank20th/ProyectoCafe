@@ -15,8 +15,18 @@ type FetchSessionOptions = {
   fetchImpl?: typeof fetch;
 };
 
-function getApiBaseUrl(): string {
+/**
+ * URL de la API para el servidor del Portal (middleware, Server Components y
+ * Route Handlers).
+ *
+ * `PROYECTOCAFE_API_URL_INTERNAL` solo se lee en el servidor: permite que el
+ * contenedor del Portal use el host interno de la red de Compose
+ * (`http://api:8080`) mientras el navegador sigue usando `PROYECTOCAFE_API_URL`
+ * (`http://localhost:5000`). Si no se define, se usa la URL pública.
+ */
+export function getServerApiBaseUrl(): string {
   return (
+    process.env['PROYECTOCAFE_API_URL_INTERNAL'] ||
     process.env['PROYECTOCAFE_API_URL'] ||
     process.env['NEXT_PUBLIC_PROYECTOCAFE_API_URL'] ||
     'http://localhost:5000'
@@ -67,7 +77,7 @@ export async function fetchSessionFromCookie(
 ): Promise<ServerSession | null> {
   if (!token) return null;
 
-  const apiUrl = options.apiUrl ?? getApiBaseUrl();
+  const apiUrl = options.apiUrl ?? getServerApiBaseUrl();
   const cookieName = options.cookieName ?? AUTH_COOKIE_NAME;
   const fetchImpl = options.fetchImpl ?? fetch;
   const timeoutMs = options.timeoutMs ?? 5000;
