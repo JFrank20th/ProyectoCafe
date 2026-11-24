@@ -3,6 +3,8 @@
 Estructura por capas inspirada en Next-RPS. Cada capa solo depende de las capas
 interiores y la persistencia queda aislada en Infrastructure.
 
+Requiere .NET SDK 10; todos los proyectos apuntan a `net10.0`.
+
 - `ProyectoCafe.Domain` — Entidades y estados del dominio. No depende de ningún
   otro proyecto.
 - `ProyectoCafe.Application` — DTOs, casos de uso y puertos de salida. Contiene

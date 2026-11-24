@@ -4,10 +4,10 @@ Todo en PowerShell, desde cero.
 
 ## 1. Requisitos
 
-.NET SDK 9, Node.js, SQL Server local.
+.NET SDK 10, Node.js, SQL Server local.
 
 ```powershell
-dotnet --version   # 9.x
+dotnet --version   # 10.x
 node -v
 sqlcmd -?
 ```
@@ -103,7 +103,7 @@ Ubicación: `%APPDATA%\Microsoft\UserSecrets\c853932b-aecf-4394-b660-490e286f2ea
 
 ## Checklist
 
-- [ ] .NET 9 instalado
+- [ ] .NET 10 instalado
 - [ ] `Auth:Jwt:SigningKey` configurada
 - [ ] Base `ProyectoCafe.Dev` creada
 - [ ] API en `:5000` y Portal en `:3010`
