@@ -15,3 +15,7 @@
 !.env.example
 
 *.log
+
+# Bicep: salida compilada y parametros locales
+/infra/main.json
+/infra/main.parameters.json

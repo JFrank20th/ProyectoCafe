@@ -1,0 +1,45 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "eastus2"
+    },
+    "namePrefix": {
+      "value": "pc"
+    },
+    "apiImage": {
+      "value": ""
+    },
+    "portalImage": {
+      "value": ""
+    },
+    "imageTag": {
+      "value": "latest"
+    },
+    "portalPublicFqdn": {
+      "value": ""
+    },
+    "apiPublicFqdn": {
+      "value": ""
+    },
+    "acrSku": {
+      "value": "Basic"
+    },
+    "logAnalyticsSku": {
+      "value": "PerGB2018"
+    },
+    "logAnalyticsRetentionInDays": {
+      "value": 30
+    },
+    "keyVaultSku": {
+      "value": "standard"
+    },
+    "cookieSameSite": {
+      "value": "Lax"
+    },
+    "deployApps": {
+      "value": true
+    }
+  }
+}

@@ -95,6 +95,25 @@ El navegador usa `PROYECTOCAFE_API_URL` y el servidor del Portal usa
 Azure SQL y login:
 [`DOCS/ARRANQUE-LOCAL.md`](DOCS/ARRANQUE-LOCAL.md#5-levantar-api-y-portal-juntos-con-docker-compose-azure-sql).
 
+# Infraestructura Azure (Bicep)
+
+[`infra/`](infra/README.md) contiene la plantilla reproducible que crea ACR, Log
+Analytics, el Container Apps Environment, Key Vault, las identidades y las apps
+`pc-api`/`pc-portal` (ingress externo, probes, réplicas, CORS y referencias de
+secretos). No crea Azure SQL: la base ya existe y su conectividad se configura
+aparte.
+
+```powershell
+az bicep build --file infra/main.bicep
+az deployment group what-if `
+  --resource-group "<resource-group>" `
+  --template-file infra/main.bicep `
+  --parameters @infra/main.parameters.example.json
+```
+
+El orden de despliegue (fase base, imágenes, secretos y apps), las salidas para
+el environment de GitHub y el rollback están en [`infra/README.md`](infra/README.md).
+
 # Integración continua y despliegue
 
 `.github/workflows/ci.yml` ejecuta las validaciones del backend y del frontend en cada

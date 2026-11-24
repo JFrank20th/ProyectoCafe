@@ -9,6 +9,26 @@ No hay secretos en el repositorio ni en el workflow. La autenticación con Azure
 usa OIDC federado y la cadena de conexión de Azure SQL se lee de Key Vault en
 tiempo de ejecución.
 
+## Infraestructura como código
+
+[`infra/`](../infra/README.md) contiene la plantilla Bicep que crea ACR, Log
+Analytics, el Container Apps Environment, Key Vault, las identidades y las apps
+`pc-api` y `pc-portal`. La plantilla **no** crea Azure SQL: la base y su
+conectividad se gestionan aparte.
+
+```powershell
+az bicep build --file infra/main.bicep
+az deployment group what-if `
+  --resource-group "<resource-group>" `
+  --template-file infra/main.bicep `
+  --parameters @infra/main.parameters.example.json
+```
+
+El orden completo (fase base sin apps, imágenes, secretos, apps), las salidas
+para el environment de GitHub y el rollback están en
+[`infra/README.md`](../infra/README.md). El resto de este documento describe el
+workflow de despliegue continuo y los recursos que ese workflow espera.
+
 ## Flujo del job
 
 | Paso | Acción |
@@ -37,14 +57,21 @@ construida y no se usa para actualizar las Container Apps.
 
 ### 1. Recursos existentes
 
-Se asume que ya existen:
+Deben existir:
 
 - Un resource group, por ejemplo `rg-proyectocafe-prod`.
-- Azure Container Registry, por ejemplo `acrproyectocafe`.
-- Azure Key Vault, por ejemplo `kv-proyectocafe`.
 - Azure SQL Database existente y su servidor.
-- Un entorno de Azure Container Apps.
-- Las apps `pc-api` y `pc-portal` creadas en ese entorno.
+- Un network path hacia Azure SQL (firewall o private endpoint). La plantilla de
+  `infra/` no crea la base ni reglas de red de SQL.
+
+La plantilla [`infra/`](../infra/README.md) crea, si no existen, ACR, Log
+Analytics, el entorno de Azure Container Apps, Key Vault y las apps `pc-api` y
+`pc-portal` con su configuración de ingress, probes, identidades y secretos
+referenciados. Si prefieres recursos ya creados, conserva los mismos nombres y
+ajusta los parámetros.
+
+Configuración esperada en las apps:
+
 - El Portal con ingress externo y target port `3000`.
 - La API con target port `8080`. El navegador llama directamente a la API, así
   que `PROYECTOCAFE_API_URL` debe ser una URL pública alcanzable y coincidir con
@@ -165,8 +192,10 @@ preconfigura el acceso de red. En ese caso define
 
 ### 5. Managed identity de las Container Apps
 
-Cada app debe poder jalar su imagen de ACR. Habilita identidad asignada por el
-sistema y asigna `AcrPull` en el ACR:
+La plantilla de [`infra/`](../infra/README.md) crea cada app con identidad
+`SystemAssigned` y asigna `AcrPull` en el ACR a `pc-api` y `pc-portal`, y
+`Key Vault Secrets User` solo a `pc-api`. Si las apps se crearon fuera de la
+plantilla, replica la configuración:
 
 ```powershell
 foreach ($App in @("pc-api", "pc-portal")) {
@@ -176,8 +205,12 @@ foreach ($App in @("pc-api", "pc-portal")) {
 }
 ```
 
-La misma managed identity debe tener `Key Vault Secrets User` si las apps leen
-secretos por referencia de Key Vault.
+Limitación importante: con identidad `system-assigned`, el `principalId` no
+existe hasta crear la app. Bicep asigna el rol en un recurso separado de la misma
+plantilla y el nombre del role assignment se deriva del nombre de la app, no del
+`principalId`. El RBAC puede tardar varios minutos en propagarse; la primera
+revisión puede fallar al jalar la imagen o leer Key Vault. Vuelve a desplegar o
+reinicia la revisión cuando el rol esté activo.
 
 ### 6. Secretos de runtime en Key Vault
 
@@ -189,7 +222,13 @@ secretos en runtime mediante referencias de Key Vault. Nombres de ejemplo:
 | `DatabaseConnectionString` | Cadena de Azure SQL (migraciones y `Database__ConnectionString`). |
 | `AuthJwtSigningKey` | Clave HS256 de la API (`Auth__Jwt__SigningKey`). |
 
-Configura las referencias en la Container App (ejemplo; ajusta los nombres):
+La plantilla de `infra/` ya crea la Key Vault con RBAC y configura en `pc-api`
+las referencias de Key Vault con la identidad del sistema; no crea los secretos.
+El usuario o service principal que los carga necesita `Key Vault Secrets Officer`
+sobre el vault. Ver el orden de despliegue en [`infra/README.md`](../infra/README.md).
+
+Configura las referencias en la Container App (ejemplo; ajusta los nombres) si
+la app se creó fuera de la plantilla:
 
 ```powershell
 $KvUri = az keyvault show --name $Kv --resource-group $Rg --query properties.vaultUri -o tsv
@@ -304,6 +343,11 @@ Las migraciones son forward-only. No hagas rollback de la imagen si el esquema
 nuevo es incompatible con la versión anterior: aplica una migración correctiva o
 restaura la base según el procedimiento de Azure SQL.
 
+Para revertir también la infraestructura (ACR, Key Vault, environment, apps,
+RBAC), aplica la versión anterior de `infra/` en modo incremental. No uses
+`--mode Complete` sobre recursos con datos. Procedimiento detallado:
+[`infra/README.md`](../infra/README.md#rollback).
+
 ## Troubleshooting
 
 | Síntoma | Causa probable | Solución |
@@ -324,10 +368,13 @@ restaura la base según el procedimiento de Azure SQL.
 - [ ] Roles del service principal: Reader, Container Apps Contributor, AcrPush,
       Container Registry Tasks Contributor, Key Vault Secrets User, SQL Security
       Manager.
-- [ ] Managed identity de `pc-api` y `pc-portal` con `AcrPull`.
-- [ ] Secreto `DatabaseConnectionString` en Key Vault y referencias de runtime
-      configuradas en `pc-api`.
+- [ ] Managed identity de `pc-api` y `pc-portal` con `AcrPull`; `pc-api` además
+      con `Key Vault Secrets User`.
+- [ ] Secreto `DatabaseConnectionString` y `AuthJwtSigningKey` en Key Vault y
+      referencias de runtime configuradas en `pc-api`.
+- [ ] Conectividad a Azure SQL resuelta (private endpoint o firewall acotado).
 - [ ] Probes y target ports correctos.
+- [ ] `infra/` validado con `az bicep build` y `what-if`.
 - [ ] `CI required` marcado como required status check en la rama principal.
 - [ ] `workflow_dispatch` probado primero sin `deploy` y luego con `deploy=true`
       en un entorno controlado.
