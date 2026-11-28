@@ -10,7 +10,7 @@ const MainContentStyled = styled('main', {
   open: boolean;
   borderRadius: number;
 }>(({ theme, open, borderRadius }) => ({
-  backgroundColor: theme.palette.background.default,
+  backgroundColor: theme.vars?.palette.background.default ?? theme.palette.background.default,
   minWidth: '1%',
   width: '100%',
   minHeight: 'calc(100vh - 88px)',

@@ -87,7 +87,21 @@ export default function Chip(theme: Theme) {
                       backgroundColor: paletteColor.main,
                       borderColor: paletteColor.main
                     }
-                  }
+                  },
+
+                  // En oscuro el texto debe ser claro y el fondo un tinte
+                  // translúcido, no una superficie pastel.
+                  ...theme.applyStyles('dark', {
+                    color: paletteColor.light ?? paletteColor.main,
+                    backgroundColor: withAlpha(paletteColor.main, Math.min(0.36, surfaceOpacity + 0.12)),
+                    border: `1px solid ${withAlpha(paletteColor.main, 0.4)}`,
+
+                    '&.MuiChip-clickable:hover': {
+                      color: paletteColor.contrastText,
+                      backgroundColor: paletteColor.main,
+                      borderColor: paletteColor.main
+                    }
+                  })
                 };
               }
             },
@@ -104,28 +118,44 @@ export default function Chip(theme: Theme) {
               props: { variant: 'outlined', color: 'warning' },
               style: {
                 borderColor: vars.palette.warning.dark,
-                color: vars.palette.warning.dark
+                color: vars.palette.warning.dark,
+                ...theme.applyStyles('dark', {
+                  borderColor: withAlpha(vars.palette.warning.main, 0.6),
+                  color: vars.palette.warning.light
+                })
               }
             },
             {
               props: { variant: 'outlined', color: 'success' },
               style: {
                 borderColor: vars.palette.success.dark,
-                color: vars.palette.success.dark
+                color: vars.palette.success.dark,
+                ...theme.applyStyles('dark', {
+                  borderColor: withAlpha(vars.palette.success.main, 0.6),
+                  color: vars.palette.success.light
+                })
               }
             },
             {
               props: { variant: 'outlined', color: 'info' },
               style: {
                 borderColor: vars.palette.info.dark,
-                color: vars.palette.info.dark
+                color: vars.palette.info.dark,
+                ...theme.applyStyles('dark', {
+                  borderColor: withAlpha(vars.palette.info.main, 0.6),
+                  color: vars.palette.info.light
+                })
               }
             },
             {
               props: { variant: 'outlined', color: 'secondary' },
               style: {
                 borderColor: vars.palette.secondary.dark,
-                color: vars.palette.secondary.dark
+                color: vars.palette.secondary.dark,
+                ...theme.applyStyles('dark', {
+                  borderColor: withAlpha(vars.palette.secondary.main, 0.6),
+                  color: vars.palette.secondary.light
+                })
               }
             }
           ],

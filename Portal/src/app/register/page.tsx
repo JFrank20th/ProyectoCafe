@@ -21,6 +21,7 @@ import { ApiError, apiFetch } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { getRuntimeConfig } from '@/lib/runtime-config';
 import { HOME_ROUTE, LOGIN_ROUTE } from '@/lib/routes';
+import { softAccentSx } from '@/theme/berry/soft-accent';
 
 type RegisterResponse = {
   message: string;
@@ -145,8 +146,7 @@ export default function RegisterPage() {
                       ...theme.typography.commonAvatar,
                       ...theme.typography.largeAvatar,
                       overflow: 'hidden',
-                      color: 'secondary.dark',
-                      bgcolor: 'secondary.light',
+                      ...softAccentSx(theme, 'secondary', false),
                     }}
                     aria-label={t('title')}
                   >

@@ -51,7 +51,9 @@ export function BerryThemeProvider({ children }: { children: ReactNode }) {
         },
         cssVariables: {
           cssVarPrefix: CSS_VAR_PREFIX,
-          colorSchemeSelector: 'data-color-scheme',
+          // Usa las clases `.light` / `.dark` como única fuente de verdad.
+          // Tailwind (`darkMode: 'class'`) y los estilos de MUI cambian juntos.
+          colorSchemeSelector: 'class',
         },
       }) as unknown as ThemeOptions,
     [themeTypography, palette, borderRadius]

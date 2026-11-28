@@ -39,7 +39,6 @@ export function BorderRadius() {
             min={4}
             max={24}
             color="primary"
-            sx={{ '& .MuiSlider-valueLabel': { color: 'primary.light' } }}
           />
         </Box>
         <Typography variant="h6">24px</Typography>

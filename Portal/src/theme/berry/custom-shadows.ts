@@ -1,6 +1,7 @@
 import { withAlpha } from './color-utils';
 
 type CustomShadowsPalette = {
+  mode?: string;
   primary: { main: string };
   secondary: { main: string };
   orange: { main: string };
@@ -33,6 +34,12 @@ function createCustomShadow(palette: CustomShadowsPalette, baseColor: string) {
 }
 
 export function buildCustomShadows(palette: CustomShadowsPalette) {
-  const baseColor = palette.grey?.[900] ?? palette.common?.black ?? '#000';
+  // En oscuro, `grey[900]` es un color de texto claro; usar la superficie
+  // oscura evita sombras con brillo.
+  const baseColor =
+    palette.mode === 'dark'
+      ? palette.common?.black ?? '#000'
+      : palette.grey?.[900] ?? palette.common?.black ?? '#000';
+
   return createCustomShadow(palette, baseColor);
 }

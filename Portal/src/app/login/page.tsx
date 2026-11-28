@@ -21,6 +21,7 @@ import { useAuth } from '@/lib/auth/AuthProvider';
 import { ApiError } from '@/lib/api/client';
 import { getRuntimeConfig } from '@/lib/runtime-config';
 import { HOME_ROUTE, REGISTER_ROUTE, RETURN_URL_PARAM, sanitizeReturnUrl } from '@/lib/routes';
+import { softAccentSx } from '@/theme/berry/soft-accent';
 
 function resolveReturnUrl() {
   if (typeof window === 'undefined') return HOME_ROUTE;
@@ -134,8 +135,7 @@ export default function LoginPage() {
                       ...theme.typography.commonAvatar,
                       ...theme.typography.largeAvatar,
                       overflow: 'hidden',
-                      color: 'secondary.dark',
-                      bgcolor: 'secondary.light',
+                      ...softAccentSx(theme, 'secondary', false),
                     }}
                     aria-label={t('title')}
                   >

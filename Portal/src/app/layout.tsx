@@ -13,6 +13,7 @@ import '@fontsource/roboto/400.css';
 import '@fontsource/roboto/500.css';
 import '@fontsource/roboto/700.css';
 
+import InitColorSchemeScript from '@mui/material/InitColorSchemeScript';
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
 import { AppProviders } from './providers';
 
@@ -48,6 +49,8 @@ export default function RootLayout({
         />
       </head>
       <body>
+        {/* Aplica el esquema de color antes de hidratar para evitar el destello claro/oscuro. */}
+        <InitColorSchemeScript attribute="class" modeStorageKey="theme-mode" />
         <AppRouterCacheProvider options={{ key: 'mui' }}>
           <AppProviders>{children}</AppProviders>
         </AppRouterCacheProvider>

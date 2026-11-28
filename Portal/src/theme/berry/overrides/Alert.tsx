@@ -39,18 +39,31 @@ export default function Alert(theme: Theme) {
       color: textColor,
       backgroundColor: withAlpha(paletteColor.main, 0.12),
       border: `1px solid ${withAlpha(paletteColor.main, 0.16)}`,
-      '& .MuiAlert-icon': { color: textColor }
+      '& .MuiAlert-icon': { color: textColor },
+      ...theme.applyStyles('dark', {
+        color: paletteColor.light ?? paletteColor.main,
+        backgroundColor: withAlpha(paletteColor.main, 0.16),
+        borderColor: withAlpha(paletteColor.main, 0.32),
+        '& .MuiAlert-icon': { color: paletteColor.light ?? paletteColor.main }
+      })
     };
   };
 
   const outlinedVariant = ({ ownerState }: VariantArgs) => {
     const { paletteColor, textColor } = getCommonStyles(ownerState);
+    const darkTextColor = paletteColor.light ?? paletteColor.main;
 
     return {
       color: textColor,
       backgroundColor: withAlpha(paletteColor.main, 0.04),
       borderColor: withAlpha(paletteColor.main, 0.34),
-      '& .MuiAlert-icon': { color: textColor }
+      '& .MuiAlert-icon': { color: textColor },
+      ...theme.applyStyles('dark', {
+        color: darkTextColor,
+        backgroundColor: withAlpha(paletteColor.main, 0.08),
+        borderColor: withAlpha(paletteColor.main, 0.48),
+        '& .MuiAlert-icon': { color: darkTextColor }
+      })
     };
   };
 

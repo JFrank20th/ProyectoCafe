@@ -25,6 +25,7 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import { useTheme } from '@mui/material/styles';
 
 import { useLocale, useTranslations } from '@/hooks/useTranslations';
 import { apiFetch } from '@/lib/api/client';
@@ -36,6 +37,7 @@ import {
 } from '@/lib/inventario/cafe';
 import { type Cliente } from '@/lib/ventas/clientes';
 import { type PrecioVenta } from '@/lib/ventas/precios';
+import { withAlpha } from '@/theme/berry/color-utils';
 
 type LineaForm = {
   id: string;
@@ -82,6 +84,10 @@ export function VentaFormDialog({
   const tf = useTranslations('fields');
   const ts = useTranslations('sales');
   const locale = useLocale();
+  const theme = useTheme();
+
+  const errorPalette = theme.vars?.palette.error ?? theme.palette.error;
+  const successPalette = theme.vars?.palette.success ?? theme.palette.success;
 
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [presentaciones, setPresentaciones] = useState<PresentacionCafe[]>([]);
@@ -568,7 +574,23 @@ export function VentaFormDialog({
                                         <Typography variant="caption" color="text.secondary">Cantidad</Typography>
                                         <Typography variant="caption" fontWeight={600}>{cantidadMostrada}</Typography>
                                       </Box>
-                                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 0.25, px: 1, py: 0.5, borderRadius: 1, bgcolor: excede ? 'error.light' : 'success.light', color: excede ? 'error.contrastText' : 'success.contrastText', minHeight: 44 }}>
+                                      <Box sx={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: 0.25,
+                                        px: 1,
+                                        py: 0.5,
+                                        borderRadius: 1,
+                                        bgcolor: excede ? 'error.light' : 'success.light',
+                                        color: excede ? 'error.dark' : 'success.dark',
+                                        minHeight: 44,
+                                        ...theme.applyStyles('dark', {
+                                          bgcolor: withAlpha(excede ? errorPalette.main : successPalette.main, 0.2),
+                                          color: excede ? errorPalette.light : successPalette.light,
+                                        }),
+                                      }}>
                                         <Typography variant="caption" sx={{ opacity: 0.9 }}>Restantes</Typography>
                                         <Typography variant="caption" fontWeight={700}>{restante}</Typography>
                                       </Box>

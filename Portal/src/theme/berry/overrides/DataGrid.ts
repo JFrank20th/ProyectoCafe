@@ -129,7 +129,27 @@ export default function DataGrid(theme: Theme) {
               padding: '4px 10px',
               fontWeight: 700
             }
-          }
+          },
+
+          ...theme.applyStyles('dark', {
+            '&.MuiDataGrid-cell--withRenderer > div': {
+              ' > .high': {
+                backgroundColor: withAlpha(vars.palette.success.main, 0.22),
+                color: vars.palette.success.light,
+                borderColor: withAlpha(vars.palette.success.main, 0.4)
+              },
+              '& > .medium': {
+                backgroundColor: withAlpha(vars.palette.warning.main, 0.22),
+                color: vars.palette.warning.light,
+                borderColor: withAlpha(vars.palette.warning.main, 0.4)
+              },
+              '& > .low': {
+                backgroundColor: withAlpha(vars.palette.error.main, 0.22),
+                color: vars.palette.error.light,
+                borderColor: withAlpha(vars.palette.error.main, 0.4)
+              }
+            }
+          })
         }
       }
     }

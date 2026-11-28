@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useMemo, useRef, useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Avatar from '@mui/material/Avatar';
@@ -42,6 +42,7 @@ import { LanguageSelector } from '@/components/layout/language-selector';
 import { useUiConfig } from '@/hooks/useUiConfig';
 import { useTranslations } from '@/hooks/useTranslations';
 import { getRuntimeConfig } from '@/lib/runtime-config';
+import { softAccentSx } from '@/theme/berry/soft-accent';
 
 export type HeaderProps = {
   user?: {
@@ -76,19 +77,10 @@ export function Header({ user, onLogout, onToggleDrawer }: HeaderProps) {
       .slice(0, 2);
   }, [user?.name, APP_NAME]);
 
-  useEffect(() => {
-    // Mantener compatibilidad con los componentes Tailwind existentes (darkMode: 'class')
-    if (!resolvedMode) return;
-    document.documentElement.classList.toggle('dark', resolvedMode === 'dark');
-  }, [resolvedMode]);
-
   function toggleTheme() {
     const next = resolvedMode === 'dark' ? 'light' : 'dark';
     setMode(next);
-    document.documentElement.classList.toggle('dark', next === 'dark');
   }
-
-  const primary = theme.vars?.palette.primary ?? theme.palette.primary;
 
   return (
     <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', gap: 2 }}>
@@ -106,12 +98,7 @@ export function Header({ user, onLogout, onToggleDrawer }: HeaderProps) {
             ...theme.typography.mediumAvatar,
             overflow: 'hidden',
             transition: 'all .2s ease-in-out',
-            color: primary.dark,
-            backgroundColor: primary.light,
-            '&:hover': {
-              color: primary.light,
-              backgroundColor: primary.dark,
-            },
+            ...softAccentSx(theme, 'primary'),
           }}
           onClick={onToggleDrawer}
           aria-label={t('toggleSidebar')}
@@ -160,7 +147,6 @@ function HeaderAvatar({
   ariaLabel?: string;
 }) {
   const theme = useTheme();
-  const primary = theme.vars?.palette.primary ?? theme.palette.primary;
 
   return (
     <Avatar
@@ -168,12 +154,7 @@ function HeaderAvatar({
       sx={{
         ...theme.typography.commonAvatar,
         ...theme.typography.mediumAvatar,
-        color: primary.dark,
-        backgroundColor: primary.light,
-        '&:hover': {
-          color: primary.light,
-          backgroundColor: primary.dark,
-        },
+        ...softAccentSx(theme, 'primary'),
         ...sx,
       }}
       onClick={onClick}
@@ -191,8 +172,6 @@ function SearchSection() {
 
   const anchorRef = useRef<HTMLDivElement | null>(null);
   const [open, setOpen] = useState(false);
-
-  const orange = theme.vars?.palette.orange ?? theme.palette.orange;
 
   const handleToggle = () => setOpen((prev) => !prev);
   const handleClose = (event: MouseEvent | TouchEvent) => {
@@ -243,12 +222,7 @@ function SearchSection() {
                               sx={{
                                 ...theme.typography.commonAvatar,
                                 ...theme.typography.mediumAvatar,
-                                bgcolor: orange?.light ?? 'orange.light',
-                                color: orange?.dark ?? 'orange.dark',
-                                '&:hover': {
-                                  bgcolor: orange?.dark ?? 'orange.dark',
-                                  color: orange?.light ?? 'orange.light',
-                                },
+                                ...softAccentSx(theme, 'orange'),
                               }}
                               onClick={() => setOpen(false)}
                               aria-label={t('close')}
@@ -321,11 +295,14 @@ function NotificationSection() {
             ...theme.typography.commonAvatar,
             ...theme.typography.mediumAvatar,
             transition: 'all .2s ease-in-out',
-            color: warning.dark,
-            backgroundColor: warning.light,
+            ...softAccentSx(theme, 'warning', false),
             '&:hover, &[aria-controls="notification-menu"]': {
               color: warning.light,
               backgroundColor: warning.dark,
+              ...theme.applyStyles('dark', {
+                color: warning.contrastText,
+                backgroundColor: warning.main,
+              }),
             },
           }}
           aria-controls={open ? 'notification-menu' : undefined}

@@ -6,12 +6,15 @@ import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { useTheme } from '@mui/material/styles';
 
 import { UI_FONT_FAMILIES } from '@/lib/ui-config/defaults';
 import { useUiConfig } from '@/hooks/useUiConfig';
 import { useTranslations } from '@/hooks/useTranslations';
+import { withAlpha } from '@/theme/berry/color-utils';
 
 export function FontFamily() {
+  const theme = useTheme();
   const t = useTranslations('customization');
   const {
     state: { fontFamily },
@@ -39,6 +42,11 @@ export function FontFamily() {
                   p: 0.75,
                   bgcolor: selected ? 'primary.light' : 'grey.50',
                   borderColor: 'transparent',
+                  ...theme.applyStyles('dark', {
+                    bgcolor: selected
+                      ? withAlpha(theme.vars?.palette.primary.main ?? theme.palette.primary.main, 0.16)
+                      : 'grey.50',
+                  }),
                 }}
               >
                 <Card

@@ -12,6 +12,7 @@ import { getRuntimeConfig } from '@/lib/runtime-config';
 import { useTranslations } from '@/hooks/useTranslations';
 import { useUiConfig } from '@/hooks/useUiConfig';
 import { berryDrawerWidth } from '@/theme/berry/constants';
+import { softAccentSx } from '@/theme/berry/soft-accent';
 
 import Box from '@mui/material/Box';
 import Drawer from '@mui/material/Drawer';
@@ -57,11 +58,12 @@ export type AppSidebarProps = {
 
 const MiniDrawerStyled = styled(Drawer, { shouldForwardProp: (prop) => prop !== 'open' })<{ open: boolean }>(
   ({ theme, open }) => {
+    const drawerBackground = theme.vars?.palette.background.paper ?? theme.palette.background.paper;
     const openedMixin: CSSObject = {
       width: berryDrawerWidth,
       borderRight: 'none',
       zIndex: 1099,
-      backgroundColor: theme.palette.background.paper,
+      backgroundColor: drawerBackground,
       overflowX: 'hidden',
       boxShadow: 'none',
       transition: theme.transitions.create('width', {
@@ -73,7 +75,7 @@ const MiniDrawerStyled = styled(Drawer, { shouldForwardProp: (prop) => prop !== 
     const closedMixin: CSSObject = {
       borderRight: 'none',
       zIndex: 1099,
-      backgroundColor: theme.palette.background.paper,
+      backgroundColor: drawerBackground,
       overflowX: 'hidden',
       width: 72,
       transition: theme.transitions.create('width', {
@@ -141,8 +143,7 @@ export function AppSidebar({ user, open, onClose }: AppSidebarProps) {
           ...theme.typography.commonAvatar,
           ...theme.typography.mediumAvatar,
           overflow: 'hidden',
-          color: theme.palette.primary.dark,
-          backgroundColor: theme.palette.primary.light,
+          ...softAccentSx(theme, 'primary', false),
         }}
       >
         {initials}
